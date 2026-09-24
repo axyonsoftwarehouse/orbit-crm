@@ -89,7 +89,9 @@ tags/campos personalizados, portal do cliente.
   - ✅ **F4.1 — Tickets** (migration `0010`: `departments`, `tickets` com numeração `TCK-`, `ticket_replies` com nota interna, anexos; status/prioridade/tipo; telas lista + detalhe).
   - ✅ **F4.2 — Base de conhecimento + FAQ** (migration `0011`: `kb_categories`, `kb_articles` com slug/publish/views, `faqs`; abas Artigos/Categorias/FAQ).
   - ✅ **F4.3 — Help desk no portal** (migration `0012`/`0013`: cliente abre/acompanha tickets, respostas sem notas internas, lê artigos/FAQ publicados; abas Tickets e Ajuda no portal).
-- **F5 — CRM comercial (leads/pipeline).**
+- **F5 — CRM comercial** (em andamento)
+  - ✅ **F5.1 — Leads** (migration `0014`: `lead_statuses` configuráveis, `lead_sources`, `leads` com valor/responsável, `lead_activities`; lista, detalhe com timeline, gestão de status/origens e **conversão em cliente**).
+  - ⏳ F5.2 — Pipeline Kanban com drag-and-drop.
 - **F6 — Contratos, relatórios, notificações, i18n, cobrança automática, subdomínio.**
 
 ## 7. Design system (Square Dashboard UI Kit)
