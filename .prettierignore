@@ -1,0 +1,8 @@
+.next
+node_modules
+out
+build
+coverage
+supabase/.temp
+package-lock.json
+next-env.d.ts

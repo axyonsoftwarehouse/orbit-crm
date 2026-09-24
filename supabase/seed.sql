@@ -1,0 +1,7 @@
+-- Seed local (Fase 0).
+--
+-- Usuários de autenticação não são criados aqui: use `supabase auth admin` ou o
+-- painel de super-admin (/plataforma) após configurar um usuário.
+--
+-- Para promover um usuário a super-admin no ambiente local:
+--   update public.profiles set is_super_admin = true where id = '<uuid-do-usuario>';
