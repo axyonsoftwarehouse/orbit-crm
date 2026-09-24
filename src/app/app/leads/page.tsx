@@ -21,20 +21,22 @@ import {
 } from "@/server/queries/leads"
 import { LeadFormDialog } from "./lead-form-dialog"
 import { LeadSettingsDialog } from "./lead-settings"
+import { LeadKanban } from "./lead-kanban"
 
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; view?: string }>
 }) {
-  const { status } = await searchParams
+  const { status, view } = await searchParams
+  const kanban = view === "kanban"
 
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
   const [leads, statuses, sources, members] = await Promise.all([
-    listLeads(active.tenantId, { statusId: status }),
+    listLeads(active.tenantId, { statusId: kanban ? undefined : status }),
     listLeadStatuses(active.tenantId),
     listLeadSources(active.tenantId),
     listTenantMembers(active.tenantId),
@@ -49,7 +51,27 @@ export default async function LeadsPage({
             {leads.length} lead(s) · pipeline comercial.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="bg-muted inline-flex items-center gap-1 rounded-full p-1">
+            <Link
+              href="/app/leads"
+              className={cn(
+                "rounded-full px-3 py-1 text-sm",
+                !kanban && "bg-card font-medium shadow-sm",
+              )}
+            >
+              Lista
+            </Link>
+            <Link
+              href="/app/leads?view=kanban"
+              className={cn(
+                "rounded-full px-3 py-1 text-sm",
+                kanban && "bg-card font-medium shadow-sm",
+              )}
+            >
+              Kanban
+            </Link>
+          </div>
           <LeadSettingsDialog statuses={statuses} sources={sources} />
           <LeadFormDialog
             statuses={statuses}
@@ -60,112 +82,118 @@ export default async function LeadsPage({
         </div>
       </div>
 
-      {statuses.length > 0 ? (
-        <div className="flex flex-wrap gap-2">
-          <Link
-            href="/app/leads"
-            className={cn(
-              "rounded-full border px-3 py-1 text-xs",
-              !status
-                ? "border-primary bg-primary/10 text-primary"
-                : "text-muted-foreground",
-            )}
-          >
-            Todos
-          </Link>
-          {statuses.map((item) => (
-            <Link
-              key={item.id}
-              href={`/app/leads?status=${item.id}`}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs",
-                status === item.id
-                  ? "border-primary bg-primary/10 text-primary"
-                  : "text-muted-foreground",
-              )}
-            >
-              <span
-                className="size-2 rounded-full"
-                style={{ backgroundColor: item.color }}
-              />
-              {item.name}
-            </Link>
-          ))}
-        </div>
-      ) : null}
+      {kanban ? (
+        <LeadKanban statuses={statuses} leads={leads} />
+      ) : (
+        <>
+          {statuses.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/app/leads"
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs",
+                  !status
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "text-muted-foreground",
+                )}
+              >
+                Todos
+              </Link>
+              {statuses.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/app/leads?status=${item.id}`}
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs",
+                    status === item.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "text-muted-foreground",
+                  )}
+                >
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: item.color }}
+                  />
+                  {item.name}
+                </Link>
+              ))}
+            </div>
+          ) : null}
 
-      <div className="bg-card overflow-hidden rounded-2xl border shadow-[0_6px_24px_-14px_rgba(23,23,37,0.18)] dark:shadow-none">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Empresa</TableHead>
-              <TableHead>Origem</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Responsável</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead>Atualizado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leads.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
-                  <div className="text-muted-foreground flex flex-col items-center gap-1 text-sm">
-                    <Target className="size-5" />
-                    Nenhum lead cadastrado ainda.
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : (
-              leads.map((lead) => (
-                <TableRow key={lead.id}>
-                  <TableCell className="font-medium">
-                    <Link
-                      href={`/app/leads/${lead.id}`}
-                      className="hover:underline"
-                    >
-                      {lead.name}
-                    </Link>
-                    {lead.email ? (
-                      <div className="text-muted-foreground text-xs">
-                        {lead.email}
-                      </div>
-                    ) : null}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {lead.company ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {lead.source?.name ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    {lead.status ? (
-                      <StatusPill
-                        name={lead.status.name}
-                        color={lead.status.color}
-                      />
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {lead.assignee_name ?? "—"}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {lead.value !== null
-                      ? formatMoney(Number(lead.value))
-                      : "—"}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(lead.updated_at)}
-                  </TableCell>
+          <div className="bg-card overflow-hidden rounded-2xl border shadow-[0_6px_24px_-14px_rgba(23,23,37,0.18)] dark:shadow-none">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Empresa</TableHead>
+                  <TableHead>Origem</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Responsável</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead>Atualizado</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {leads.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-24 text-center">
+                      <div className="text-muted-foreground flex flex-col items-center gap-1 text-sm">
+                        <Target className="size-5" />
+                        Nenhum lead cadastrado ainda.
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  leads.map((lead) => (
+                    <TableRow key={lead.id}>
+                      <TableCell className="font-medium">
+                        <Link
+                          href={`/app/leads/${lead.id}`}
+                          className="hover:underline"
+                        >
+                          {lead.name}
+                        </Link>
+                        {lead.email ? (
+                          <div className="text-muted-foreground text-xs">
+                            {lead.email}
+                          </div>
+                        ) : null}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {lead.company ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {lead.source?.name ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        {lead.status ? (
+                          <StatusPill
+                            name={lead.status.name}
+                            color={lead.status.color}
+                          />
+                        ) : (
+                          "—"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {lead.assignee_name ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {lead.value !== null
+                          ? formatMoney(Number(lead.value))
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {formatDate(lead.updated_at)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
     </div>
   )
 }

@@ -107,6 +107,24 @@ export async function updateLeadStatusAction(formData: FormData) {
   revalidatePath(`/app/leads/${id}`)
 }
 
+export async function setLeadStatusAction(input: {
+  id: string
+  statusId: string | null
+}) {
+  const active = await getActiveMembership()
+  if (!active || !input.id) return
+
+  const supabase = await createClient()
+  await supabase
+    .from("leads")
+    .update({ status_id: input.statusId })
+    .eq("id", input.id)
+    .eq("tenant_id", active.tenantId)
+
+  revalidatePath("/app/leads")
+  revalidatePath(`/app/leads/${input.id}`)
+}
+
 export async function deleteLeadAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) redirect("/app")
