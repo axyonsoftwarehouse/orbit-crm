@@ -5,6 +5,19 @@ const PROTECTED_PREFIXES = ["/app", "/plataforma", "/portal"]
 const AUTH_PREFIXES = ["/login", "/convite", "/portal/login"]
 
 export async function updateSession(request: NextRequest) {
+  // Resolução de tenant por subdomínio (inativo até definir NEXT_PUBLIC_ROOT_DOMAIN)
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN
+  if (rootDomain) {
+    const hostname = (request.headers.get("host") ?? "").split(":")[0]
+    if (
+      hostname.endsWith(`.${rootDomain}`) &&
+      hostname !== `www.${rootDomain}`
+    ) {
+      const slug = hostname.slice(0, -(rootDomain.length + 1))
+      if (slug) request.headers.set("x-tenant-slug", slug)
+    }
+  }
+
   let response = NextResponse.next({ request })
 
   const supabase = createServerClient(
