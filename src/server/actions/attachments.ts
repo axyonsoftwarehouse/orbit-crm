@@ -5,7 +5,7 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { revalidateEntity } from "@/lib/revalidate"
 
-const ENTITY_TYPES = ["task", "project"]
+const ENTITY_TYPES = ["task", "project", "ticket"]
 
 export type RegisterAttachmentInput = {
   entityType: string

@@ -3,10 +3,12 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  BookOpen,
   Clock,
   FileText,
   FolderKanban,
   LayoutDashboard,
+  LifeBuoy,
   ListChecks,
   Receipt,
   Settings,
@@ -33,6 +35,12 @@ const NAV_ITEMS = [
   { title: "Timesheet", href: "/app/timesheet", icon: Clock },
   { title: "Orçamentos", href: "/app/orcamentos", icon: FileText },
   { title: "Faturas", href: "/app/faturas", icon: Receipt },
+  { title: "Tickets", href: "/app/tickets", icon: LifeBuoy },
+  {
+    title: "Base de conhecimento",
+    href: "/app/base-conhecimento",
+    icon: BookOpen,
+  },
   { title: "Configurações", href: "/app/configuracoes", icon: Settings },
 ]
 

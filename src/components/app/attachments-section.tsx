@@ -17,7 +17,7 @@ export async function AttachmentsSection({
   entityId,
 }: {
   tenantId: string
-  entityType: "task" | "project"
+  entityType: "task" | "project" | "ticket"
   entityId: string
 }) {
   const attachments = await listAttachments(tenantId, entityType, entityId)

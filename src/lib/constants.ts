@@ -70,3 +70,32 @@ export const PAYMENT_MODES = [
   "Dinheiro",
   "Outro",
 ] as const
+
+export const TICKET_STATUSES = {
+  1: { label: "Aberto", color: "#0062ff" },
+  2: { label: "Pendente", color: "#ffc542" },
+  3: { label: "Em andamento", color: "#50b5ff" },
+  4: { label: "Resolvido", color: "#3dd598" },
+  5: { label: "Fechado", color: "#92929d" },
+  6: { label: "Cancelado", color: "#fc5a5a" },
+} as const
+
+export type TicketStatus = keyof typeof TICKET_STATUSES
+
+export const TICKET_PRIORITIES = {
+  1: { label: "Baixa", color: "#92929d" },
+  2: { label: "Média", color: "#50b5ff" },
+  3: { label: "Alta", color: "#ff974a" },
+  4: { label: "Crítica", color: "#fc5a5a" },
+} as const
+
+export type TicketPriority = keyof typeof TICKET_PRIORITIES
+
+export const TICKET_TYPES = {
+  1: { label: "Bug" },
+  2: { label: "Solicitação" },
+  3: { label: "Dúvida" },
+  4: { label: "Incidente" },
+} as const
+
+export type TicketType = keyof typeof TICKET_TYPES

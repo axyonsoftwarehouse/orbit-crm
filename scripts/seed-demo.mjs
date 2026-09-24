@@ -39,6 +39,15 @@ const tsDaysAgo = (days, hour = 9) => {
   return d.toISOString()
 }
 
+const slugify = (value) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 80)
+
 async function getTenantId() {
   const { data } = await admin
     .from("tenants")
@@ -130,6 +139,9 @@ async function wipe(tenantId) {
     "estimates",
     "comments",
     "attachments",
+    "ticket_replies",
+    "tickets",
+    "departments",
     "time_entries",
     "task_checklist_items",
     "tasks",
@@ -137,6 +149,9 @@ async function wipe(tenantId) {
     "projects",
     "contacts",
     "companies",
+    "kb_articles",
+    "kb_categories",
+    "faqs",
   ]
   for (const table of tables) {
     await admin.from(table).delete().eq("tenant_id", tenantId)
@@ -671,12 +686,217 @@ async function seed(tenantId) {
     }
   }
 
+  const departmentNames = [
+    "Suporte Técnico",
+    "Comercial",
+    "Financeiro",
+    "Desenvolvimento",
+    "Customer Success",
+  ]
+  const { data: departments } = await admin
+    .from("departments")
+    .insert(departmentNames.map((name) => ({ tenant_id: tenantId, name })))
+    .select("id, name")
+
+  const ticketSubjects = [
+    "Erro ao gerar boleto",
+    "Dúvida sobre a fatura de maio",
+    "Solicitação de novo usuário",
+    "Sistema lento pela manhã",
+    "Bug no relatório de horas",
+    "Integração com API falhando",
+    "Pedido de orçamento adicional",
+    "Dados incorretos no cadastro",
+    "Ajuste de plano",
+    "Erro 500 ao salvar projeto",
+    "Solicitação de treinamento",
+    "Problema no login do portal",
+  ]
+  const ticketRows = ticketSubjects.map((subject, index) => {
+    const number = index + 1
+    return {
+      tenant_id: tenantId,
+      number,
+      formatted_number: `TCK-${String(number).padStart(6, "0")}`,
+      subject,
+      details:
+        "Ticket de demonstração gerado automaticamente para o Orbit CRM.",
+      status: pick([1, 1, 2, 3, 3, 4, 5]),
+      priority: pick([1, 2, 2, 3, 4]),
+      type: pick([1, 2, 3, 4]),
+      department_id:
+        departments && departments.length ? pick(departments).id : null,
+      company_id: companies[index % companies.length].id,
+      assignee_id: pick(team),
+      project_id:
+        Math.random() > 0.5 ? projects[index % projects.length].id : null,
+      source: "staff",
+      created_by: ownerId,
+    }
+  })
+  const { data: tickets } = await admin
+    .from("tickets")
+    .insert(ticketRows)
+    .select("id")
+  await admin
+    .from("tenants")
+    .update({ next_ticket_number: ticketRows.length + 1 })
+    .eq("id", tenantId)
+
+  const replyTexts = [
+    "Estamos analisando o caso, retornamos em breve.",
+    "Poderia nos enviar um print da tela?",
+    "Ajuste aplicado. Pode validar, por favor?",
+    "Encaminhei para o time responsável.",
+  ]
+  const replyRows = []
+  for (const ticket of (tickets ?? []).slice(0, 10)) {
+    const count = rand(1, 3)
+    for (let i = 0; i < count; i++) {
+      replyRows.push({
+        tenant_id: tenantId,
+        ticket_id: ticket.id,
+        author_id: pick(team),
+        body: pick(replyTexts),
+        is_internal: Math.random() > 0.7,
+      })
+    }
+  }
+  if (replyRows.length > 0) {
+    await admin.from("ticket_replies").insert(replyRows)
+  }
+
+  const ticketAttachmentRows = []
+  for (const ticket of (tickets ?? []).slice(0, 4)) {
+    const name = "print-erro.txt"
+    const path = `${tenantId}/ticket/${ticket.id}/${crypto.randomUUID()}-${name}`
+    const body = Buffer.from("Anexo de demonstração do ticket.", "utf8")
+    const { error } = await admin.storage
+      .from("attachments")
+      .upload(path, body, { contentType: "text/plain", upsert: true })
+    if (error) continue
+    ticketAttachmentRows.push({
+      tenant_id: tenantId,
+      entity_type: "ticket",
+      entity_id: ticket.id,
+      storage_path: path,
+      file_name: name,
+      mime_type: "text/plain",
+      size_bytes: body.length,
+      uploaded_by: pick(team),
+    })
+  }
+  if (ticketAttachmentRows.length > 0) {
+    await admin.from("attachments").insert(ticketAttachmentRows)
+  }
+
+  const kbCategories = [
+    {
+      name: "Primeiros passos",
+      description: "Como começar a usar o Orbit CRM.",
+    },
+    { name: "Financeiro", description: "Orçamentos, faturas e pagamentos." },
+    { name: "Suporte", description: "Abertura e acompanhamento de tickets." },
+  ]
+  const { data: kbCats } = await admin
+    .from("kb_categories")
+    .insert(
+      kbCategories.map((category, index) => ({
+        tenant_id: tenantId,
+        name: category.name,
+        description: category.description,
+        position: index,
+      })),
+    )
+    .select("id, name")
+  const catIdByName = new Map((kbCats ?? []).map((c) => [c.name, c.id]))
+
+  const articles = [
+    {
+      title: "Como criar seu primeiro projeto",
+      cat: "Primeiros passos",
+      excerpt:
+        "Passo a passo para criar projetos, tarefas e convidar a equipe.",
+      content:
+        "1. Vá em Projetos e clique em Novo projeto.\n2. Escolha o cliente e defina prazos e orçamento.\n3. Adicione a equipe e crie as tarefas.\n4. Acompanhe o progresso pela visão geral.",
+    },
+    {
+      title: "Entendendo orçamentos e faturas",
+      cat: "Financeiro",
+      excerpt: "Do orçamento à fatura, e como registrar pagamentos.",
+      content:
+        "Crie um orçamento com itens e converta em fatura com um clique. Registre pagamentos e acompanhe o valor em aberto de cada cliente.",
+    },
+    {
+      title: "Registrando horas de trabalho",
+      cat: "Primeiros passos",
+      excerpt: "Use o timer ou lance horas manualmente no Timesheet.",
+      content:
+        "No Timesheet, inicie o timer escolhendo projeto e tarefa. Para lançamentos retroativos, use o Lançamento manual. Marque como faturável para gerar faturas das horas.",
+    },
+    {
+      title: "Abrindo um ticket de suporte",
+      cat: "Suporte",
+      excerpt: "Como registrar e acompanhar chamados de suporte.",
+      content:
+        "Em Tickets, clique em Novo ticket, descreva o problema e defina prioridade e responsável. Acompanhe a conversa e anexe arquivos.",
+    },
+    {
+      title: "Como o cliente acessa o portal",
+      cat: "Suporte",
+      excerpt: "Convide um contato para o portal do cliente.",
+      content:
+        "No cadastro do cliente, abra o contato e clique em Dar acesso. Defina uma senha e compartilhe o acesso ao Portal do cliente.",
+    },
+  ]
+  const articleRows = articles.map((article) => ({
+    tenant_id: tenantId,
+    title: article.title,
+    slug: slugify(article.title),
+    category_id: catIdByName.get(article.cat) ?? null,
+    excerpt: article.excerpt,
+    content: article.content,
+    is_published: true,
+    views: rand(5, 140),
+    author_id: ownerId,
+  }))
+  await admin.from("kb_articles").insert(articleRows)
+
+  const faqRows = [
+    {
+      question: "Como redefinir minha senha do portal?",
+      answer:
+        "Na tela de login do portal, use a opção de recuperação ou fale com o suporte.",
+    },
+    {
+      question: "Quais formas de pagamento são aceitas?",
+      answer: "Pix, transferência, boleto e cartão de crédito.",
+    },
+    {
+      question: "Como acompanho o andamento do meu projeto?",
+      answer:
+        "Acesse o Portal do cliente e abra a aba Projetos para ver progresso e tarefas.",
+    },
+  ]
+  await admin.from("faqs").insert(
+    faqRows.map((faq, index) => ({
+      tenant_id: tenantId,
+      question: faq.question,
+      answer: faq.answer,
+      position: index,
+      is_published: true,
+    })),
+  )
+
   return {
     companies: companies.length,
     contacts: contactRows.length,
     projects: projects.length,
     tasks: tasks.length,
     timeEntries: timeRows.length,
+    tickets: (tickets ?? []).length,
+    kbArticles: articleRows.length,
+    faqs: faqRows.length,
     users: demoUsers.length,
   }
 }
