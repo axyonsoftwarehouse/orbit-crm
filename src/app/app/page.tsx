@@ -1,5 +1,11 @@
 import Link from "next/link"
-import { Building2, Clock, FolderKanban, ListChecks } from "lucide-react"
+import {
+  Building2,
+  Clock,
+  FolderKanban,
+  ListChecks,
+  MessageSquare,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatCard } from "@/components/app/stat-card"
 import { ProgressBar, ProjectStatusBadge } from "@/components/app/project-bits"
@@ -23,6 +29,13 @@ type InvoiceLite = {
   company: { name: string } | null
 }
 
+type FeedItem = {
+  id: string
+  when: string
+  text: string
+  kind: "comment" | "time"
+}
+
 export default async function DashboardPage() {
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
@@ -40,6 +53,8 @@ export default async function DashboardPage() {
     tasks,
     invoices,
     payments,
+    commentsFeed,
+    timeFeed,
   ] = await Promise.all([
     supabase
       .from("companies")
@@ -75,6 +90,20 @@ export default async function DashboardPage() {
       .from("payments")
       .select("invoice_id, amount")
       .eq("tenant_id", tenantId),
+    supabase
+      .from("comments")
+      .select("id, content, created_at, author:profiles(full_name)")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false })
+      .limit(6),
+    supabase
+      .from("time_entries")
+      .select(
+        "id, started_at, duration_seconds, user:profiles(full_name), project:projects(name)",
+      )
+      .eq("tenant_id", tenantId)
+      .order("started_at", { ascending: false })
+      .limit(6),
   ])
 
   const entries = (timeRows.data ?? []) as {
@@ -145,6 +174,57 @@ export default async function DashboardPage() {
       receivable += Math.max(0, Number(invoice.total) - paid)
     }
   }
+
+  const months: { key: string; label: string; total: number }[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(1)
+    d.setMonth(d.getMonth() - i)
+    months.push({
+      key: d.toISOString().slice(0, 7),
+      label: d.toLocaleDateString("pt-BR", { month: "short" }),
+      total: 0,
+    })
+  }
+  for (const invoice of invoiceList) {
+    if (invoice.status === 5) continue
+    const month = months.find((m) => m.key === String(invoice.date).slice(0, 7))
+    if (month) month.total += Number(invoice.total)
+  }
+  const maxMonth = Math.max(...months.map((m) => m.total), 1)
+
+  const feed: FeedItem[] = []
+  for (const comment of (commentsFeed.data ?? []) as unknown as {
+    id: string
+    content: string
+    created_at: string
+    author: { full_name: string | null } | null
+  }[]) {
+    feed.push({
+      id: `c-${comment.id}`,
+      when: comment.created_at,
+      kind: "comment",
+      text: `${comment.author?.full_name ?? "Alguém"} comentou: ${comment.content}`,
+    })
+  }
+  for (const entry of (timeFeed.data ?? []) as unknown as {
+    id: string
+    started_at: string
+    duration_seconds: number | null
+    user: { full_name: string | null } | null
+    project: { name: string } | null
+  }[]) {
+    feed.push({
+      id: `t-${entry.id}`,
+      when: entry.started_at,
+      kind: "time",
+      text: `${entry.user?.full_name ?? "Alguém"} registrou ${formatDuration(
+        Number(entry.duration_seconds ?? 0),
+      )} em ${entry.project?.name ?? "um projeto"}`,
+    })
+  }
+  feed.sort((a, b) => (a.when < b.when ? 1 : -1))
+  const recentFeed = feed.slice(0, 8)
 
   const recentProjects = projects.slice(0, 5)
   const recentInvoices = invoiceList.slice(0, 4)
@@ -251,6 +331,72 @@ export default async function DashboardPage() {
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="text-base">Faturamento (6 meses)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex h-44 items-end gap-4">
+              {months.map((month) => (
+                <div
+                  key={month.key}
+                  className="flex h-full flex-1 flex-col items-center justify-end gap-1"
+                  title={formatMoney(month.total)}
+                >
+                  <span className="text-muted-foreground text-[10px]">
+                    {formatMoney(month.total)}
+                  </span>
+                  <div
+                    className="w-full rounded-t-md bg-[#0062ff]"
+                    style={{
+                      height: `${Math.max((month.total / maxMonth) * 100, month.total > 0 ? 4 : 0)}%`,
+                    }}
+                  />
+                  <span className="text-muted-foreground text-xs capitalize">
+                    {month.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Atividade recente</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {recentFeed.length === 0 ? (
+              <p className="text-muted-foreground text-sm">
+                Sem atividade ainda.
+              </p>
+            ) : (
+              recentFeed.map((item) => (
+                <div key={item.id} className="flex items-start gap-2 text-sm">
+                  <span className="bg-muted text-muted-foreground mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full">
+                    {item.kind === "comment" ? (
+                      <MessageSquare className="size-3.5" />
+                    ) : (
+                      <Clock className="size-3.5" />
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="line-clamp-2">{item.text}</p>
+                    <p className="text-muted-foreground text-xs">
+                      {new Date(item.when).toLocaleString("pt-BR", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))
+            )}
           </CardContent>
         </Card>
       </div>

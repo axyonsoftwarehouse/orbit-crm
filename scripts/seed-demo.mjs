@@ -98,7 +98,31 @@ async function ensureDemoUsers(tenantId) {
   return ids
 }
 
+async function listAllFiles(prefix) {
+  const files = []
+  async function walk(path) {
+    const { data } = await admin.storage
+      .from("attachments")
+      .list(path, { limit: 100 })
+    for (const entry of data ?? []) {
+      const full = path ? `${path}/${entry.name}` : entry.name
+      if (entry.id) files.push(full)
+      else await walk(full)
+    }
+  }
+  await walk(prefix)
+  return files
+}
+
+async function wipeStorage(tenantId) {
+  const files = await listAllFiles(tenantId)
+  if (files.length > 0) {
+    await admin.storage.from("attachments").remove(files)
+  }
+}
+
 async function wipe(tenantId) {
+  await wipeStorage(tenantId)
   const tables = [
     "payments",
     "document_items",
@@ -460,6 +484,57 @@ async function seed(tenantId) {
     }
   }
   await admin.from("time_entries").insert(timeRows)
+
+  const attachmentRows = []
+  const projectFiles = [
+    {
+      name: "briefing.txt",
+      content: "Briefing de demonstração do projeto Orbit CRM.",
+    },
+    { name: "proposta.txt", content: "Proposta comercial de exemplo." },
+  ]
+  for (const project of projects.slice(0, 4)) {
+    for (const file of projectFiles) {
+      const path = `${tenantId}/project/${project.id}/${crypto.randomUUID()}-${file.name}`
+      const body = Buffer.from(file.content, "utf8")
+      const { error } = await admin.storage
+        .from("attachments")
+        .upload(path, body, { contentType: "text/plain", upsert: true })
+      if (error) continue
+      attachmentRows.push({
+        tenant_id: tenantId,
+        entity_type: "project",
+        entity_id: project.id,
+        storage_path: path,
+        file_name: file.name,
+        mime_type: "text/plain",
+        size_bytes: body.length,
+        uploaded_by: pick(team),
+      })
+    }
+  }
+  for (const task of tasks.slice(0, 6)) {
+    const name = "checklist-tecnico.txt"
+    const path = `${tenantId}/task/${task.id}/${crypto.randomUUID()}-${name}`
+    const body = Buffer.from("Checklist técnico de demonstração.", "utf8")
+    const { error } = await admin.storage
+      .from("attachments")
+      .upload(path, body, { contentType: "text/plain", upsert: true })
+    if (error) continue
+    attachmentRows.push({
+      tenant_id: tenantId,
+      entity_type: "task",
+      entity_id: task.id,
+      storage_path: path,
+      file_name: name,
+      mime_type: "text/plain",
+      size_bytes: body.length,
+      uploaded_by: pick(team),
+    })
+  }
+  if (attachmentRows.length > 0) {
+    await admin.from("attachments").insert(attachmentRows)
+  }
 
   const estimateSeed = [
     { status: 2, amount: 1.0 },
