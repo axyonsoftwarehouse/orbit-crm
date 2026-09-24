@@ -300,6 +300,37 @@ async function seed(tenantId) {
   }
   await admin.from("contacts").insert(contactRows)
 
+  // Acesso de demonstração ao portal (religa após recriar contatos)
+  const portalEmail = "cliente@orbit.demo"
+  const portalPassword = "Portal#2026"
+  const { data: usersList } = await admin.auth.admin.listUsers({ perPage: 200 })
+  let portalUserId = usersList?.users.find((u) => u.email === portalEmail)?.id
+  if (!portalUserId) {
+    const { data: createdPortal, error: portalError } =
+      await admin.auth.admin.createUser({
+        email: portalEmail,
+        password: portalPassword,
+        email_confirm: true,
+        user_metadata: { full_name: "Cliente Demo" },
+      })
+    if (!portalError && createdPortal.user) portalUserId = createdPortal.user.id
+  }
+  if (portalUserId) {
+    const { data: firstContact } = await admin
+      .from("contacts")
+      .select("id")
+      .eq("company_id", companies[0].id)
+      .order("created_at")
+      .limit(1)
+      .maybeSingle()
+    if (firstContact) {
+      await admin
+        .from("contacts")
+        .update({ user_id: portalUserId })
+        .eq("id", firstContact.id)
+    }
+  }
+
   const projectSeed = [
     {
       name: "Redesign do site institucional",
@@ -898,6 +929,7 @@ async function seed(tenantId) {
     kbArticles: articleRows.length,
     faqs: faqRows.length,
     users: demoUsers.length,
+    portal: portalEmail,
   }
 }
 

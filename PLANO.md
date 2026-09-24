@@ -85,7 +85,10 @@ tags/campos personalizados, portal do cliente.
   - Acesso por **convite do staff** (contato → cria usuário e vincula), em `/portal` separado.
   - Cliente vê **Projetos, Tarefas, Arquivos, Orçamentos e Faturas** (somente leitura via RLS por empresa).
   - **Aprovação de orçamento** pelo cliente via RPC segura (`client_respond_estimate`).
-- **F4 — Help desk (tickets + KB).**
+- **F4 — Help desk** ✅ **concluída**
+  - ✅ **F4.1 — Tickets** (migration `0010`: `departments`, `tickets` com numeração `TCK-`, `ticket_replies` com nota interna, anexos; status/prioridade/tipo; telas lista + detalhe).
+  - ✅ **F4.2 — Base de conhecimento + FAQ** (migration `0011`: `kb_categories`, `kb_articles` com slug/publish/views, `faqs`; abas Artigos/Categorias/FAQ).
+  - ✅ **F4.3 — Help desk no portal** (migration `0012`/`0013`: cliente abre/acompanha tickets, respostas sem notas internas, lê artigos/FAQ publicados; abas Tickets e Ajuda no portal).
 - **F5 — CRM comercial (leads/pipeline).**
 - **F6 — Contratos, relatórios, notificações, i18n, cobrança automática, subdomínio.**
 

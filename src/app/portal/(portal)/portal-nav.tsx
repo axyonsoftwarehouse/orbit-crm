@@ -9,6 +9,8 @@ const ITEMS = [
   { href: "/portal/projetos", label: "Projetos" },
   { href: "/portal/orcamentos", label: "Orçamentos" },
   { href: "/portal/faturas", label: "Faturas" },
+  { href: "/portal/tickets", label: "Tickets" },
+  { href: "/portal/ajuda", label: "Ajuda" },
 ]
 
 export function PortalNav() {
