@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { ticketReplySchema, ticketSchema } from "@/lib/validations/tickets"
+import { checkPlanLimit } from "@/server/plan-limits"
 
 export type TicketFormState = { error?: string; success?: string } | undefined
 
@@ -34,6 +35,9 @@ export async function createTicketAction(
 ): Promise<TicketFormState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const limit = await checkPlanLimit(active.tenantId, "tickets")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const parsed = parseTicket(formData)
   if (!parsed.success) {

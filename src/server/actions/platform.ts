@@ -9,6 +9,7 @@ import {
   DEFAULT_LEAD_STATUSES,
 } from "@/lib/leads-defaults"
 import { createTenantSchema } from "@/lib/validations/auth"
+import { planSchema } from "@/lib/validations/plan"
 
 export type CreateTenantState = { error?: string; success?: string } | undefined
 
@@ -91,4 +92,121 @@ export async function createTenantAction(
 
   revalidatePath("/plataforma")
   return { success: `Empresa "${parsed.data.name}" criada.` }
+}
+
+export type PlanFormState = { error?: string; success?: string } | undefined
+
+function parsePlan(formData: FormData) {
+  return planSchema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description") || undefined,
+    price: formData.get("price") ?? 0,
+    interval: formData.get("interval") || "monthly",
+    trial_days: formData.get("trial_days") ?? 0,
+    most_popular: formData.get("most_popular") === "on",
+    limits: {
+      clients: formData.get("limits_clients"),
+      projects: formData.get("limits_projects"),
+      tasks: formData.get("limits_tasks"),
+      tickets: formData.get("limits_tickets"),
+      leads: formData.get("limits_leads"),
+    },
+  })
+}
+
+async function requireSuperAdminOrError() {
+  const profile = await getProfile()
+  return profile?.is_super_admin ?? false
+}
+
+export async function createPlanAction(
+  _prevState: PlanFormState,
+  formData: FormData,
+): Promise<PlanFormState> {
+  if (!(await requireSuperAdminOrError())) {
+    return { error: "Apenas super-admins podem gerenciar planos." }
+  }
+
+  const parsed = parsePlan(formData)
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from("plans").insert({
+    name: parsed.data.name,
+    description: parsed.data.description ?? null,
+    price: parsed.data.price,
+    interval: parsed.data.interval,
+    trial_days: parsed.data.trial_days,
+    most_popular: parsed.data.most_popular,
+    limits: parsed.data.limits,
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath("/plataforma")
+  return { success: "Plano criado." }
+}
+
+export async function updatePlanAction(
+  _prevState: PlanFormState,
+  formData: FormData,
+): Promise<PlanFormState> {
+  if (!(await requireSuperAdminOrError())) {
+    return { error: "Apenas super-admins podem gerenciar planos." }
+  }
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) return { error: "Plano inválido." }
+
+  const parsed = parsePlan(formData)
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("plans")
+    .update({
+      name: parsed.data.name,
+      description: parsed.data.description ?? null,
+      price: parsed.data.price,
+      interval: parsed.data.interval,
+      trial_days: parsed.data.trial_days,
+      most_popular: parsed.data.most_popular,
+      limits: parsed.data.limits,
+    })
+    .eq("id", id)
+  if (error) return { error: error.message }
+
+  revalidatePath("/plataforma")
+  return { success: "Plano atualizado." }
+}
+
+export async function deletePlanAction(formData: FormData) {
+  if (!(await requireSuperAdminOrError())) return
+  const id = String(formData.get("id") ?? "")
+  const supabase = await createClient()
+  await supabase.from("plans").delete().eq("id", id)
+  revalidatePath("/plataforma")
+}
+
+export async function setTenantPlanAction(formData: FormData) {
+  if (!(await requireSuperAdminOrError())) return
+
+  const tenantId = String(formData.get("tenant_id") ?? "")
+  const planId = String(formData.get("plan_id") ?? "") || null
+  if (!tenantId) return
+
+  const supabase = await createClient()
+  await supabase.from("tenants").update({ plan_id: planId }).eq("id", tenantId)
+  revalidatePath("/plataforma")
+}
+
+export async function deleteTenantAction(formData: FormData) {
+  if (!(await requireSuperAdminOrError())) return
+  const id = String(formData.get("id") ?? "")
+  const supabase = await createClient()
+  await supabase.from("tenants").delete().eq("id", id)
+  revalidatePath("/plataforma")
 }

@@ -1066,6 +1066,18 @@ async function seed(tenantId) {
     await admin.from("lead_activities").insert(leadActivityRows)
   }
 
+  const { data: proPlan } = await admin
+    .from("plans")
+    .select("id")
+    .eq("name", "Pro")
+    .maybeSingle()
+  if (proPlan) {
+    await admin
+      .from("tenants")
+      .update({ plan_id: proPlan.id, plan_status: "active" })
+      .eq("id", tenantId)
+  }
+
   return {
     companies: companies.length,
     contacts: contactRows.length,

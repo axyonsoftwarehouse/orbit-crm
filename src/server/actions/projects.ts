@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { projectSchema } from "@/lib/validations/projects"
+import { checkPlanLimit } from "@/server/plan-limits"
 
 export type ProjectFormState = { error?: string; success?: string } | undefined
 
@@ -32,6 +33,9 @@ export async function createProjectAction(
 ): Promise<ProjectFormState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const limit = await checkPlanLimit(active.tenantId, "projects")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const parsed = parseProject(formData)
   if (!parsed.success) {

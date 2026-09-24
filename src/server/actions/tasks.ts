@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { checklistItemSchema, taskSchema } from "@/lib/validations/tasks"
+import { checkPlanLimit } from "@/server/plan-limits"
 
 export type TaskFormState = { error?: string; success?: string } | undefined
 
@@ -30,6 +31,9 @@ export async function createTaskAction(
 ): Promise<TaskFormState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const limit = await checkPlanLimit(active.tenantId, "tasks")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const parsed = parseTask(formData)
   if (!parsed.success) {

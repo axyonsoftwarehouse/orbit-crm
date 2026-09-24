@@ -92,7 +92,9 @@ tags/campos personalizados, portal do cliente.
 - **F5 — CRM comercial** ✅ **concluída**
   - ✅ **F5.1 — Leads** (migration `0014`: `lead_statuses` configuráveis, `lead_sources`, `leads` com valor/responsável, `lead_activities`; lista, detalhe com timeline, gestão de status/origens e **conversão em cliente**).
   - ✅ **F5.2 — Pipeline Kanban** (board com **drag-and-drop** entre colunas de status; toggle Lista/Kanban).
-- **F6 — Contratos, relatórios, notificações, i18n, cobrança automática, subdomínio.**
+- **F6 — Plataforma SaaS** (em andamento)
+  - ✅ **F6.1 — Planos & limites** (migration `0015`: `plans` com preço/trial/limites por recurso/“mais popular”; assinatura no `tenant`; gestão no `/plataforma`; **enforcement de limites** ao criar clientes/projetos/tarefas/tickets/leads).
+  - ⏳ Demais itens do F6: notificações/e-mail, relatórios, subdomínio, cobrança automática.
 
 ## 7. Design system (Square Dashboard UI Kit)
 

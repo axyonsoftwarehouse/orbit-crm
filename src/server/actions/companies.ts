@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { companySchema } from "@/lib/validations/clients"
+import { checkPlanLimit } from "@/server/plan-limits"
 
 export type CompanyFormState = { error?: string; success?: string } | undefined
 
@@ -30,6 +31,9 @@ export async function createCompanyAction(
 ): Promise<CompanyFormState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const limit = await checkPlanLimit(active.tenantId, "clients")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const parsed = parseCompany(formData)
   if (!parsed.success) {

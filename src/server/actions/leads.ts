@@ -12,6 +12,7 @@ import {
   leadStatusSchema,
 } from "@/lib/validations/leads"
 import { getLead, listLeadStatuses } from "@/server/queries/leads"
+import { checkPlanLimit } from "@/server/plan-limits"
 
 export type LeadFormState = { error?: string; success?: string } | undefined
 
@@ -40,6 +41,9 @@ export async function createLeadAction(
 ): Promise<LeadFormState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const limit = await checkPlanLimit(active.tenantId, "leads")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const parsed = parseLead(formData)
   if (!parsed.success) {
