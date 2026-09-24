@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import {
+  BarChart3,
   BookOpen,
   Clock,
   FileText,
@@ -37,6 +38,7 @@ const NAV_ITEMS = [
   { title: "Timesheet", href: "/app/timesheet", icon: Clock },
   { title: "Orçamentos", href: "/app/orcamentos", icon: FileText },
   { title: "Faturas", href: "/app/faturas", icon: Receipt },
+  { title: "Relatórios", href: "/app/relatorios", icon: BarChart3 },
   { title: "Tickets", href: "/app/tickets", icon: LifeBuoy },
   {
     title: "Base de conhecimento",
