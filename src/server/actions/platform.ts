@@ -3,6 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getProfile, getUser } from "@/lib/auth"
+import {
+  DEFAULT_DEPARTMENTS,
+  DEFAULT_LEAD_SOURCES,
+  DEFAULT_LEAD_STATUSES,
+} from "@/lib/leads-defaults"
 import { createTenantSchema } from "@/lib/validations/auth"
 
 export type CreateTenantState = { error?: string; success?: string } | undefined
@@ -62,6 +67,27 @@ export async function createTenantAction(
       }
     }
   }
+
+  await supabase.from("lead_statuses").insert(
+    DEFAULT_LEAD_STATUSES.map((status) => ({
+      tenant_id: tenant.id,
+      name: status.name,
+      color: status.color,
+      position: status.position,
+      is_default: status.is_default,
+      is_won: status.is_won,
+      is_lost: status.is_lost,
+    })),
+  )
+  await supabase.from("lead_sources").insert(
+    DEFAULT_LEAD_SOURCES.map((name) => ({
+      tenant_id: tenant.id,
+      name,
+    })),
+  )
+  await supabase
+    .from("departments")
+    .insert(DEFAULT_DEPARTMENTS.map((name) => ({ tenant_id: tenant.id, name })))
 
   revalidatePath("/plataforma")
   return { success: `Empresa "${parsed.data.name}" criada.` }

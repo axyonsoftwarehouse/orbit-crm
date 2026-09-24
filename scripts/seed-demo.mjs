@@ -152,6 +152,10 @@ async function wipe(tenantId) {
     "kb_articles",
     "kb_categories",
     "faqs",
+    "lead_activities",
+    "leads",
+    "lead_statuses",
+    "lead_sources",
   ]
   for (const table of tables) {
     await admin.from(table).delete().eq("tenant_id", tenantId)
@@ -919,6 +923,149 @@ async function seed(tenantId) {
     })),
   )
 
+  const leadStatusRows = [
+    {
+      name: "Novo",
+      color: "#92929d",
+      position: 0,
+      is_default: true,
+      is_won: false,
+      is_lost: false,
+    },
+    {
+      name: "Contatado",
+      color: "#50b5ff",
+      position: 1,
+      is_default: false,
+      is_won: false,
+      is_lost: false,
+    },
+    {
+      name: "Qualificado",
+      color: "#0062ff",
+      position: 2,
+      is_default: false,
+      is_won: false,
+      is_lost: false,
+    },
+    {
+      name: "Proposta",
+      color: "#ffc542",
+      position: 3,
+      is_default: false,
+      is_won: false,
+      is_lost: false,
+    },
+    {
+      name: "Ganho",
+      color: "#3dd598",
+      position: 4,
+      is_default: false,
+      is_won: true,
+      is_lost: false,
+    },
+    {
+      name: "Perdido",
+      color: "#fc5a5a",
+      position: 5,
+      is_default: false,
+      is_won: false,
+      is_lost: true,
+    },
+  ]
+  const { data: leadStatuses } = await admin
+    .from("lead_statuses")
+    .insert(
+      leadStatusRows.map((status) => ({ tenant_id: tenantId, ...status })),
+    )
+    .select("id, name")
+  const { data: leadSources } = await admin
+    .from("lead_sources")
+    .insert(
+      ["Site", "Indicação", "Google", "Facebook", "Instagram", "Evento"].map(
+        (name) => ({ tenant_id: tenantId, name }),
+      ),
+    )
+    .select("id, name")
+
+  const leadNames = [
+    "Marcos Vinícius",
+    "Patrícia Gomes",
+    "Rafael Torres",
+    "Juliana Prado",
+    "Eduardo Martins",
+    "Camila Rocha",
+    "Thiago Barbosa",
+    "Larissa Campos",
+    "Gustavo Neves",
+    "Fernanda Dias",
+    "Alexandre Pires",
+    "Beatriz Farias",
+  ]
+  const leadCompanies = [
+    "Solaris Energia",
+    "Vetor Log",
+    "Padaria Pão Quente",
+    "Fit Academia",
+    "Auto Peças Silva",
+    "Studio Bella",
+    "Mercado Central",
+    "TechStart",
+    "Clínica Sorriso",
+    "Óptica Vision",
+    "Imobiliária Nova",
+    "EcoVerde",
+  ]
+  const leadRows = leadNames.map((name, index) => ({
+    tenant_id: tenantId,
+    name,
+    company: leadCompanies[index],
+    title: pick(["Diretor", "Gerente", "Proprietário", "Comprador", "Sócio"]),
+    email: `${slugify(name)}@${slugify(leadCompanies[index])}.com`,
+    phone: `+55 11 9${rand(1000, 9999)}-${rand(1000, 9999)}`,
+    status_id:
+      leadStatuses && leadStatuses.length ? pick(leadStatuses).id : null,
+    source_id: leadSources && leadSources.length ? pick(leadSources).id : null,
+    value: rand(2000, 80000),
+    assignee_id: pick(team),
+    city: pick([
+      "São Paulo",
+      "Rio de Janeiro",
+      "Curitiba",
+      "Recife",
+      "Fortaleza",
+    ]),
+    country: "Brasil",
+    created_by: ownerId,
+  }))
+  const { data: leads } = await admin
+    .from("leads")
+    .insert(leadRows)
+    .select("id")
+
+  const leadActivityTexts = [
+    "Ligação realizada",
+    "E-mail com proposta enviado",
+    "Reunião agendada",
+    "Follow-up por WhatsApp",
+    "Cliente pediu desconto",
+  ]
+  const leadActivityRows = []
+  for (const lead of (leads ?? []).slice(0, 10)) {
+    const count = rand(1, 3)
+    for (let i = 0; i < count; i++) {
+      leadActivityRows.push({
+        tenant_id: tenantId,
+        lead_id: lead.id,
+        author_id: pick(team),
+        description: pick(leadActivityTexts),
+      })
+    }
+  }
+  if (leadActivityRows.length > 0) {
+    await admin.from("lead_activities").insert(leadActivityRows)
+  }
+
   return {
     companies: companies.length,
     contacts: contactRows.length,
@@ -928,6 +1075,7 @@ async function seed(tenantId) {
     tickets: (tickets ?? []).length,
     kbArticles: articleRows.length,
     faqs: faqRows.length,
+    leads: (leads ?? []).length,
     users: demoUsers.length,
     portal: portalEmail,
   }

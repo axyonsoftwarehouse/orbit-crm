@@ -12,6 +12,7 @@ import {
   ListChecks,
   Receipt,
   Settings,
+  Target,
   Users,
 } from "lucide-react"
 import {
@@ -30,6 +31,7 @@ import type { Membership } from "@/lib/auth"
 const NAV_ITEMS = [
   { title: "Visão geral", href: "/app", icon: LayoutDashboard },
   { title: "Clientes", href: "/app/clientes", icon: Users },
+  { title: "Leads", href: "/app/leads", icon: Target },
   { title: "Projetos", href: "/app/projetos", icon: FolderKanban },
   { title: "Tarefas", href: "/app/tarefas", icon: ListChecks },
   { title: "Timesheet", href: "/app/timesheet", icon: Clock },
