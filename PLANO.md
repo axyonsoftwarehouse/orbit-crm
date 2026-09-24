@@ -95,7 +95,8 @@ tags/campos personalizados, portal do cliente.
 - **F6 — Plataforma SaaS** (em andamento)
   - ✅ **F6.1 — Planos & limites** (migration `0015`: `plans` com preço/trial/limites por recurso/“mais popular”; assinatura no `tenant`; gestão no `/plataforma`; **enforcement de limites** ao criar clientes/projetos/tarefas/tickets/leads).
   - ✅ **F6.4 — Relatórios** (`/app/relatorios` com período 30/90/365 dias: **funil de leads**, **financeiro** — faturado/recebido/em aberto + faturamento 6 meses + top clientes — e **horas** por projeto/pessoa; inspirado nos relatórios do módulo de contabilidade).
-  - ⏳ Demais itens do F6: notificações/e-mail, subdomínio, cobrança automática.
+  - ✅ **F6.3 — Notificações + e-mail + lembretes** (migration `0016`: `notifications` + sino no topbar; `sendEmail` via Resend; rota `/api/cron/reminders` agendada no `vercel.json` para tarefas vencendo e faturas vencidas).
+  - ⏳ Demais itens do F6: subdomínio, cobrança automática.
 
 ## 7. Design system (Square Dashboard UI Kit)
 

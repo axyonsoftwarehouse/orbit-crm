@@ -11,6 +11,8 @@ import { ThemeToggle } from "@/components/app/theme-toggle"
 import { SearchDialog } from "@/components/app/search-dialog"
 import { NewMenu } from "@/components/app/new-menu"
 import { UserMenu } from "@/components/app/user-menu"
+import { NotificationsBell } from "@/components/app/notifications-bell"
+import { listNotifications, unreadCount } from "@/server/queries/notifications"
 import { getActiveTenant } from "@/lib/tenant"
 import { getMemberships, getProfile, requireUser } from "@/lib/auth"
 import { signOutAction } from "@/server/actions/auth"
@@ -26,6 +28,13 @@ export default async function AppLayout({
     getMemberships(),
   ])
   const active = await getActiveTenant(memberships)
+
+  const [notifications, unread] = active
+    ? await Promise.all([
+        listNotifications(active.tenant.id, user.id),
+        unreadCount(active.tenant.id, user.id),
+      ])
+    : [[], 0]
 
   if (!active) {
     return (
@@ -67,6 +76,7 @@ export default async function AppLayout({
           <div className="ml-auto flex items-center gap-2">
             <SearchDialog />
             <NewMenu />
+            <NotificationsBell notifications={notifications} unread={unread} />
             <ThemeToggle />
             <UserMenu profile={profile} email={user.email ?? null} />
           </div>

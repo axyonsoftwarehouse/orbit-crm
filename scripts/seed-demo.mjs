@@ -156,6 +156,7 @@ async function wipe(tenantId) {
     "leads",
     "lead_statuses",
     "lead_sources",
+    "notifications",
   ]
   for (const table of tables) {
     await admin.from(table).delete().eq("tenant_id", tenantId)
@@ -1076,6 +1077,43 @@ async function seed(tenantId) {
       .from("tenants")
       .update({ plan_id: proPlan.id, plan_status: "active" })
       .eq("id", tenantId)
+  }
+
+  if (ownerId) {
+    const notifRows = [
+      {
+        title: "Bem-vindo ao Orbit CRM",
+        body: "Confira os relatórios e configure seus planos.",
+        url: "/app/relatorios",
+        type: "info",
+        read: false,
+      },
+      {
+        title: "Fatura vencida",
+        body: "Há uma fatura em aberto com vencimento ultrapassado.",
+        url: "/app/faturas",
+        type: "invoice_overdue",
+        read: false,
+      },
+      {
+        title: "Tarefa vencendo",
+        body: "Uma tarefa atribuída a você vence em 2 dias.",
+        url: "/app/tarefas",
+        type: "task_due",
+        read: true,
+      },
+    ]
+    await admin.from("notifications").insert(
+      notifRows.map((row) => ({
+        tenant_id: tenantId,
+        user_id: ownerId,
+        type: row.type,
+        title: row.title,
+        body: row.body,
+        url: row.url,
+        read_at: row.read ? new Date().toISOString() : null,
+      })),
+    )
   }
 
   return {
