@@ -46,12 +46,12 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
-  const isProtected = PROTECTED_PREFIXES.some((prefix) =>
-    pathname.startsWith(prefix),
-  )
   const isAuthRoute = AUTH_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix),
   )
+  const isProtected =
+    !isAuthRoute &&
+    PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 
   if (!user && isProtected) {
     const url = request.nextUrl.clone()
