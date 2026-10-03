@@ -1,13 +1,13 @@
 # Orbit CRM — Planejamento
 
-CRM SaaS multi-tenant, código novo, inspirado em funcionalidades/UX do Perfex CRM.
-O Perfex é usado apenas como referência; nenhum código dele é reutilizado.
+CRM SaaS multi-tenant de código próprio, com funcionalidades inspiradas nas
+melhores práticas de CRMs de gestão de serviços.
 
 ## 1. Visão
 
 Produto comercial próprio, multi-tenant, que começa pelo **núcleo de entrega**
-(clientes, projetos, tarefas, timesheet) e cresce em direção ao clone funcional
-do Perfex (financeiro → portal do cliente → suporte → CRM comercial).
+(clientes, projetos, tarefas, timesheet) e cresce em direção a um CRM completo
+(financeiro → portal do cliente → suporte → CRM comercial).
 
 ## 2. Decisões fechadas
 
@@ -130,7 +130,7 @@ tags/campos personalizados, portal do cliente.
 ## 8. Riscos e atenção
 
 - **RLS é o risco nº 1** — testes de isolamento obrigatórios desde a F0.
-- **Escopo "clone do Perfex" é enorme** — disciplina no MVP evita nunca lançar.
+- **Escopo de um CRM completo é enorme** — disciplina no MVP evita nunca lançar.
 - **Limites dos planos gratuitos** — Vercel Hobby sem domínio curinga (ok, usamos
   path); Supabase Free limita storage/egress/Edge invocations.
 - **Cobrança manual** não escala — automatizar antes de crescer.
