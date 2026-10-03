@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { DemoCredentials } from "@/components/app/demo-credentials"
 import { PortalLoginForm } from "./login-form"
 
 export const metadata: Metadata = {
@@ -13,6 +14,7 @@ export const metadata: Metadata = {
 }
 
 export default function PortalLoginPage() {
+  const showDemo = process.env.NEXT_PUBLIC_DEMO_LOGIN !== "false"
   return (
     <div className="bg-background flex min-h-svh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
@@ -27,6 +29,13 @@ export default function PortalLoginPage() {
         </CardHeader>
         <CardContent>
           <PortalLoginForm />
+          {showDemo ? (
+            <DemoCredentials
+              email="cliente@orbit.demo"
+              password="Portal#2026"
+              label="Acesso de demonstração (portal do cliente)"
+            />
+          ) : null}
         </CardContent>
       </Card>
     </div>

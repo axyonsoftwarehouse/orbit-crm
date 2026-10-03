@@ -6,6 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { DemoCredentials } from "@/components/app/demo-credentials"
 import { APP_NAME } from "@/lib/constants"
 import { LoginForm } from "./login-form"
 
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
 }
 
 export default function LoginPage() {
+  const showDemo = process.env.NEXT_PUBLIC_DEMO_LOGIN !== "false"
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
@@ -25,6 +27,13 @@ export default function LoginPage() {
       </CardHeader>
       <CardContent>
         <LoginForm />
+        {showDemo ? (
+          <DemoCredentials
+            email="ana@orbit.demo"
+            password="OrbitDemo#2026"
+            label="Acesso de demonstração (equipe) — outros usuários: bruno@ / carla@ / diego@orbit.demo"
+          />
+        ) : null}
         <p className="text-muted-foreground mt-4 text-center text-xs">
           É cliente?{" "}
           <a href="/portal/login" className="text-primary hover:underline">
