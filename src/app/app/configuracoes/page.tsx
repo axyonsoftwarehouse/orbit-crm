@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
-import { getMemberships } from "@/lib/auth"
+import { getMemberships, getProfile } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { listTags } from "@/server/queries/tags"
 import { listCustomFieldDefinitionsAll } from "@/server/queries/custom-fields"
@@ -9,12 +9,14 @@ import { TagsSection } from "./tags-section"
 import { CustomFieldsSection } from "./custom-fields-section"
 import { CompanySettingsForm } from "./company-settings-form"
 import { TeamSection } from "./team-section"
+import { NotificationPrefsForm } from "./notification-prefs-form"
 
 const TABS = [
   { key: "empresa", label: "Empresa" },
   { key: "equipe", label: "Equipe" },
   { key: "tags", label: "Tags" },
   { key: "campos", label: "Campos personalizados" },
+  { key: "notificacoes", label: "Notificações" },
 ]
 
 export default async function ConfiguracoesPage({
@@ -25,6 +27,7 @@ export default async function ConfiguracoesPage({
   const { tab = "empresa" } = await searchParams
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
+  const profile = await getProfile()
   if (!active) return null
 
   const canManage = ["owner", "admin"].includes(active.role)
@@ -61,6 +64,8 @@ export default async function ConfiguracoesPage({
         <TagsContent tenantId={active.tenant.id} />
       ) : tab === "campos" ? (
         <CustomFieldsContent tenantId={active.tenant.id} />
+      ) : tab === "notificacoes" ? (
+        <NotificationPrefsForm notifyEmail={profile?.notify_email ?? true} />
       ) : (
         <CompanySettingsForm
           name={active.tenant.name}

@@ -1,8 +1,10 @@
 "use client"
 
-import { useTransition } from "react"
+import { useEffect, useTransition } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Bell } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +26,34 @@ export function NotificationsBell({
   unread: number
 }) {
   const [, startTransition] = useTransition()
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = createClient()
+    let channel: ReturnType<typeof supabase.channel> | null = null
+
+    supabase.auth.getUser().then(({ data }) => {
+      const userId = data.user?.id
+      if (!userId) return
+      channel = supabase
+        .channel(`notifications-${userId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "notifications",
+            filter: `user_id=eq.${userId}`,
+          },
+          () => router.refresh(),
+        )
+        .subscribe()
+    })
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
+  }, [router])
 
   return (
     <DropdownMenu>

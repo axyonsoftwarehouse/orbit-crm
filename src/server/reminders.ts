@@ -28,6 +28,15 @@ export async function runReminders(): Promise<{
     return data.user?.email ?? null
   }
 
+  async function emailAllowed(userId: string) {
+    const { data } = await admin
+      .from("profiles")
+      .select("notify_email")
+      .eq("id", userId)
+      .maybeSingle()
+    return (data as { notify_email: boolean } | null)?.notify_email ?? true
+  }
+
   for (const tenant of tenants ?? []) {
     // Tarefas vencendo (2 dias), não concluídas, com responsável
     const { data: tasks } = await admin
@@ -52,7 +61,7 @@ export async function runReminders(): Promise<{
       notifications++
 
       const email = await emailFor(task.assignee_id as string)
-      if (email) {
+      if (email && (await emailAllowed(task.assignee_id as string))) {
         const result = await sendEmail({
           to: email,
           subject: `[Orbit CRM] Tarefa vencendo: ${task.name}`,
@@ -92,7 +101,7 @@ export async function runReminders(): Promise<{
           notifications++
 
           const email = await emailFor(adminUser.user_id)
-          if (email) {
+          if (email && (await emailAllowed(adminUser.user_id))) {
             const result = await sendEmail({
               to: email,
               subject: `[Orbit CRM] Fatura vencida ${invoice.formatted_number}`,

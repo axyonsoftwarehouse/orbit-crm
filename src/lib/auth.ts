@@ -22,6 +22,7 @@ export type Profile = {
   full_name: string | null
   avatar_url: string | null
   is_super_admin: boolean
+  notify_email: boolean
 }
 
 type RawMembership = {
@@ -56,7 +57,7 @@ export const getProfile = cache(async (): Promise<Profile | null> => {
   const supabase = await createClient()
   const { data } = await supabase
     .from("profiles")
-    .select("id, full_name, avatar_url, is_super_admin")
+    .select("id, full_name, avatar_url, is_super_admin, notify_email")
     .eq("id", user.id)
     .single()
 
