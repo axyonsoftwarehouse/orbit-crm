@@ -60,8 +60,26 @@ export default async function AppLayout({
     )
   }
 
+  const primary = /^#[0-9a-fA-F]{6}$/.test(active.tenant.primaryColor ?? "")
+    ? (active.tenant.primaryColor as string)
+    : null
+  const brandingStyle = primary
+    ? ({
+        "--primary": primary,
+        "--primary-foreground": "#ffffff",
+        "--ring": primary,
+        "--accent": `${primary}14`,
+        "--accent-foreground": primary,
+        "--sidebar-primary": primary,
+        "--sidebar-accent": `${primary}14`,
+        "--sidebar-accent-foreground": primary,
+        "--sidebar-ring": primary,
+        "--chart-1": primary,
+      } as React.CSSProperties)
+    : undefined
+
   return (
-    <SidebarProvider>
+    <SidebarProvider style={brandingStyle}>
       <AppSidebar memberships={memberships} activeTenantId={active.tenant.id} />
       <SidebarInset>
         <header className="bg-background/80 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur md:px-6">
@@ -70,6 +88,14 @@ export default async function AppLayout({
             orientation="vertical"
             className="data-[orientation=vertical]:h-5"
           />
+          {active.tenant.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={active.tenant.logoUrl}
+              alt={active.tenant.name}
+              className="h-6 w-auto object-contain"
+            />
+          ) : null}
           <span className="font-heading text-sm font-semibold">
             {active.tenant.name}
           </span>
