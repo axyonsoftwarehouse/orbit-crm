@@ -1169,4 +1169,51 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
     expect(error).not.toBeNull()
   })
+
+  it("A vê atividades do próprio tenant e não de B", async () => {
+    const own = await clientA
+      .from("activity_log")
+      .select("id")
+      .eq("tenant_id", tenantA)
+      .limit(1)
+    expect((own.data ?? []).length).toBeGreaterThan(0)
+
+    const other = await clientA
+      .from("activity_log")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(other.data).toEqual([])
+  })
+
+  it("A não pode inserir atividade diretamente", async () => {
+    const { error } = await clientA.from("activity_log").insert({
+      tenant_id: tenantA,
+      entity: "companies",
+      action: "insert",
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("Criar registro gera atividade com o autor", async () => {
+    const inserted = await clientA
+      .from("companies")
+      .insert({ tenant_id: tenantA, name: `Audit ${randomUUID()}` })
+      .select("id")
+      .single()
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("activity_log")
+      .select("actor_id, action, entity")
+      .eq("entity_id", inserted.data!.id)
+    expect((data ?? []).length).toBeGreaterThan(0)
+    const row = (data ?? [])[0] as {
+      actor_id: string
+      action: string
+      entity: string
+    }
+    expect(row.actor_id).toBe(userAId)
+    expect(row.action).toBe("insert")
+    expect(row.entity).toBe("companies")
+  })
 })

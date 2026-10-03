@@ -115,6 +115,8 @@ tags/campos personalizados, portal do cliente.
 - **F12 — Calendário** ✅ **concluída**
   - ✅ **F12.1 — Calendário** (migration `0028`: `calendar_events` com data/hora, cliente/projeto opcionais; visão mensal que agrega **eventos, prazos de tarefas, faturas e contratos**; CRUD de eventos).
 - **Engajamento** ✅ `notifications` em tempo real (Realtime + `router.refresh`) e preferências de e-mail em Configurações.
+- **F13 — Log de auditoria** ✅ **concluída**
+  - ✅ **F13.1 — Atividades** (migration `0029`: `activity_log` + trigger genérico `log_activity` em 11 tabelas de negócio; `/app/atividades` com filtro por entidade, autor e paginação; escrita exclusivamente via trigger).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura

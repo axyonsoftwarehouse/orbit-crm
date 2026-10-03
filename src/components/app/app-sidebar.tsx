@@ -10,6 +10,7 @@ import {
   FileSignature,
   FileText,
   FolderKanban,
+  History,
   LayoutDashboard,
   LifeBuoy,
   ListChecks,
@@ -45,6 +46,7 @@ const NAV_ITEMS = [
   { title: "Despesas", href: "/app/despesas", icon: Wallet },
   { title: "Contratos", href: "/app/contratos", icon: FileSignature },
   { title: "Relatórios", href: "/app/relatorios", icon: BarChart3 },
+  { title: "Atividades", href: "/app/atividades", icon: History },
   { title: "Tickets", href: "/app/tickets", icon: LifeBuoy },
   {
     title: "Base de conhecimento",
