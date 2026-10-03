@@ -2192,6 +2192,13 @@ export type Database = {
       }
       shares_tenant: { Args: { target: string }; Returns: boolean }
       storage_path_tenant: { Args: { p_name: string }; Returns: string }
+      time_entries_summary: {
+        Args: { p_project?: string; p_task?: string; p_tenant: string }
+        Returns: {
+          billable_amount: number
+          seconds: number
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never

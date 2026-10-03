@@ -1,13 +1,20 @@
 import { TimeEntriesTable } from "@/components/app/time-entries-table"
 import { getUser, getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
+import { parsePage } from "@/lib/pagination"
 import { listProjects } from "@/server/queries/projects"
 import { listTasks } from "@/server/queries/tasks"
 import { getRunningEntry } from "@/server/queries/time"
 import { ManualEntryDialog } from "./manual-entry-dialog"
 import { TimerWidget } from "./timer-widget"
 
-export default async function TimesheetPage() {
+export default async function TimesheetPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { page: pageParam } = await searchParams
+  const page = parsePage(pageParam)
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
@@ -47,7 +54,12 @@ export default async function TimesheetPage() {
         tasks={taskOptions}
       />
 
-      <TimeEntriesTable tenantId={active.tenantId} showUser />
+      <TimeEntriesTable
+        tenantId={active.tenantId}
+        showUser
+        page={page}
+        paginationBasePath="/app/timesheet"
+      />
     </div>
   )
 }

@@ -7,11 +7,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Pagination } from "@/components/app/pagination"
+import { PAGE_SIZE } from "@/lib/pagination"
 import {
-  billableAmount,
   formatDuration,
-  sumSeconds,
   listTimeEntries,
+  listTimeEntriesPage,
+  summarizeTimeEntries,
 } from "@/server/queries/time"
 import { DeleteTimeEntryButton } from "./delete-time-entry-button"
 
@@ -33,16 +35,37 @@ export async function TimeEntriesTable({
   taskId,
   showUser = false,
   title = "Apontamentos",
+  page,
+  paginationBasePath,
 }: {
   tenantId: string
   projectId?: string
   taskId?: string
   showUser?: boolean
   title?: string
+  page?: number
+  paginationBasePath?: string
 }) {
-  const entries = await listTimeEntries(tenantId, { projectId, taskId })
-  const total = sumSeconds(entries)
-  const amount = billableAmount(entries)
+  const paginated = page !== undefined
+  const pageResult = paginated
+    ? await listTimeEntriesPage(tenantId, {
+        page: page ?? 1,
+        pageSize: PAGE_SIZE,
+        projectId,
+        taskId,
+      })
+    : null
+
+  const [entries, summary] = await Promise.all([
+    pageResult
+      ? Promise.resolve(pageResult.rows)
+      : listTimeEntries(tenantId, { projectId, taskId }),
+    summarizeTimeEntries(tenantId, { projectId, taskId }),
+  ])
+
+  const total = summary.seconds
+  const amount = summary.billableAmount
+  const recordCount = pageResult?.total ?? entries.length
 
   return (
     <Card>
@@ -137,6 +160,20 @@ export async function TimeEntriesTable({
             )}
           </TableBody>
         </Table>
+
+        {paginated && paginationBasePath ? (
+          <div className="border-t px-6 py-3">
+            <Pagination
+              page={page ?? 1}
+              total={recordCount}
+              hrefFor={(target) =>
+                target > 1
+                  ? `${paginationBasePath}?page=${target}`
+                  : paginationBasePath
+              }
+            />
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   )

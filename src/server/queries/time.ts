@@ -86,6 +86,26 @@ export async function listTimeEntriesPage(
   }
 }
 
+export async function summarizeTimeEntries(
+  tenantId: string,
+  options: { projectId?: string; taskId?: string } = {},
+): Promise<{ seconds: number; billableAmount: number }> {
+  const supabase = await createClient()
+  const { data } = await supabase.rpc("time_entries_summary", {
+    p_tenant: tenantId,
+    p_project: options.projectId ?? undefined,
+    p_task: options.taskId ?? undefined,
+  })
+
+  const row = (data ?? [])[0] as
+    { seconds: number; billable_amount: number } | undefined
+
+  return {
+    seconds: Number(row?.seconds ?? 0),
+    billableAmount: Number(row?.billable_amount ?? 0),
+  }
+}
+
 export async function getRunningEntry(
   tenantId: string,
   userId: string,

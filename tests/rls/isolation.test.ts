@@ -1015,4 +1015,18 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       .upload(otherPath, blob, { contentType: "image/png" })
     expect(other.error).not.toBeNull()
   })
+
+  it("RPC de resumo de horas respeita o tenant", async () => {
+    const own = await clientA.rpc("time_entries_summary", { p_tenant: tenantA })
+    expect(own.error).toBeNull()
+
+    const other = await clientA.rpc("time_entries_summary", {
+      p_tenant: tenantB,
+    })
+    expect(other.error).toBeNull()
+    const otherSeconds = Number(
+      (other.data as { seconds: number }[] | null)?.[0]?.seconds ?? 0,
+    )
+    expect(otherSeconds).toBe(0)
+  })
 })
