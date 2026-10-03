@@ -310,3 +310,34 @@ middleware (sessão + tenant por subdomínio)
 Next 15, React 19, `@supabase/ssr`/`supabase-js`, `@base-ui/react`, `@tanstack/react-query`,
 Tailwind 4, Zod, `lucide-react`, `sonner`, `next-themes`, `@vercel/analytics`,
 `@vercel/speed-insights`.
+
+---
+
+## 15. Handoff — por onde continuar
+
+**Estado atual:** F0–F16 concluídas; migrations `0001`–`0032` aplicadas no projeto
+Supabase remoto; **41 testes unit + 88 de RLS** verdes; `typecheck`/`lint`/`format`/`build`
+verdes; árvore Git limpa e sincronizada (`main`).
+
+**Fonte da verdade:** `PLANO.md` (fases), `RELATORIO.md` (este documento) e a tabela
+`roadmap_items` (backlog).
+
+**Próxima fase sugerida (sem cobrança):** Portal do cliente — exibir **contratos** e
+**despesas faturáveis** (somente leitura) e evoluir a visibilidade de tags/campos
+personalizados. Alternativas de mesmo porte: **Relatórios adicionais**
+(produtividade / leads por origem), **Gantt interativo** (drag e dependências) ou
+**API pública + webhooks** e **2FA**.
+
+**Passo a passo para retomar:**
+
+1. `git pull` na `main`; conferir `git status` limpo.
+2. Ler `PLANO.md` (última fase) e `roadmap_items` (itens com status `backlog`).
+3. Para uma nova feature: criar migration (`0033_...`) → `npx supabase db push` →
+   `npm run db:types` → implementar (validations → queries → actions → UI) → somar testes.
+4. Rodar: `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm test`,
+   `npm run test:rls`, `npm run build`.
+5. Commit no padrão `tipo: descrição` e push (a credencial Git está fixada na conta
+   `torinoorbit-dev`).
+
+**Atenção:** `.env.local` aponta para o **Supabase remoto** e os testes de RLS rodam
+contra ele; o login do `gh`/Supabase já está configurado nesta máquina.
