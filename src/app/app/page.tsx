@@ -5,6 +5,7 @@ import {
   FolderKanban,
   ListChecks,
   MessageSquare,
+  TrendingDown,
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatCard } from "@/components/app/stat-card"
@@ -44,6 +45,10 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const tenantId = active.tenantId
 
+  const monthStart = new Date()
+  monthStart.setDate(1)
+  const monthStartIso = monthStart.toISOString().slice(0, 10)
+
   const [
     companies,
     projectsCount,
@@ -55,6 +60,7 @@ export default async function DashboardPage() {
     payments,
     commentsFeed,
     timeFeed,
+    monthExpenses,
   ] = await Promise.all([
     supabase
       .from("companies")
@@ -104,7 +110,17 @@ export default async function DashboardPage() {
       .eq("tenant_id", tenantId)
       .order("started_at", { ascending: false })
       .limit(6),
+    supabase
+      .from("expenses")
+      .select("amount")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .gte("date", monthStartIso),
   ])
+
+  const expenseMonth = (
+    (monthExpenses.data ?? []) as { amount: number }[]
+  ).reduce((sum, row) => sum + Number(row.amount), 0)
 
   const entries = (timeRows.data ?? []) as {
     started_at: string
@@ -455,7 +471,7 @@ export default async function DashboardPage() {
             </Link>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div className="rounded-xl border p-3">
                 <div className="text-muted-foreground text-xs">A receber</div>
                 <div className="font-heading text-lg font-semibold text-[#e08600] dark:text-[#ffc542]">
@@ -468,6 +484,18 @@ export default async function DashboardPage() {
                   {formatMoney(received)}
                 </div>
               </div>
+              <Link
+                href="/app/despesas"
+                className="hover:bg-muted/40 rounded-xl border p-3"
+              >
+                <div className="text-muted-foreground flex items-center gap-1 text-xs">
+                  <TrendingDown className="size-3" />
+                  Despesas (mês)
+                </div>
+                <div className="font-heading text-lg font-semibold text-[#e02e2e] dark:text-[#ff6b6b]">
+                  {formatMoney(expenseMonth)}
+                </div>
+              </Link>
             </div>
 
             <div className="space-y-2">

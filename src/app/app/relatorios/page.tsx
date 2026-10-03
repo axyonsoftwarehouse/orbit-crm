@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { BarChart3, Clock, Target, Wallet } from "lucide-react"
+import { BarChart3, Clock, Target, TrendingDown, Wallet } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { StatCard } from "@/components/app/stat-card"
 import { StatusPill } from "@/components/app/status-pill"
@@ -47,6 +47,7 @@ export default async function RelatoriosPage({
     entries,
     projects,
     members,
+    expenses,
   ] = await Promise.all([
     listLeads(tenantId),
     listLeadStatuses(tenantId),
@@ -69,6 +70,12 @@ export default async function RelatoriosPage({
       .gte("started_at", since),
     listProjects(tenantId),
     listTenantMembers(tenantId),
+    supabase
+      .from("expenses")
+      .select("title, category, amount, billable, date, project:projects(name)")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .gte("date", since.slice(0, 10)),
   ])
 
   // ---------- Funil de leads ----------
@@ -203,13 +210,51 @@ export default async function RelatoriosPage({
   }
   const topUsers = [...byUser.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
 
+  // ---------- Despesas ----------
+  const expenseRows = (expenses.data ?? []) as unknown as {
+    title: string
+    category: string | null
+    amount: number
+    billable: boolean
+    project: { name: string } | null
+  }[]
+  const expenseTotal = expenseRows.reduce(
+    (sum, row) => sum + Number(row.amount),
+    0,
+  )
+  const expenseBillable = expenseRows
+    .filter((row) => row.billable)
+    .reduce((sum, row) => sum + Number(row.amount), 0)
+
+  const byCategory = new Map<string, number>()
+  for (const row of expenseRows) {
+    const key = row.category || "Sem categoria"
+    byCategory.set(key, (byCategory.get(key) ?? 0) + Number(row.amount))
+  }
+  const topCategories = [...byCategory.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+  const maxCategory = Math.max(...topCategories.map((c) => c[1]), 1)
+
+  const byExpenseProject = new Map<string, number>()
+  for (const row of expenseRows) {
+    const key = row.project?.name ?? "—"
+    byExpenseProject.set(
+      key,
+      (byExpenseProject.get(key) ?? 0) + Number(row.amount),
+    )
+  }
+  const topExpenseProjects = [...byExpenseProject.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Relatórios</h1>
           <p className="text-muted-foreground text-sm">
-            Funil de leads, financeiro e horas.
+            Funil de leads, financeiro, despesas e horas.
           </p>
         </div>
         <div className="bg-muted inline-flex items-center gap-1 rounded-full p-1">
@@ -366,6 +411,76 @@ export default async function RelatoriosPage({
               ))}
             </div>
           ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Despesas */}
+      <Card>
+        <CardHeader className="flex-row items-center gap-2">
+          <TrendingDown className="text-primary size-4" />
+          <CardTitle className="text-base">Despesas ({range}d)</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StatCard
+              label="Total"
+              value={formatMoney(expenseTotal)}
+              icon={TrendingDown}
+              tone="yellow"
+            />
+            <StatCard
+              label="Faturáveis"
+              value={formatMoney(expenseBillable)}
+              icon={TrendingDown}
+              tone="blue"
+            />
+            <StatCard
+              label="Lançamentos"
+              value={String(expenseRows.length)}
+              icon={TrendingDown}
+              tone="primary"
+            />
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div className="space-y-2">
+              <div className="text-muted-foreground text-xs">Por categoria</div>
+              {topCategories.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Sem dados.</p>
+              ) : (
+                topCategories.map(([name, value]) => (
+                  <div key={name} className="space-y-1">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="truncate">{name}</span>
+                      <span className="font-medium">{formatMoney(value)}</span>
+                    </div>
+                    <div className="bg-muted h-2 overflow-hidden rounded-full">
+                      <div
+                        className="h-full rounded-full bg-[#ff974a]"
+                        style={{ width: `${(value / maxCategory) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="space-y-2">
+              <div className="text-muted-foreground text-xs">Por projeto</div>
+              {topExpenseProjects.length === 0 ? (
+                <p className="text-muted-foreground text-sm">Sem dados.</p>
+              ) : (
+                topExpenseProjects.map(([name, value]) => (
+                  <div
+                    key={name}
+                    className="flex items-center justify-between text-sm"
+                  >
+                    <span className="truncate">{name}</span>
+                    <span className="font-medium">{formatMoney(value)}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </CardContent>
       </Card>
 
