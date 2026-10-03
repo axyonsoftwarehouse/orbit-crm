@@ -4,11 +4,17 @@ import { getActiveTenant } from "@/lib/tenant"
 import { TASK_STATUSES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { TagFilter } from "@/components/app/tag-filter"
+import { Pagination } from "@/components/app/pagination"
+import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import { listProjects, listTenantMembers } from "@/server/queries/projects"
 import { listMilestoneOptions } from "@/server/queries/milestones"
 import { entityIdsByTag, listTags } from "@/server/queries/tags"
 import { listCustomFieldDefinitions } from "@/server/queries/custom-fields"
-import { listTasks, type TaskListRow } from "@/server/queries/tasks"
+import {
+  listTasks,
+  listTasksPage,
+  type TaskListRow,
+} from "@/server/queries/tasks"
 import { TaskFormDialog } from "./task-form-dialog"
 import { TaskDetailDialog } from "./task-detail-dialog"
 
@@ -80,31 +86,45 @@ function TaskList({ tasks }: { tasks: TaskListRow[] }) {
 export default async function TarefasPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; tag?: string }>
+  searchParams: Promise<{ view?: string; tag?: string; page?: string }>
 }) {
-  const { view, tag } = await searchParams
+  const { view, tag, page: pageParam } = await searchParams
   const kanban = view === "kanban"
+  const page = parsePage(pageParam)
 
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [allTasks, projects, members, milestones, tags, customFields] =
-    await Promise.all([
-      listTasks(active.tenantId),
+  const tagIds = tag
+    ? await entityIdsByTag(active.tenantId, "task", tag)
+    : undefined
+
+  const [projects, members, milestones, tags, customFields] = await Promise.all(
+    [
       listProjects(active.tenantId),
       listTenantMembers(active.tenantId),
       listMilestoneOptions(active.tenantId),
       listTags(active.tenantId),
       listCustomFieldDefinitions(active.tenantId, "task"),
-    ])
+    ],
+  )
 
-  const allowed = tag
-    ? new Set(await entityIdsByTag(active.tenantId, "task", tag))
-    : null
-  const tasks = allowed
-    ? allTasks.filter((task) => allowed.has(task.id))
-    : allTasks
+  let tasks: TaskListRow[]
+  let total: number
+  if (kanban) {
+    const all = await listTasks(active.tenantId)
+    tasks = tagIds ? all.filter((task) => tagIds.includes(task.id)) : all
+    total = tasks.length
+  } else {
+    const result = await listTasksPage(active.tenantId, {
+      page,
+      pageSize: PAGE_SIZE,
+      ids: tagIds,
+    })
+    tasks = result.rows
+    total = result.total
+  }
 
   const projectOptions = projects.map((project) => ({
     id: project.id,
@@ -117,7 +137,7 @@ export default async function TarefasPage({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Tarefas</h1>
           <p className="text-muted-foreground text-sm">
-            {tasks.length} tarefa(s) · responsáveis, prazos e prioridades.
+            {total} tarefa(s) · responsáveis, prazos e prioridades.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -171,6 +191,20 @@ export default async function TarefasPage({
         <KanbanBoard tasks={tasks} />
       ) : (
         <TaskList tasks={tasks} />
+      )}
+
+      {kanban ? null : (
+        <Pagination
+          page={page}
+          total={total}
+          hrefFor={(target) => {
+            const params = new URLSearchParams()
+            if (tag) params.set("tag", tag)
+            if (target > 1) params.set("page", String(target))
+            const query = params.toString()
+            return query ? `/app/tarefas?${query}` : "/app/tarefas"
+          }}
+        />
       )}
     </div>
   )

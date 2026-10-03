@@ -50,6 +50,42 @@ export async function listTimeEntries(
   }))
 }
 
+export async function listTimeEntriesPage(
+  tenantId: string,
+  options: {
+    page: number
+    pageSize: number
+    projectId?: string
+    taskId?: string
+  },
+): Promise<{ rows: TimeEntryRow[]; total: number }> {
+  const supabase = await createClient()
+  let query = supabase
+    .from("time_entries")
+    .select(
+      "id, started_at, ended_at, duration_seconds, is_billable, rate, note, project:projects(id, name), task:tasks(id, name), user:profiles(id, full_name)",
+      { count: "exact" },
+    )
+    .eq("tenant_id", tenantId)
+
+  if (options.projectId) query = query.eq("project_id", options.projectId)
+  if (options.taskId) query = query.eq("task_id", options.taskId)
+
+  const from = (options.page - 1) * options.pageSize
+  const { data, count } = await query
+    .order("started_at", { ascending: false })
+    .range(from, from + options.pageSize - 1)
+
+  const rows = (data ?? []) as unknown as RawTimeEntry[]
+  return {
+    rows: rows.map((row) => ({
+      ...row,
+      user_name: row.user?.full_name ?? null,
+    })),
+    total: count ?? 0,
+  }
+}
+
 export async function getRunningEntry(
   tenantId: string,
   userId: string,

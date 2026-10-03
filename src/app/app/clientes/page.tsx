@@ -2,11 +2,13 @@ import Link from "next/link"
 import { Users } from "lucide-react"
 import { EntityAvatar } from "@/components/app/entity-avatar"
 import { TagFilter } from "@/components/app/tag-filter"
+import { Pagination } from "@/components/app/pagination"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
+import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import {
   countContactsByCompany,
-  listCompanies,
+  listCompaniesPage,
 } from "@/server/queries/companies"
 import { entityIdsByTag, listTags } from "@/server/queries/tags"
 import { listCustomFieldDefinitions } from "@/server/queries/custom-fields"
@@ -15,26 +17,29 @@ import { CompanyFormDialog } from "./company-form-dialog"
 export default async function ClientesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string }>
+  searchParams: Promise<{ tag?: string; page?: string }>
 }) {
-  const { tag } = await searchParams
+  const { tag, page: pageParam } = await searchParams
+  const page = parsePage(pageParam)
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [allCompanies, counts, tags, customFields] = await Promise.all([
-    listCompanies(active.tenantId),
-    countContactsByCompany(active.tenantId),
-    listTags(active.tenantId),
-    listCustomFieldDefinitions(active.tenantId, "company"),
-  ])
+  const tagIds = tag
+    ? await entityIdsByTag(active.tenantId, "company", tag)
+    : undefined
 
-  const allowed = tag
-    ? new Set(await entityIdsByTag(active.tenantId, "company", tag))
-    : null
-  const companies = allowed
-    ? allCompanies.filter((company) => allowed.has(company.id))
-    : allCompanies
+  const [{ rows: companies, total }, counts, tags, customFields] =
+    await Promise.all([
+      listCompaniesPage(active.tenantId, {
+        page,
+        pageSize: PAGE_SIZE,
+        ids: tagIds,
+      }),
+      countContactsByCompany(active.tenantId),
+      listTags(active.tenantId),
+      listCustomFieldDefinitions(active.tenantId, "company"),
+    ])
 
   return (
     <div className="space-y-6">
@@ -42,7 +47,7 @@ export default async function ClientesPage({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground text-sm">
-            {companies.length} empresa(s) · contatos, telefone e localização.
+            {total} empresa(s) · contatos, telefone e localização.
           </p>
         </div>
         <CompanyFormDialog label="Novo cliente" customFields={customFields} />
@@ -92,6 +97,18 @@ export default async function ClientesPage({
           </div>
         </section>
       )}
+
+      <Pagination
+        page={page}
+        total={total}
+        hrefFor={(target) => {
+          const params = new URLSearchParams()
+          if (tag) params.set("tag", tag)
+          if (target > 1) params.set("page", String(target))
+          const query = params.toString()
+          return query ? `/app/clientes?${query}` : "/app/clientes"
+        }}
+      />
     </div>
   )
 }

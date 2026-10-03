@@ -13,41 +13,51 @@ import {
   TicketStatusBadge,
 } from "@/components/app/ticket-bits"
 import { TagFilter } from "@/components/app/tag-filter"
+import { Pagination } from "@/components/app/pagination"
 import { formatDate } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
+import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import { listCompanies } from "@/server/queries/companies"
 import { listProjects, listTenantMembers } from "@/server/queries/projects"
-import { listDepartments, listTickets } from "@/server/queries/tickets"
+import { listDepartments, listTicketsPage } from "@/server/queries/tickets"
 import { entityIdsByTag, listTags } from "@/server/queries/tags"
 import { TicketFormDialog } from "./ticket-form-dialog"
 
 export default async function TicketsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string }>
+  searchParams: Promise<{ tag?: string; page?: string }>
 }) {
-  const { tag } = await searchParams
+  const { tag, page: pageParam } = await searchParams
+  const page = parsePage(pageParam)
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [allTickets, departments, companies, projects, members, tags] =
-    await Promise.all([
-      listTickets(active.tenantId),
-      listDepartments(active.tenantId),
-      listCompanies(active.tenantId),
-      listProjects(active.tenantId),
-      listTenantMembers(active.tenantId),
-      listTags(active.tenantId),
-    ])
+  const tagIds = tag
+    ? await entityIdsByTag(active.tenantId, "ticket", tag)
+    : undefined
 
-  const allowed = tag
-    ? new Set(await entityIdsByTag(active.tenantId, "ticket", tag))
-    : null
-  const tickets = allowed
-    ? allTickets.filter((ticket) => allowed.has(ticket.id))
-    : allTickets
+  const [
+    { rows: tickets, total },
+    departments,
+    companies,
+    projects,
+    members,
+    tags,
+  ] = await Promise.all([
+    listTicketsPage(active.tenantId, {
+      page,
+      pageSize: PAGE_SIZE,
+      ids: tagIds,
+    }),
+    listDepartments(active.tenantId),
+    listCompanies(active.tenantId),
+    listProjects(active.tenantId),
+    listTenantMembers(active.tenantId),
+    listTags(active.tenantId),
+  ])
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }))
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }))
@@ -58,7 +68,7 @@ export default async function TicketsPage({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Tickets</h1>
           <p className="text-muted-foreground text-sm">
-            {tickets.length} ticket(s) · suporte e atendimento.
+            {total} ticket(s) · suporte e atendimento.
           </p>
         </div>
         <TicketFormDialog
@@ -140,6 +150,18 @@ export default async function TicketsPage({
           </TableBody>
         </Table>
       </div>
+
+      <Pagination
+        page={page}
+        total={total}
+        hrefFor={(target) => {
+          const params = new URLSearchParams()
+          if (tag) params.set("tag", tag)
+          if (target > 1) params.set("page", String(target))
+          const query = params.toString()
+          return query ? `/app/tickets?${query}` : "/app/tickets"
+        }}
+      />
     </div>
   )
 }

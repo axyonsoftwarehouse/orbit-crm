@@ -101,6 +101,33 @@ export async function listTasks(
   return attachAssigneeNames((data ?? []) as unknown as RawTask[])
 }
 
+export async function listTasksPage(
+  tenantId: string,
+  options: { page: number; pageSize: number; ids?: string[] },
+): Promise<{ rows: TaskListRow[]; total: number }> {
+  if (options.ids && options.ids.length === 0) return { rows: [], total: 0 }
+
+  const supabase = await createClient()
+  let query = supabase
+    .from("tasks")
+    .select(
+      "id, name, description, status, priority, start_date, due_date, assignee_id, project:projects(id, name)",
+      { count: "exact" },
+    )
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+
+  if (options.ids) query = query.in("id", options.ids)
+
+  const from = (options.page - 1) * options.pageSize
+  const { data, count } = await query
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .range(from, from + options.pageSize - 1)
+
+  const rows = await attachAssigneeNames((data ?? []) as unknown as RawTask[])
+  return { rows, total: count ?? 0 }
+}
+
 export async function getTask(
   tenantId: string,
   id: string,

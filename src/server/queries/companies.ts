@@ -50,6 +50,29 @@ export async function listCompanies(
   return (data ?? []) as CompanyListRow[]
 }
 
+export async function listCompaniesPage(
+  tenantId: string,
+  options: { page: number; pageSize: number; ids?: string[] },
+): Promise<{ rows: CompanyListRow[]; total: number }> {
+  if (options.ids && options.ids.length === 0) return { rows: [], total: 0 }
+
+  const supabase = await createClient()
+  let query = supabase
+    .from("companies")
+    .select("id, name, phone, website, city, country", { count: "exact" })
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+
+  if (options.ids) query = query.in("id", options.ids)
+
+  const from = (options.page - 1) * options.pageSize
+  const { data, count } = await query
+    .order("name", { ascending: true })
+    .range(from, from + options.pageSize - 1)
+
+  return { rows: (data ?? []) as CompanyListRow[], total: count ?? 0 }
+}
+
 export async function getCompany(
   tenantId: string,
   id: string,

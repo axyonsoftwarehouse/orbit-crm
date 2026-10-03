@@ -99,6 +99,26 @@ export async function listEstimates(tenantId: string): Promise<EstimateRow[]> {
   return (data ?? []) as unknown as EstimateRow[]
 }
 
+export async function listEstimatesPage(
+  tenantId: string,
+  options: { page: number; pageSize: number },
+): Promise<{ rows: EstimateRow[]; total: number }> {
+  const supabase = await createClient()
+  const from = (options.page - 1) * options.pageSize
+  const { data, count } = await supabase
+    .from("estimates")
+    .select(
+      "id, formatted_number, status, date, expiry_date, total, company:companies(id, name)",
+      { count: "exact" },
+    )
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .range(from, from + options.pageSize - 1)
+
+  return { rows: (data ?? []) as unknown as EstimateRow[], total: count ?? 0 }
+}
+
 export async function getEstimate(
   tenantId: string,
   id: string,
@@ -126,6 +146,26 @@ export async function listInvoices(tenantId: string): Promise<InvoiceRow[]> {
     .order("created_at", { ascending: false })
 
   return (data ?? []) as unknown as InvoiceRow[]
+}
+
+export async function listInvoicesPage(
+  tenantId: string,
+  options: { page: number; pageSize: number },
+): Promise<{ rows: InvoiceRow[]; total: number }> {
+  const supabase = await createClient()
+  const from = (options.page - 1) * options.pageSize
+  const { data, count } = await supabase
+    .from("invoices")
+    .select(
+      "id, formatted_number, status, date, due_date, total, company:companies(id, name)",
+      { count: "exact" },
+    )
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .range(from, from + options.pageSize - 1)
+
+  return { rows: (data ?? []) as unknown as InvoiceRow[], total: count ?? 0 }
 }
 
 export async function getInvoice(

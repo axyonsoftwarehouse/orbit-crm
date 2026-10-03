@@ -135,6 +135,64 @@ export async function listLeads(
   }))
 }
 
+export async function listLeadsPage(
+  tenantId: string,
+  options: {
+    page: number
+    pageSize: number
+    statusId?: string
+    ids?: string[]
+  },
+): Promise<{ rows: LeadListRow[]; total: number }> {
+  if (options.ids && options.ids.length === 0) return { rows: [], total: 0 }
+
+  const supabase = await createClient()
+  let query = supabase
+    .from("leads")
+    .select(
+      "id, name, company, email, value, lost, updated_at, assignee_id, status:lead_statuses(id, name, color), source:lead_sources(id, name)",
+      { count: "exact" },
+    )
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+
+  if (options.statusId) query = query.eq("status_id", options.statusId)
+  if (options.ids) query = query.in("id", options.ids)
+
+  const from = (options.page - 1) * options.pageSize
+  const { data, count } = await query
+    .order("updated_at", { ascending: false })
+    .range(from, from + options.pageSize - 1)
+
+  const rows = (data ?? []) as unknown as RawLead[]
+  const ids = Array.from(
+    new Set(rows.map((row) => row.assignee_id).filter(Boolean) as string[]),
+  )
+  const nameById = new Map<string, string | null>()
+  if (ids.length > 0) {
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("id, full_name")
+      .in("id", ids)
+    for (const profile of (profiles ?? []) as {
+      id: string
+      full_name: string | null
+    }[]) {
+      nameById.set(profile.id, profile.full_name)
+    }
+  }
+
+  return {
+    rows: rows.map((row) => ({
+      ...row,
+      assignee_name: row.assignee_id
+        ? (nameById.get(row.assignee_id) ?? null)
+        : null,
+    })),
+    total: count ?? 0,
+  }
+}
+
 export async function getLead(
   tenantId: string,
   id: string,

@@ -64,6 +64,42 @@ export async function listProjects(
   }))
 }
 
+export async function listProjectsPage(
+  tenantId: string,
+  options: { page: number; pageSize: number; ids?: string[] },
+): Promise<{ rows: ProjectListRow[]; total: number }> {
+  if (options.ids && options.ids.length === 0) return { rows: [], total: 0 }
+
+  const supabase = await createClient()
+  let query = supabase
+    .from("projects")
+    .select(
+      "id, name, status, deadline, progress, progress_from_tasks, company:companies(id, name)",
+      { count: "exact" },
+    )
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+
+  if (options.ids) query = query.in("id", options.ids)
+
+  const from = (options.page - 1) * options.pageSize
+  const { data, count } = await query
+    .order("created_at", { ascending: false })
+    .range(from, from + options.pageSize - 1)
+
+  const projects = (data ?? []) as unknown as ProjectListRow[]
+  const counts = await taskCountsByProject(tenantId)
+
+  const rows = projects.map((project) => ({
+    ...project,
+    progress: project.progress_from_tasks
+      ? progressFromCounts(counts[project.id])
+      : project.progress,
+  }))
+
+  return { rows, total: count ?? 0 }
+}
+
 export async function getProject(
   tenantId: string,
   id: string,

@@ -2,11 +2,13 @@ import Link from "next/link"
 import { CheckSquare, Clock } from "lucide-react"
 import { AvatarStack } from "@/components/app/avatar-stack"
 import { TagFilter } from "@/components/app/tag-filter"
+import { Pagination } from "@/components/app/pagination"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
+import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import { listCompanies } from "@/server/queries/companies"
 import {
-  listProjects,
+  listProjectsPage,
   projectMembersByProject,
 } from "@/server/queries/projects"
 import { taskCountsByProject } from "@/server/queries/tasks"
@@ -106,22 +108,31 @@ function ProjectRow({
 export default async function ProjetosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string }>
+  searchParams: Promise<{ tag?: string; page?: string }>
 }) {
-  const { tag } = await searchParams
+  const { tag, page: pageParam } = await searchParams
+  const page = parsePage(pageParam)
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
+  const tagIds = tag
+    ? await entityIdsByTag(active.tenantId, "project", tag)
+    : undefined
+
   const [
-    allProjects,
+    { rows: projects, total },
     membersByProject,
     taskCounts,
     companies,
     tags,
     customFields,
   ] = await Promise.all([
-    listProjects(active.tenantId),
+    listProjectsPage(active.tenantId, {
+      page,
+      pageSize: PAGE_SIZE,
+      ids: tagIds,
+    }),
     projectMembersByProject(active.tenantId),
     taskCountsByProject(active.tenantId),
     listCompanies(active.tenantId),
@@ -129,20 +140,13 @@ export default async function ProjetosPage({
     listCustomFieldDefinitions(active.tenantId, "project"),
   ])
 
-  const allowed = tag
-    ? new Set(await entityIdsByTag(active.tenantId, "project", tag))
-    : null
-  const projects = allowed
-    ? allProjects.filter((project) => allowed.has(project.id))
-    : allProjects
-
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Projetos</h1>
           <p className="text-muted-foreground text-sm">
-            {projects.length} projeto(s) · prazos, progresso e equipe.
+            {total} projeto(s) · prazos, progresso e equipe.
           </p>
         </div>
         <ProjectFormDialog
@@ -198,6 +202,18 @@ export default async function ProjetosPage({
           )
         })
       )}
+
+      <Pagination
+        page={page}
+        total={total}
+        hrefFor={(target) => {
+          const params = new URLSearchParams()
+          if (tag) params.set("tag", tag)
+          if (target > 1) params.set("page", String(target))
+          const query = params.toString()
+          return query ? `/app/projetos?${query}` : "/app/projetos"
+        }}
+      />
     </div>
   )
 }
