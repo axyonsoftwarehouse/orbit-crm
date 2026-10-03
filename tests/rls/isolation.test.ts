@@ -1029,4 +1029,47 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     )
     expect(otherSeconds).toBe(0)
   })
+
+  it("A cria despesa no próprio tenant e a vê", async () => {
+    const inserted = await clientA
+      .from("expenses")
+      .insert({ tenant_id: tenantA, title: "Hosting", amount: 100 })
+      .select("id")
+      .single()
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("expenses")
+      .select("id")
+      .eq("id", inserted.data!.id)
+    expect(data?.length).toBe(1)
+  })
+
+  it("A não vê despesas de B", async () => {
+    await admin
+      .from("expenses")
+      .insert({ tenant_id: tenantB, title: "Despesa B", amount: 10 })
+    const { data } = await clientA
+      .from("expenses")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar despesa em outro tenant", async () => {
+    const { error } = await clientA
+      .from("expenses")
+      .insert({ tenant_id: tenantB, title: "Cross", amount: 1 })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não pode criar despesa em projeto de outro tenant", async () => {
+    const { error } = await clientA.from("expenses").insert({
+      tenant_id: tenantA,
+      title: "Cross project",
+      amount: 1,
+      project_id: projectBId,
+    })
+    expect(error).not.toBeNull()
+  })
 })

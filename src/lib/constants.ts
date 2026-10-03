@@ -102,6 +102,17 @@ export const INVOICE_STATUSES = {
 
 export type InvoiceStatus = keyof typeof INVOICE_STATUSES
 
+export const EXPENSE_CATEGORIES = [
+  "Software",
+  "Assinaturas",
+  "Viagem",
+  "Equipamento",
+  "Marketing",
+  "Serviços",
+  "Impostos",
+  "Outros",
+] as const
+
 export const PAYMENT_MODES = [
   "Pix",
   "Transferência",

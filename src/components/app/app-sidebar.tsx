@@ -15,6 +15,7 @@ import {
   Settings,
   Target,
   Users,
+  Wallet,
 } from "lucide-react"
 import {
   Sidebar,
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { title: "Timesheet", href: "/app/timesheet", icon: Clock },
   { title: "Orçamentos", href: "/app/orcamentos", icon: FileText },
   { title: "Faturas", href: "/app/faturas", icon: Receipt },
+  { title: "Despesas", href: "/app/despesas", icon: Wallet },
   { title: "Relatórios", href: "/app/relatorios", icon: BarChart3 },
   { title: "Tickets", href: "/app/tickets", icon: LifeBuoy },
   {

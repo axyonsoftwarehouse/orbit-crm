@@ -4,6 +4,7 @@ import { milestoneSchema } from "@/lib/validations/milestones"
 import { tagSchema } from "@/lib/validations/tags"
 import { customFieldDefinitionSchema } from "@/lib/validations/custom-fields"
 import { tenantSettingsSchema } from "@/lib/validations/tenant"
+import { expenseSchema } from "@/lib/validations/expenses"
 import {
   acceptInvitationSchema,
   inviteMemberSchema,
@@ -154,6 +155,36 @@ describe("team schemas", () => {
     const result = acceptInvitationSchema.safeParse({
       full_name: "Fulano",
       password: "123",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("expenseSchema", () => {
+  it("aceita despesa válida e converte o valor", () => {
+    const result = expenseSchema.safeParse({
+      title: "Hosting",
+      amount: "100.50",
+      date: "2026-01-01",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.amount).toBe(100.5)
+  })
+
+  it("rejeita valor negativo", () => {
+    const result = expenseSchema.safeParse({
+      title: "Hosting",
+      amount: "-1",
+      date: "2026-01-01",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejeita título vazio", () => {
+    const result = expenseSchema.safeParse({
+      title: "  ",
+      amount: "1",
+      date: "2026-01-01",
     })
     expect(result.success).toBe(false)
   })
