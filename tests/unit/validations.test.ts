@@ -5,6 +5,7 @@ import { tagSchema } from "@/lib/validations/tags"
 import { customFieldDefinitionSchema } from "@/lib/validations/custom-fields"
 import { tenantSettingsSchema } from "@/lib/validations/tenant"
 import { expenseSchema } from "@/lib/validations/expenses"
+import { contractSchema } from "@/lib/validations/contracts"
 import {
   acceptInvitationSchema,
   inviteMemberSchema,
@@ -186,6 +187,23 @@ describe("expenseSchema", () => {
       amount: "1",
       date: "2026-01-01",
     })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("contractSchema", () => {
+  it("aceita contrato válido com status padrão", () => {
+    const result = contractSchema.safeParse({ title: "Contrato A" })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.status).toBe(1)
+  })
+
+  it("rejeita título vazio", () => {
+    expect(contractSchema.safeParse({ title: "  " }).success).toBe(false)
+  })
+
+  it("rejeita status fora de 1–3", () => {
+    const result = contractSchema.safeParse({ title: "x", status: 9 })
     expect(result.success).toBe(false)
   })
 })

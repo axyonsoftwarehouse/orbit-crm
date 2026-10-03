@@ -1072,4 +1072,50 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
     expect(error).not.toBeNull()
   })
+
+  it("A cria contrato no próprio tenant e o vê", async () => {
+    const inserted = await clientA
+      .from("contracts")
+      .insert({
+        tenant_id: tenantA,
+        title: "Contrato A",
+        company_id: companyAId,
+      })
+      .select("id")
+      .single()
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("contracts")
+      .select("id")
+      .eq("id", inserted.data!.id)
+    expect(data?.length).toBe(1)
+  })
+
+  it("A não vê contratos de B", async () => {
+    await admin
+      .from("contracts")
+      .insert({ tenant_id: tenantB, title: "Contrato B" })
+    const { data } = await clientA
+      .from("contracts")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar contrato em outro tenant", async () => {
+    const { error } = await clientA
+      .from("contracts")
+      .insert({ tenant_id: tenantB, title: "Cross" })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não pode usar cliente de outro tenant no contrato", async () => {
+    const { error } = await clientA.from("contracts").insert({
+      tenant_id: tenantA,
+      title: "Cross company",
+      company_id: companyBId,
+    })
+    expect(error).not.toBeNull()
+  })
 })

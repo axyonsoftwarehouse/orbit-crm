@@ -283,6 +283,79 @@ export type Database = {
           },
         ]
       }
+      contracts: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          note: string | null
+          start_date: string | null
+          status: number
+          tenant_id: string
+          title: string
+          updated_at: string
+          value: number | null
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          note?: string | null
+          start_date?: string | null
+          status?: number
+          tenant_id: string
+          title: string
+          updated_at?: string
+          value?: number | null
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          note?: string | null
+          start_date?: string | null
+          status?: number
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+          value?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contracts_company_fk"
+            columns: ["company_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "contracts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       custom_field_definitions: {
         Row: {
           created_at: string

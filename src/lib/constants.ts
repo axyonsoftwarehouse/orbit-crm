@@ -102,6 +102,14 @@ export const INVOICE_STATUSES = {
 
 export type InvoiceStatus = keyof typeof INVOICE_STATUSES
 
+export const CONTRACT_STATUSES = {
+  1: { label: "Ativo", color: "#16a34a" },
+  2: { label: "Encerrado", color: "#64748b" },
+  3: { label: "Cancelado", color: "#ef4444" },
+} as const
+
+export type ContractStatus = keyof typeof CONTRACT_STATUSES
+
 export const EXPENSE_CATEGORIES = [
   "Software",
   "Assinaturas",
