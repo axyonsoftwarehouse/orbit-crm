@@ -6,6 +6,7 @@ import { customFieldDefinitionSchema } from "@/lib/validations/custom-fields"
 import { tenantSettingsSchema } from "@/lib/validations/tenant"
 import { expenseSchema } from "@/lib/validations/expenses"
 import { contractSchema } from "@/lib/validations/contracts"
+import { calendarEventSchema } from "@/lib/validations/calendar"
 import {
   acceptInvitationSchema,
   inviteMemberSchema,
@@ -204,6 +205,32 @@ describe("contractSchema", () => {
 
   it("rejeita status fora de 1–3", () => {
     const result = contractSchema.safeParse({ title: "x", status: 9 })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("calendarEventSchema", () => {
+  it("aceita evento válido", () => {
+    const result = calendarEventSchema.safeParse({
+      title: "Reunião",
+      start_at: "2026-01-01T10:00",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejeita título vazio", () => {
+    const result = calendarEventSchema.safeParse({
+      title: "  ",
+      start_at: "2026-01-01T10:00",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejeita início vazio", () => {
+    const result = calendarEventSchema.safeParse({
+      title: "Evento",
+      start_at: "",
+    })
     expect(result.success).toBe(false)
   })
 })

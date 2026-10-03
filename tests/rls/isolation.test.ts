@@ -1118,4 +1118,55 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
     expect(error).not.toBeNull()
   })
+
+  it("A cria evento no próprio tenant e o vê", async () => {
+    const inserted = await clientA
+      .from("calendar_events")
+      .insert({
+        tenant_id: tenantA,
+        title: "Evento A",
+        start_at: new Date().toISOString(),
+      })
+      .select("id")
+      .single()
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("calendar_events")
+      .select("id")
+      .eq("id", inserted.data!.id)
+    expect(data?.length).toBe(1)
+  })
+
+  it("A não vê eventos de B", async () => {
+    await admin.from("calendar_events").insert({
+      tenant_id: tenantB,
+      title: "Evento B",
+      start_at: new Date().toISOString(),
+    })
+    const { data } = await clientA
+      .from("calendar_events")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar evento em outro tenant", async () => {
+    const { error } = await clientA.from("calendar_events").insert({
+      tenant_id: tenantB,
+      title: "Cross",
+      start_at: new Date().toISOString(),
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não pode usar projeto de outro tenant no evento", async () => {
+    const { error } = await clientA.from("calendar_events").insert({
+      tenant_id: tenantA,
+      title: "Cross project",
+      start_at: new Date().toISOString(),
+      project_id: projectBId,
+    })
+    expect(error).not.toBeNull()
+  })
 })

@@ -93,6 +93,80 @@ export type Database = {
           },
         ]
       }
+      calendar_events: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string | null
+          end_at: string | null
+          id: string
+          project_id: string | null
+          start_at: string
+          tenant_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          end_at?: string | null
+          id?: string
+          project_id?: string | null
+          start_at: string
+          tenant_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string | null
+          end_at?: string | null
+          id?: string
+          project_id?: string | null
+          start_at?: string
+          tenant_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_events_company_fk"
+            columns: ["company_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "calendar_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_events_project_fk"
+            columns: ["project_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "calendar_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           author_id: string | null

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation"
 import {
   BarChart3,
   BookOpen,
+  CalendarDays,
   Clock,
   FileSignature,
   FileText,
@@ -38,6 +39,7 @@ const NAV_ITEMS = [
   { title: "Projetos", href: "/app/projetos", icon: FolderKanban },
   { title: "Tarefas", href: "/app/tarefas", icon: ListChecks },
   { title: "Timesheet", href: "/app/timesheet", icon: Clock },
+  { title: "Calendário", href: "/app/calendario", icon: CalendarDays },
   { title: "Orçamentos", href: "/app/orcamentos", icon: FileText },
   { title: "Faturas", href: "/app/faturas", icon: Receipt },
   { title: "Despesas", href: "/app/despesas", icon: Wallet },

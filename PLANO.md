@@ -112,6 +112,9 @@ tags/campos personalizados, portal do cliente.
   - ✅ **F10.1 — Despesas** (migration `0024`: `expenses` com categoria, valor, data, projeto/cliente, faturável e observações; RLS por tenant; `/app/despesas` com filtros por projeto/cliente e paginação).
 - **F11 — Contratos** ✅ **concluída**
   - ✅ **F11.1 — Contratos** (migration `0025`: `contracts` com cliente, valor, vigência (início/término), status 1–3 e observações; RLS por tenant; `/app/contratos` com filtros por cliente/status e paginação; selo "Vencido" derivado).
+- **F12 — Calendário** ✅ **concluída**
+  - ✅ **F12.1 — Calendário** (migration `0028`: `calendar_events` com data/hora, cliente/projeto opcionais; visão mensal que agrega **eventos, prazos de tarefas, faturas e contratos**; CRUD de eventos).
+- **Engajamento** ✅ `notifications` em tempo real (Realtime + `router.refresh`) e preferências de e-mail em Configurações.
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura
