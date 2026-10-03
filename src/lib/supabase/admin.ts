@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js"
+import type { Database } from "@/lib/database.types"
 
 /**
  * Cliente com service role: IGNORA RLS. Use apenas no servidor, em fluxos
@@ -14,7 +15,7 @@ export function createAdminClient() {
     )
   }
 
-  return createClient(url, serviceRoleKey, {
+  return createClient<Database>(url, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 }

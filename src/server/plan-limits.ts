@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 
-const RESOURCE_TABLES: Record<string, string> = {
+type ResourceTable = "companies" | "projects" | "tasks" | "tickets" | "leads"
+
+const RESOURCE_TABLES: Record<string, ResourceTable> = {
   clients: "companies",
   projects: "projects",
   tasks: "tasks",
