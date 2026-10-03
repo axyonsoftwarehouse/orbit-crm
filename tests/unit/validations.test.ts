@@ -7,6 +7,7 @@ import { tenantSettingsSchema } from "@/lib/validations/tenant"
 import { expenseSchema } from "@/lib/validations/expenses"
 import { contractSchema } from "@/lib/validations/contracts"
 import { calendarEventSchema } from "@/lib/validations/calendar"
+import { goalSchema } from "@/lib/validations/goals"
 import {
   acceptInvitationSchema,
   inviteMemberSchema,
@@ -230,6 +231,39 @@ describe("calendarEventSchema", () => {
     const result = calendarEventSchema.safeParse({
       title: "Evento",
       start_at: "",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("goalSchema", () => {
+  it("aceita meta válida e converte o alvo", () => {
+    const result = goalSchema.safeParse({
+      metric: "revenue",
+      period_start: "2026-01-01",
+      period_end: "2026-01-31",
+      target: "1000",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) expect(result.data.target).toBe(1000)
+  })
+
+  it("rejeita fim antes do início", () => {
+    const result = goalSchema.safeParse({
+      metric: "revenue",
+      period_start: "2026-02-01",
+      period_end: "2026-01-01",
+      target: "1",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("rejeita métrica inválida", () => {
+    const result = goalSchema.safeParse({
+      metric: "x",
+      period_start: "2026-01-01",
+      period_end: "2026-01-31",
+      target: "1",
     })
     expect(result.success).toBe(false)
   })

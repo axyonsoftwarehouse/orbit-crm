@@ -1216,4 +1216,51 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     expect(row.action).toBe("insert")
     expect(row.entity).toBe("companies")
   })
+
+  it("A cria meta no próprio tenant e a vê", async () => {
+    const inserted = await clientA
+      .from("goals")
+      .insert({
+        tenant_id: tenantA,
+        metric: "revenue",
+        period_start: "2026-01-01",
+        period_end: "2026-01-31",
+        target: 1000,
+      })
+      .select("id")
+      .single()
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("goals")
+      .select("id")
+      .eq("id", inserted.data!.id)
+    expect(data?.length).toBe(1)
+  })
+
+  it("A não vê metas de B", async () => {
+    await admin.from("goals").insert({
+      tenant_id: tenantB,
+      metric: "revenue",
+      period_start: "2026-01-01",
+      period_end: "2026-01-31",
+      target: 500,
+    })
+    const { data } = await clientA
+      .from("goals")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar meta em outro tenant", async () => {
+    const { error } = await clientA.from("goals").insert({
+      tenant_id: tenantB,
+      metric: "revenue",
+      period_start: "2026-01-01",
+      period_end: "2026-01-31",
+      target: 1,
+    })
+    expect(error).not.toBeNull()
+  })
 })

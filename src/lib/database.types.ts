@@ -902,6 +902,63 @@ export type Database = {
           },
         ]
       }
+      goals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          metric: string
+          period_end: string
+          period_start: string
+          target: number
+          tenant_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          metric?: string
+          period_end: string
+          period_start: string
+          target?: number
+          tenant_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          metric?: string
+          period_end?: string
+          period_start?: string
+          target?: number
+          tenant_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "goals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           accepted_at: string | null

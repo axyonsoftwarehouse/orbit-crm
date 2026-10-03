@@ -17,6 +17,7 @@ import {
   Receipt,
   Settings,
   Target,
+  Trophy,
   Users,
   Wallet,
 } from "lucide-react"
@@ -47,6 +48,7 @@ const NAV_ITEMS = [
   { title: "Contratos", href: "/app/contratos", icon: FileSignature },
   { title: "Relatórios", href: "/app/relatorios", icon: BarChart3 },
   { title: "Atividades", href: "/app/atividades", icon: History },
+  { title: "Metas", href: "/app/metas", icon: Trophy },
   { title: "Tickets", href: "/app/tickets", icon: LifeBuoy },
   {
     title: "Base de conhecimento",
