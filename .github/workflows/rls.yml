@@ -1,0 +1,34 @@
+name: RLS (manual)
+
+# Roda os testes de isolamento RLS contra um projeto Supabase.
+# Disparo manual para evitar rodar contra o banco de produção a cada push.
+# Requer os secrets: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
+# SUPABASE_SERVICE_ROLE_KEY (idealmente de um projeto dedicado a testes).
+
+on:
+  workflow_dispatch:
+
+jobs:
+  rls:
+    name: Isolamento RLS
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Verificar credenciais
+        run: |
+          test -n "$NEXT_PUBLIC_SUPABASE_URL" || { echo "Secrets ausentes"; exit 1; }
+          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "Secrets ausentes"; exit 1; }
+
+      - run: npm run test:rls

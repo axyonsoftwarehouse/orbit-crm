@@ -5,9 +5,13 @@ on:
     branches: [main]
   pull_request:
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
-    name: Lint, types, tests e build
+    name: Format, lint, types, testes e build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -19,11 +23,13 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run format:check
+
       - run: npm run lint
 
       - run: npm run typecheck
 
-      - run: npm run test
+      - run: npm test
 
       - run: npm run build
         env:
