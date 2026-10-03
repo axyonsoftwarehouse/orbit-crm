@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { CheckSquare, Clock } from "lucide-react"
 import { AvatarStack } from "@/components/app/avatar-stack"
+import { TagFilter } from "@/components/app/tag-filter"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { listCompanies } from "@/server/queries/companies"
@@ -9,6 +10,8 @@ import {
   projectMembersByProject,
 } from "@/server/queries/projects"
 import { taskCountsByProject } from "@/server/queries/tasks"
+import { entityIdsByTag, listTags } from "@/server/queries/tags"
+import { listCustomFieldDefinitions } from "@/server/queries/custom-fields"
 import { ProjectFormDialog } from "./project-form-dialog"
 import type { ProjectListRow } from "@/server/queries/projects"
 
@@ -100,19 +103,38 @@ function ProjectRow({
   )
 }
 
-export default async function ProjetosPage() {
+export default async function ProjetosPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string }>
+}) {
+  const { tag } = await searchParams
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [projects, membersByProject, taskCounts, companies] = await Promise.all(
-    [
-      listProjects(active.tenantId),
-      projectMembersByProject(active.tenantId),
-      taskCountsByProject(active.tenantId),
-      listCompanies(active.tenantId),
-    ],
-  )
+  const [
+    allProjects,
+    membersByProject,
+    taskCounts,
+    companies,
+    tags,
+    customFields,
+  ] = await Promise.all([
+    listProjects(active.tenantId),
+    projectMembersByProject(active.tenantId),
+    taskCountsByProject(active.tenantId),
+    listCompanies(active.tenantId),
+    listTags(active.tenantId),
+    listCustomFieldDefinitions(active.tenantId, "project"),
+  ])
+
+  const allowed = tag
+    ? new Set(await entityIdsByTag(active.tenantId, "project", tag))
+    : null
+  const projects = allowed
+    ? allProjects.filter((project) => allowed.has(project.id))
+    : allProjects
 
   return (
     <div className="space-y-6">
@@ -123,8 +145,20 @@ export default async function ProjetosPage() {
             {projects.length} projeto(s) · prazos, progresso e equipe.
           </p>
         </div>
-        <ProjectFormDialog companies={companies} label="Novo projeto" />
+        <ProjectFormDialog
+          companies={companies}
+          customFields={customFields}
+          label="Novo projeto"
+        />
       </div>
+
+      <TagFilter
+        tags={tags}
+        active={tag}
+        hrefFor={(tagId) =>
+          tagId ? `/app/projetos?tag=${tagId}` : "/app/projetos"
+        }
+      />
 
       {projects.length === 0 ? (
         <div className="text-muted-foreground rounded-2xl border border-dashed p-12 text-center text-sm">

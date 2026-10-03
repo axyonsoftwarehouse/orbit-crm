@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { companySchema } from "@/lib/validations/clients"
+import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
 
 export type CompanyFormState = { error?: string; success?: string } | undefined
@@ -42,13 +43,25 @@ export async function createCompanyAction(
 
   const user = await getUser()
   const supabase = await createClient()
-  const { error } = await supabase.from("companies").insert({
-    tenant_id: active.tenantId,
-    created_by: user?.id,
-    ...parsed.data,
-  })
+  const { data, error } = await supabase
+    .from("companies")
+    .insert({
+      tenant_id: active.tenantId,
+      created_by: user?.id,
+      ...parsed.data,
+    })
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(
+    supabase,
+    active.tenantId,
+    "company",
+    data.id,
+    formData,
+  )
 
   revalidatePath("/app/clientes")
   return { success: "Cliente criado." }
@@ -77,6 +90,14 @@ export async function updateCompanyAction(
     .eq("tenant_id", active.tenantId)
 
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(
+    supabase,
+    active.tenantId,
+    "company",
+    id,
+    formData,
+  )
 
   revalidatePath("/app/clientes")
   revalidatePath(`/app/clientes/${id}`)

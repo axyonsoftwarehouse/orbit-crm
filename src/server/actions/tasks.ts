@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { checklistItemSchema, taskSchema } from "@/lib/validations/tasks"
+import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
 
 export type TaskFormState = { error?: string; success?: string } | undefined
@@ -43,14 +44,26 @@ export async function createTaskAction(
 
   const user = await getUser()
   const supabase = await createClient()
-  const { error } = await supabase.from("tasks").insert({
-    tenant_id: active.tenantId,
-    created_by: user?.id,
-    ...parsed.data,
-    date_finished: parsed.data.status === 5 ? new Date().toISOString() : null,
-  })
+  const { data, error } = await supabase
+    .from("tasks")
+    .insert({
+      tenant_id: active.tenantId,
+      created_by: user?.id,
+      ...parsed.data,
+      date_finished: parsed.data.status === 5 ? new Date().toISOString() : null,
+    })
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(
+    supabase,
+    active.tenantId,
+    "task",
+    data.id,
+    formData,
+  )
 
   revalidatePath("/app/tarefas")
   revalidatePath("/app/projetos")
@@ -84,6 +97,8 @@ export async function updateTaskAction(
     .eq("tenant_id", active.tenantId)
 
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(supabase, active.tenantId, "task", id, formData)
 
   revalidatePath("/app/tarefas")
   revalidatePath(`/app/tarefas/${id}`)

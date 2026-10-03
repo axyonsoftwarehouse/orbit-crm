@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { StatusPill } from "@/components/app/status-pill"
+import { TagPicker } from "@/components/app/tag-picker"
+import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { Badge } from "@/components/ui/badge"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
@@ -16,6 +18,11 @@ import {
   listLeadSources,
   listLeadStatuses,
 } from "@/server/queries/leads"
+import { listTags, tagsForEntity } from "@/server/queries/tags"
+import {
+  customFieldValuesForEntity,
+  listCustomFieldDefinitions,
+} from "@/server/queries/custom-fields"
 import { addLeadActivityAction } from "@/server/actions/leads"
 import { LeadFormDialog } from "../lead-form-dialog"
 import { LeadStatusSelect } from "../lead-status-select"
@@ -50,6 +57,13 @@ export default async function LeadDetailPage({
     listLeadActivities(active.tenantId, lead.id),
   ])
 
+  const [entityTags, allTags, customFields, customValues] = await Promise.all([
+    tagsForEntity(active.tenantId, "lead", lead.id),
+    listTags(active.tenantId),
+    listCustomFieldDefinitions(active.tenantId, "lead"),
+    customFieldValuesForEntity(active.tenantId, "lead", lead.id),
+  ])
+
   const status = statuses.find((s) => s.id === lead.status_id) ?? null
   const source = sources.find((s) => s.id === lead.source_id) ?? null
   const assignee =
@@ -82,6 +96,12 @@ export default async function LeadDetailPage({
               </span>
             ) : null}
           </div>
+          <TagPicker
+            entityType="lead"
+            entityId={lead.id}
+            assigned={entityTags}
+            all={allTags}
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {lead.converted_company_id ? (
@@ -103,6 +123,8 @@ export default async function LeadDetailPage({
             statuses={statuses}
             sources={sources}
             members={members}
+            customFields={customFields}
+            customValues={customValues}
             label="Editar"
           />
           <DeleteLeadButton id={lead.id} />
@@ -221,6 +243,8 @@ export default async function LeadDetailPage({
               />
             </CardContent>
           </Card>
+
+          <CustomFieldsCard fields={customFields} values={customValues} />
         </div>
       </div>
     </div>

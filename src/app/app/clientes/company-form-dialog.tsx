@@ -15,18 +15,24 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { CustomFieldInputs } from "@/components/app/custom-field-inputs"
 import {
   createCompanyAction,
   updateCompanyAction,
   type CompanyFormState,
 } from "@/server/actions/companies"
 import type { Company } from "@/server/queries/companies"
+import type { CustomFieldDefinition } from "@/server/queries/custom-fields"
 
 export function CompanyFormDialog({
   company,
+  customFields,
+  customValues,
   label,
 }: {
   company?: Company
+  customFields?: CustomFieldDefinition[]
+  customValues?: Record<string, string>
   label: string
 }) {
   const [open, setOpen] = useState(false)
@@ -147,6 +153,11 @@ export function CompanyFormDialog({
               defaultValue={company?.notes ?? ""}
             />
           </div>
+
+          <CustomFieldInputs
+            fields={customFields ?? []}
+            values={customValues}
+          />
 
           <DialogFooter>
             <Button

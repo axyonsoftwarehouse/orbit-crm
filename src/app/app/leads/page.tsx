@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { StatusPill } from "@/components/app/status-pill"
+import { TagFilter } from "@/components/app/tag-filter"
 import { cn } from "@/lib/utils"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
@@ -19,6 +20,8 @@ import {
   listLeadStatuses,
   listLeads,
 } from "@/server/queries/leads"
+import { entityIdsByTag, listTags } from "@/server/queries/tags"
+import { listCustomFieldDefinitions } from "@/server/queries/custom-fields"
 import { LeadFormDialog } from "./lead-form-dialog"
 import { LeadSettingsDialog } from "./lead-settings"
 import { LeadKanban } from "./lead-kanban"
@@ -26,21 +29,31 @@ import { LeadKanban } from "./lead-kanban"
 export default async function LeadsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; view?: string }>
+  searchParams: Promise<{ status?: string; view?: string; tag?: string }>
 }) {
-  const { status, view } = await searchParams
+  const { status, view, tag } = await searchParams
   const kanban = view === "kanban"
 
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [leads, statuses, sources, members] = await Promise.all([
-    listLeads(active.tenantId, { statusId: kanban ? undefined : status }),
-    listLeadStatuses(active.tenantId),
-    listLeadSources(active.tenantId),
-    listTenantMembers(active.tenantId),
-  ])
+  const [allLeads, statuses, sources, members, tags, customFields] =
+    await Promise.all([
+      listLeads(active.tenantId, { statusId: kanban ? undefined : status }),
+      listLeadStatuses(active.tenantId),
+      listLeadSources(active.tenantId),
+      listTenantMembers(active.tenantId),
+      listTags(active.tenantId),
+      listCustomFieldDefinitions(active.tenantId, "lead"),
+    ])
+
+  const allowed = tag
+    ? new Set(await entityIdsByTag(active.tenantId, "lead", tag))
+    : null
+  const leads = allowed
+    ? allLeads.filter((lead) => allowed.has(lead.id))
+    : allLeads
 
   return (
     <div className="space-y-6">
@@ -77,10 +90,24 @@ export default async function LeadsPage({
             statuses={statuses}
             sources={sources}
             members={members}
+            customFields={customFields}
             label="Novo lead"
           />
         </div>
       </div>
+
+      <TagFilter
+        tags={tags}
+        active={tag}
+        hrefFor={(tagId) => {
+          const params = new URLSearchParams()
+          if (status) params.set("status", status)
+          if (view) params.set("view", view)
+          if (tagId) params.set("tag", tagId)
+          const query = params.toString()
+          return query ? `/app/leads?${query}` : "/app/leads"
+        }}
+      />
 
       {kanban ? (
         <LeadKanban statuses={statuses} leads={leads} />

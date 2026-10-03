@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { projectSchema } from "@/lib/validations/projects"
+import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
 
 export type ProjectFormState = { error?: string; success?: string } | undefined
@@ -44,14 +45,26 @@ export async function createProjectAction(
 
   const user = await getUser()
   const supabase = await createClient()
-  const { error } = await supabase.from("projects").insert({
-    tenant_id: active.tenantId,
-    created_by: user?.id,
-    ...parsed.data,
-    date_finished: parsed.data.status === 4 ? new Date().toISOString() : null,
-  })
+  const { data, error } = await supabase
+    .from("projects")
+    .insert({
+      tenant_id: active.tenantId,
+      created_by: user?.id,
+      ...parsed.data,
+      date_finished: parsed.data.status === 4 ? new Date().toISOString() : null,
+    })
+    .select("id")
+    .single()
 
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(
+    supabase,
+    active.tenantId,
+    "project",
+    data.id,
+    formData,
+  )
 
   revalidatePath("/app/projetos")
   return { success: "Projeto criado." }
@@ -83,6 +96,14 @@ export async function updateProjectAction(
     .eq("tenant_id", active.tenantId)
 
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(
+    supabase,
+    active.tenantId,
+    "project",
+    id,
+    formData,
+  )
 
   revalidatePath("/app/projetos")
   revalidatePath(`/app/projetos/${id}`)

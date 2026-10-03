@@ -15,12 +15,14 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { CustomFieldInputs } from "@/components/app/custom-field-inputs"
 import {
   createLeadAction,
   updateLeadAction,
   type LeadFormState,
 } from "@/server/actions/leads"
 import type { Lead, LeadSource, LeadStatus } from "@/server/queries/leads"
+import type { CustomFieldDefinition } from "@/server/queries/custom-fields"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -30,12 +32,16 @@ export function LeadFormDialog({
   statuses,
   sources,
   members,
+  customFields,
+  customValues,
   label,
 }: {
   lead?: Lead
   statuses: LeadStatus[]
   sources: LeadSource[]
   members: { user_id: string; full_name: string | null }[]
+  customFields?: CustomFieldDefinition[]
+  customValues?: Record<string, string>
   label: string
 }) {
   const [open, setOpen] = useState(false)
@@ -211,6 +217,11 @@ export function LeadFormDialog({
               defaultValue={lead?.description ?? ""}
             />
           </div>
+
+          <CustomFieldInputs
+            fields={customFields ?? []}
+            values={customValues}
+          />
 
           <DialogFooter>
             <Button

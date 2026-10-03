@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { CustomFieldInputs } from "@/components/app/custom-field-inputs"
 import { TASK_PRIORITIES, TASK_STATUSES } from "@/lib/constants"
 import {
   createTaskAction,
@@ -23,6 +24,7 @@ import {
 } from "@/server/actions/tasks"
 import type { Task } from "@/server/queries/tasks"
 import type { MilestoneOption } from "@/server/queries/milestones"
+import type { CustomFieldDefinition } from "@/server/queries/custom-fields"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -31,6 +33,8 @@ export function TaskFormDialog({
   projects,
   members,
   milestones,
+  customFields,
+  customValues,
   task,
   defaultProjectId,
   label,
@@ -38,6 +42,8 @@ export function TaskFormDialog({
   projects: { id: string; name: string }[]
   members: { user_id: string; full_name: string | null }[]
   milestones?: MilestoneOption[]
+  customFields?: CustomFieldDefinition[]
+  customValues?: Record<string, string>
   task?: Task
   defaultProjectId?: string
   label: string
@@ -229,6 +235,11 @@ export function TaskFormDialog({
               defaultValue={task?.description ?? ""}
             />
           </div>
+
+          <CustomFieldInputs
+            fields={customFields ?? []}
+            values={customValues}
+          />
 
           <DialogFooter>
             <Button

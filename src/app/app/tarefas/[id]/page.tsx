@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { TaskPriorityBadge, TaskStatusBadge } from "@/components/app/task-bits"
+import { TagPicker } from "@/components/app/tag-picker"
+import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { CommentsSection } from "@/components/app/comments-section"
 import { AttachmentsSection } from "@/components/app/attachments-section"
 import { TimeEntriesTable } from "@/components/app/time-entries-table"
@@ -17,6 +19,11 @@ import {
 } from "@/server/queries/projects"
 import { getTask, listChecklist } from "@/server/queries/tasks"
 import { listMilestoneOptions } from "@/server/queries/milestones"
+import { listTags, tagsForEntity } from "@/server/queries/tags"
+import {
+  customFieldValuesForEntity,
+  listCustomFieldDefinitions,
+} from "@/server/queries/custom-fields"
 import {
   addChecklistItemAction,
   deleteChecklistItemAction,
@@ -61,6 +68,13 @@ export default async function TaskDetailPage({
     ],
   )
 
+  const [entityTags, allTags, customFields, customValues] = await Promise.all([
+    tagsForEntity(active.tenantId, "task", task.id),
+    listTags(active.tenantId),
+    listCustomFieldDefinitions(active.tenantId, "task"),
+    customFieldValuesForEntity(active.tenantId, "task", task.id),
+  ])
+
   const projectOptions = projects.map((item) => ({
     id: item.id,
     name: item.name,
@@ -90,12 +104,20 @@ export default async function TaskDetailPage({
             <TaskStatusBadge status={task.status} />
             <TaskPriorityBadge priority={task.priority} />
           </div>
+          <TagPicker
+            entityType="task"
+            entityId={task.id}
+            assigned={entityTags}
+            all={allTags}
+          />
         </div>
         <div className="flex items-center gap-2">
           <TaskFormDialog
             projects={projectOptions}
             members={members}
             milestones={milestones}
+            customFields={customFields}
+            customValues={customValues}
             task={task}
             label="Editar"
           />
@@ -237,6 +259,8 @@ export default async function TaskDetailPage({
           </CardContent>
         </Card>
       </div>
+
+      <CustomFieldsCard fields={customFields} values={customValues} />
 
       <CommentsSection
         tenantId={active.tenantId}

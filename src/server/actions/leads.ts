@@ -12,6 +12,7 @@ import {
   leadStatusSchema,
 } from "@/lib/validations/leads"
 import { getLead, listLeadStatuses } from "@/server/queries/leads"
+import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
 
 export type LeadFormState = { error?: string; success?: string } | undefined
@@ -52,13 +53,25 @@ export async function createLeadAction(
 
   const user = await getUser()
   const supabase = await createClient()
-  const { error } = await supabase.from("leads").insert({
-    tenant_id: active.tenantId,
-    created_by: user?.id ?? null,
-    ...parsed.data,
-    value: parsed.data.value ?? null,
-  })
+  const { data, error } = await supabase
+    .from("leads")
+    .insert({
+      tenant_id: active.tenantId,
+      created_by: user?.id ?? null,
+      ...parsed.data,
+      value: parsed.data.value ?? null,
+    })
+    .select("id")
+    .single()
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(
+    supabase,
+    active.tenantId,
+    "lead",
+    data.id,
+    formData,
+  )
 
   revalidatePath("/app/leads")
   return { success: "Lead criado." }
@@ -86,6 +99,8 @@ export async function updateLeadAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
   if (error) return { error: error.message }
+
+  await saveCustomFieldValues(supabase, active.tenantId, "lead", id, formData)
 
   revalidatePath("/app/leads")
   revalidatePath(`/app/leads/${id}`)

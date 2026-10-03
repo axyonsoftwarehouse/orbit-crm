@@ -98,13 +98,13 @@ tags/campos personalizados, portal do cliente.
   - ✅ **F6.3 — Notificações + e-mail + lembretes** (migration `0016`: `notifications` + sino no topbar; `sendEmail` via Resend; rota `/api/cron/reminders` agendada no `vercel.json` para tarefas vencendo e faturas vencidas).
   - ✅ **F6.2 — Subdomínio por tenant** (resolução por host no middleware + `getActiveTenant` com fallback para cookie/sessão; **inativo** até definir `NEXT_PUBLIC_ROOT_DOMAIN` e DNS wildcard).
   - ⏳ Demais itens do F6: cobrança automática.
-- **F7 — Marcos + Gantt** (em andamento)
-  - **F7.1 — Marcos do projeto** (migration `0018`: `milestones` por projeto, status 1–3, cor, ordem; `tasks.milestone_id` opcional; progresso derivado das tarefas).
-  - **F7.2 — Cronograma (Gantt)** (timeline read-only em CSS/SVG na página do projeto, escalas por data, clique abre a tarefa, marcos como losangos).
-  - **F7.3 — Marcos no portal** (somente leitura no detalhe do projeto do cliente).
-- **F8 — Tags + Campos personalizados** (planejado)
-  - **F8.1 — Tags** (`tags` + vínculo polimórfico `taggables`; projetos, tarefas, leads, tickets e clientes; chips no detalhe, filtro `?tag=` nas listas, gestão em Configurações).
-  - **F8.2 — Campos personalizados** (`custom_field_definitions` + `custom_field_values` polimórficos; clientes, projetos, tarefas e leads; tipos texto, texto longo, número, data, seleção e checkbox; definição em Configurações, edição nos dialogs e leitura no detalhe).
+- **F7 — Marcos + Gantt** ✅ **concluída**
+  - ✅ **F7.1 — Marcos do projeto** (migration `0018`: `milestones` por projeto, status 1–3, cor, ordem; `tasks.milestone_id` opcional com FK composta; progresso derivado das tarefas).
+  - ✅ **F7.2 — Cronograma (Gantt)** (timeline read-only em CSS/SVG na página do projeto, escalas por data, clique abre a tarefa, marcos como losangos).
+  - ✅ **F7.3 — Marcos no portal** (somente leitura no detalhe do projeto do cliente).
+- **F8 — Tags + Campos personalizados** ✅ **concluída**
+  - ✅ **F8.1 — Tags** (migration `0019`: `tags` + vínculo polimórfico `taggables`; projetos, tarefas, leads, tickets e clientes; chips no detalhe, filtro `?tag=` nas listas, gestão em Configurações).
+  - ✅ **F8.2 — Campos personalizados** (migration `0020`: `custom_field_definitions` + `custom_field_values` polimórficos; clientes, projetos, tarefas e leads; tipos texto, texto longo, número, data, seleção e checkbox; definição em Configurações, edição nos dialogs e leitura no detalhe).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura

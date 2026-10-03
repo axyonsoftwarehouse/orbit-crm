@@ -1,23 +1,40 @@
 import Link from "next/link"
 import { Users } from "lucide-react"
 import { EntityAvatar } from "@/components/app/entity-avatar"
+import { TagFilter } from "@/components/app/tag-filter"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import {
   countContactsByCompany,
   listCompanies,
 } from "@/server/queries/companies"
+import { entityIdsByTag, listTags } from "@/server/queries/tags"
+import { listCustomFieldDefinitions } from "@/server/queries/custom-fields"
 import { CompanyFormDialog } from "./company-form-dialog"
 
-export default async function ClientesPage() {
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string }>
+}) {
+  const { tag } = await searchParams
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [companies, counts] = await Promise.all([
+  const [allCompanies, counts, tags, customFields] = await Promise.all([
     listCompanies(active.tenantId),
     countContactsByCompany(active.tenantId),
+    listTags(active.tenantId),
+    listCustomFieldDefinitions(active.tenantId, "company"),
   ])
+
+  const allowed = tag
+    ? new Set(await entityIdsByTag(active.tenantId, "company", tag))
+    : null
+  const companies = allowed
+    ? allCompanies.filter((company) => allowed.has(company.id))
+    : allCompanies
 
   return (
     <div className="space-y-6">
@@ -28,8 +45,16 @@ export default async function ClientesPage() {
             {companies.length} empresa(s) · contatos, telefone e localização.
           </p>
         </div>
-        <CompanyFormDialog label="Novo cliente" />
+        <CompanyFormDialog label="Novo cliente" customFields={customFields} />
       </div>
+
+      <TagFilter
+        tags={tags}
+        active={tag}
+        hrefFor={(tagId) =>
+          tagId ? `/app/clientes?tag=${tagId}` : "/app/clientes"
+        }
+      />
 
       {companies.length === 0 ? (
         <div className="text-muted-foreground rounded-2xl border border-dashed p-12 text-center text-sm">

@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { CustomFieldInputs } from "@/components/app/custom-field-inputs"
 import { PROJECT_BILLING_TYPES, PROJECT_STATUSES } from "@/lib/constants"
 import {
   createProjectAction,
@@ -22,6 +23,7 @@ import {
   type ProjectFormState,
 } from "@/server/actions/projects"
 import type { Project } from "@/server/queries/projects"
+import type { CustomFieldDefinition } from "@/server/queries/custom-fields"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -29,10 +31,14 @@ const fieldClass =
 export function ProjectFormDialog({
   project,
   companies,
+  customFields,
+  customValues,
   label,
 }: {
   project?: Project
   companies: { id: string; name: string }[]
+  customFields?: CustomFieldDefinition[]
+  customValues?: Record<string, string>
   label: string
 }) {
   const [open, setOpen] = useState(false)
@@ -219,6 +225,11 @@ export function ProjectFormDialog({
               defaultValue={project?.description ?? ""}
             />
           </div>
+
+          <CustomFieldInputs
+            fields={customFields ?? []}
+            values={customValues}
+          />
 
           <DialogFooter>
             <Button

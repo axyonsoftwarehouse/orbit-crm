@@ -15,6 +15,8 @@ import { ProgressBar, ProjectStatusBadge } from "@/components/app/project-bits"
 import { MilestoneStatusBadge } from "@/components/app/milestone-bits"
 import { ProjectGantt } from "@/components/app/project-gantt"
 import { TaskStatusBadge } from "@/components/app/task-bits"
+import { TagPicker } from "@/components/app/tag-picker"
+import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { CommentsSection } from "@/components/app/comments-section"
 import { AttachmentsSection } from "@/components/app/attachments-section"
 import { TimeEntriesTable } from "@/components/app/time-entries-table"
@@ -40,6 +42,11 @@ import {
   listMilestones,
 } from "@/server/queries/milestones"
 import { listTasks } from "@/server/queries/tasks"
+import { listTags, tagsForEntity } from "@/server/queries/tags"
+import {
+  customFieldValuesForEntity,
+  listCustomFieldDefinitions,
+} from "@/server/queries/custom-fields"
 import { addProjectMemberAction } from "@/server/actions/projects"
 import { TaskFormDialog } from "../../tarefas/task-form-dialog"
 import { ProjectFormDialog } from "../project-form-dialog"
@@ -95,6 +102,11 @@ export default async function ProjectDetailPage({
     billableEntries,
     milestones,
     milestoneOptions,
+    entityTags,
+    allTags,
+    projectCustomFields,
+    projectCustomValues,
+    taskCustomFields,
   ] = await Promise.all([
     project.company_id
       ? getCompany(active.tenantId, project.company_id)
@@ -107,6 +119,11 @@ export default async function ProjectDetailPage({
     listUnbilledBillableEntries(active.tenantId, project.id),
     listMilestones(active.tenantId, project.id),
     listMilestoneOptions(active.tenantId),
+    tagsForEntity(active.tenantId, "project", project.id),
+    listTags(active.tenantId),
+    listCustomFieldDefinitions(active.tenantId, "project"),
+    customFieldValuesForEntity(active.tenantId, "project", project.id),
+    listCustomFieldDefinitions(active.tenantId, "task"),
   ])
 
   const billable = summarizeBillable(billableEntries)
@@ -144,11 +161,19 @@ export default async function ProjectDetailPage({
             <ProjectStatusBadge status={project.status} />
             <ProgressBar value={progress} />
           </div>
+          <TagPicker
+            entityType="project"
+            entityId={project.id}
+            assigned={entityTags}
+            all={allTags}
+          />
         </div>
         <div className="flex items-center gap-2">
           <ProjectFormDialog
             project={project}
             companies={companies}
+            customFields={projectCustomFields}
+            customValues={projectCustomValues}
             label="Editar"
           />
           <DeleteProjectButton id={project.id} />
@@ -270,6 +295,7 @@ export default async function ProjectDetailPage({
             projects={projectOptions}
             members={tenantMembers}
             milestones={milestoneOptions}
+            customFields={taskCustomFields}
             defaultProjectId={project.id}
             label="Nova tarefa"
           />
@@ -414,6 +440,11 @@ export default async function ProjectDetailPage({
         tenantId={active.tenantId}
         projectId={project.id}
         title="Timesheet"
+      />
+
+      <CustomFieldsCard
+        fields={projectCustomFields}
+        values={projectCustomValues}
       />
 
       <CommentsSection

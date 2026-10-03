@@ -11,9 +11,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { TagPicker } from "@/components/app/tag-picker"
+import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { getCompany, listContacts } from "@/server/queries/companies"
+import { listTags, tagsForEntity } from "@/server/queries/tags"
+import {
+  customFieldValuesForEntity,
+  listCustomFieldDefinitions,
+} from "@/server/queries/custom-fields"
 import { CompanyFormDialog } from "../company-form-dialog"
 import { DeleteCompanyButton } from "../delete-company-button"
 import { ContactFormDialog } from "./contact-form-dialog"
@@ -42,7 +49,14 @@ export default async function CompanyDetailPage({
   const company = await getCompany(active.tenantId, id)
   if (!company) notFound()
 
-  const contacts = await listContacts(active.tenantId, company.id)
+  const [contacts, entityTags, allTags, customFields, customValues] =
+    await Promise.all([
+      listContacts(active.tenantId, company.id),
+      tagsForEntity(active.tenantId, "company", company.id),
+      listTags(active.tenantId),
+      listCustomFieldDefinitions(active.tenantId, "company"),
+      customFieldValuesForEntity(active.tenantId, "company", company.id),
+    ])
 
   return (
     <div className="space-y-6">
@@ -55,7 +69,7 @@ export default async function CompanyDetailPage({
       </Link>
 
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="space-y-2">
           <h1 className="text-xl font-semibold tracking-tight">
             {company.name}
           </h1>
@@ -63,9 +77,20 @@ export default async function CompanyDetailPage({
             {[company.city, company.country].filter(Boolean).join(", ") ||
               "Cliente"}
           </p>
+          <TagPicker
+            entityType="company"
+            entityId={company.id}
+            assigned={entityTags}
+            all={allTags}
+          />
         </div>
         <div className="flex items-center gap-2">
-          <CompanyFormDialog company={company} label="Editar" />
+          <CompanyFormDialog
+            company={company}
+            customFields={customFields}
+            customValues={customValues}
+            label="Editar"
+          />
           <DeleteCompanyButton id={company.id} />
         </div>
       </div>
@@ -88,6 +113,8 @@ export default async function CompanyDetailPage({
           </dl>
         </CardContent>
       </Card>
+
+      <CustomFieldsCard fields={customFields} values={customValues} />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">

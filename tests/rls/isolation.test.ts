@@ -38,6 +38,10 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   let taskBId = ""
   let milestoneAId = ""
   let milestoneBId = ""
+  let tagAId = ""
+  let tagBId = ""
+  let fieldDefAId = ""
+  let fieldDefBId = ""
   let estimateAId = ""
   let estimateBId = ""
   let invoiceAId = ""
@@ -160,6 +164,46 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     if (mA.error || mB.error) throw mA.error ?? mB.error
     milestoneAId = mA.data!.id
     milestoneBId = mB.data!.id
+
+    const tgA = await admin
+      .from("tags")
+      .insert({ tenant_id: tenantA, name: `VIP ${suffix}` })
+      .select("id")
+      .single()
+    const tgB = await admin
+      .from("tags")
+      .insert({ tenant_id: tenantB, name: `VIP ${suffix}` })
+      .select("id")
+      .single()
+    if (tgA.error || tgB.error) throw tgA.error ?? tgB.error
+    tagAId = tgA.data!.id
+    tagBId = tgB.data!.id
+
+    const fdA = await admin
+      .from("custom_field_definitions")
+      .insert({
+        tenant_id: tenantA,
+        entity_type: "company",
+        label: "Segmento",
+        key: "segmento",
+        field_type: "text",
+      })
+      .select("id")
+      .single()
+    const fdB = await admin
+      .from("custom_field_definitions")
+      .insert({
+        tenant_id: tenantB,
+        entity_type: "company",
+        label: "Segmento",
+        field_type: "text",
+        key: "segmento",
+      })
+      .select("id")
+      .single()
+    if (fdA.error || fdB.error) throw fdA.error ?? fdB.error
+    fieldDefAId = fdA.data!.id
+    fieldDefBId = fdB.data!.id
 
     const today = new Date().toISOString().slice(0, 10)
     const eA = await admin
@@ -799,5 +843,127 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       .update({ milestone_id: milestoneBId })
       .eq("id", taskAId)
     expect(error).not.toBeNull()
+  })
+
+  it("A vê a própria tag e não a de B", async () => {
+    const own = await clientA.from("tags").select("id").eq("id", tagAId)
+    expect(own.data?.length).toBe(1)
+    const other = await clientA.from("tags").select("id").eq("id", tagBId)
+    expect(other.data).toEqual([])
+  })
+
+  it("A não pode criar tag em outro tenant", async () => {
+    const { error } = await clientA
+      .from("tags")
+      .insert({ tenant_id: tenantB, name: "Cross tenant" })
+    expect(error).not.toBeNull()
+  })
+
+  it("A associa uma tag à própria empresa e a enxerga", async () => {
+    const inserted = await clientA.from("taggables").insert({
+      tenant_id: tenantA,
+      tag_id: tagAId,
+      entity_type: "company",
+      entity_id: companyAId,
+    })
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("taggables")
+      .select("id")
+      .eq("entity_id", companyAId)
+    expect(data?.length).toBe(1)
+  })
+
+  it("A não pode associar tag a entidade de outro tenant", async () => {
+    const { error } = await clientA.from("taggables").insert({
+      tenant_id: tenantA,
+      tag_id: tagAId,
+      entity_type: "company",
+      entity_id: companyBId,
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não vê associações de tags de B", async () => {
+    await admin.from("taggables").insert({
+      tenant_id: tenantB,
+      tag_id: tagBId,
+      entity_type: "company",
+      entity_id: companyBId,
+    })
+    const { data } = await clientA
+      .from("taggables")
+      .select("id")
+      .eq("entity_id", companyBId)
+    expect(data).toEqual([])
+  })
+
+  it("A vê a definição de campo do próprio tenant e não a de B", async () => {
+    const own = await clientA
+      .from("custom_field_definitions")
+      .select("id")
+      .eq("id", fieldDefAId)
+    expect(own.data?.length).toBe(1)
+
+    const other = await clientA
+      .from("custom_field_definitions")
+      .select("id")
+      .eq("id", fieldDefBId)
+    expect(other.data).toEqual([])
+  })
+
+  it("A não pode criar definição de campo em outro tenant", async () => {
+    const { error } = await clientA.from("custom_field_definitions").insert({
+      tenant_id: tenantB,
+      entity_type: "company",
+      label: "Cross",
+      key: "cross",
+      field_type: "text",
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A salva valor de campo na própria empresa e o enxerga", async () => {
+    const inserted = await clientA.from("custom_field_values").insert({
+      tenant_id: tenantA,
+      field_id: fieldDefAId,
+      entity_type: "company",
+      entity_id: companyAId,
+      value: "Enterprise",
+    })
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("custom_field_values")
+      .select("value")
+      .eq("entity_id", companyAId)
+    expect(data?.length).toBe(1)
+  })
+
+  it("A não pode salvar valor para entidade de outro tenant", async () => {
+    const { error } = await clientA.from("custom_field_values").insert({
+      tenant_id: tenantA,
+      field_id: fieldDefAId,
+      entity_type: "company",
+      entity_id: companyBId,
+      value: "Cross tenant",
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não vê valores de campos de B", async () => {
+    await admin.from("custom_field_values").insert({
+      tenant_id: tenantB,
+      field_id: fieldDefBId,
+      entity_type: "company",
+      entity_id: companyBId,
+      value: "Empresa B",
+    })
+    const { data } = await clientA
+      .from("custom_field_values")
+      .select("id")
+      .eq("entity_id", companyBId)
+    expect(data).toEqual([])
   })
 })
