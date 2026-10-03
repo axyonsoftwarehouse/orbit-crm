@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table"
 import { InvoiceStatusBadge } from "@/components/app/document-status-badge"
 import { Pagination } from "@/components/app/pagination"
+import { ExportButton } from "@/components/app/export-button"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
@@ -53,12 +54,15 @@ export default async function FaturasPage({
             {total} fatura(s) · cobranças, vencimentos e pagamentos.
           </p>
         </div>
-        <InvoiceFormDialog
-          companies={companyOptions}
-          projects={projectOptions}
-          defaultCurrency={settings.currency}
-          label="Nova fatura"
-        />
+        <div className="flex items-center gap-2">
+          <ExportButton href="/app/exportar/faturas" />
+          <InvoiceFormDialog
+            companies={companyOptions}
+            projects={projectOptions}
+            defaultCurrency={settings.currency}
+            label="Nova fatura"
+          />
+        </div>
       </div>
 
       <div className="rounded-lg border">

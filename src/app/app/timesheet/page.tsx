@@ -1,4 +1,5 @@
 import { TimeEntriesTable } from "@/components/app/time-entries-table"
+import { ExportButton } from "@/components/app/export-button"
 import { getUser, getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { parsePage } from "@/lib/pagination"
@@ -45,7 +46,10 @@ export default async function TimesheetPage({
             Registre horas com o timer ou manualmente.
           </p>
         </div>
-        <ManualEntryDialog projects={projectOptions} tasks={taskOptions} />
+        <div className="flex items-center gap-2">
+          <ExportButton href="/app/exportar/timesheet" />
+          <ManualEntryDialog projects={projectOptions} tasks={taskOptions} />
+        </div>
       </div>
 
       <TimerWidget

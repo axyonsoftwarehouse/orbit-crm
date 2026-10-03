@@ -3,6 +3,7 @@ import { Users } from "lucide-react"
 import { EntityAvatar } from "@/components/app/entity-avatar"
 import { TagFilter } from "@/components/app/tag-filter"
 import { Pagination } from "@/components/app/pagination"
+import { ExportButton } from "@/components/app/export-button"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { PAGE_SIZE, parsePage } from "@/lib/pagination"
@@ -50,7 +51,10 @@ export default async function ClientesPage({
             {total} empresa(s) · contatos, telefone e localização.
           </p>
         </div>
-        <CompanyFormDialog label="Novo cliente" customFields={customFields} />
+        <div className="flex items-center gap-2">
+          <ExportButton href="/app/exportar/clientes" />
+          <CompanyFormDialog label="Novo cliente" customFields={customFields} />
+        </div>
       </div>
 
       <TagFilter

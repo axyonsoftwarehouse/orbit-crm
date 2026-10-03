@@ -11,6 +11,7 @@ import {
 import { StatusPill } from "@/components/app/status-pill"
 import { TagFilter } from "@/components/app/tag-filter"
 import { Pagination } from "@/components/app/pagination"
+import { ExportButton } from "@/components/app/export-button"
 import { cn } from "@/lib/utils"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
@@ -107,6 +108,13 @@ export default async function LeadsPage({
               Kanban
             </Link>
           </div>
+          <ExportButton
+            href={
+              status
+                ? `/app/exportar/leads?status=${status}`
+                : "/app/exportar/leads"
+            }
+          />
           <LeadSettingsDialog statuses={statuses} sources={sources} />
           <LeadFormDialog
             statuses={statuses}

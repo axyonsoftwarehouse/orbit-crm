@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/app/pagination"
+import { ExportButton } from "@/components/app/export-button"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
@@ -54,6 +55,14 @@ export default async function DespesasPage({
     name: item.name,
   }))
 
+  const exportParams = new URLSearchParams()
+  if (project) exportParams.set("project", project)
+  if (company) exportParams.set("company", company)
+  const exportQuery = exportParams.toString()
+  const exportHref = exportQuery
+    ? `/app/exportar/despesas?${exportQuery}`
+    : "/app/exportar/despesas"
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -63,11 +72,14 @@ export default async function DespesasPage({
             {total} despesa(s) · custos por projeto e cliente.
           </p>
         </div>
-        <ExpenseFormDialog
-          projects={projectOptions}
-          companies={companyOptions}
-          label="Nova despesa"
-        />
+        <div className="flex items-center gap-2">
+          <ExportButton href={exportHref} />
+          <ExpenseFormDialog
+            projects={projectOptions}
+            companies={companyOptions}
+            label="Nova despesa"
+          />
+        </div>
       </div>
 
       <form
