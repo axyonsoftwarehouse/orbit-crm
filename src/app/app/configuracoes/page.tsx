@@ -4,12 +4,14 @@ import { getMemberships, getProfile } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { listTags } from "@/server/queries/tags"
 import { listCustomFieldDefinitionsAll } from "@/server/queries/custom-fields"
+import { listEmailLog, listEmailTemplates } from "@/server/queries/email"
 import { listPendingInvitations, listTeamMembers } from "@/server/queries/team"
 import { TagsSection } from "./tags-section"
 import { CustomFieldsSection } from "./custom-fields-section"
 import { CompanySettingsForm } from "./company-settings-form"
 import { TeamSection } from "./team-section"
 import { NotificationPrefsForm } from "./notification-prefs-form"
+import { EmailSection } from "./email-section"
 
 const TABS = [
   { key: "empresa", label: "Empresa" },
@@ -17,6 +19,7 @@ const TABS = [
   { key: "tags", label: "Tags" },
   { key: "campos", label: "Campos personalizados" },
   { key: "notificacoes", label: "Notificações" },
+  { key: "email", label: "E-mail" },
 ]
 
 export default async function ConfiguracoesPage({
@@ -66,6 +69,8 @@ export default async function ConfiguracoesPage({
         <CustomFieldsContent tenantId={active.tenant.id} />
       ) : tab === "notificacoes" ? (
         <NotificationPrefsForm notifyEmail={profile?.notify_email ?? true} />
+      ) : tab === "email" ? (
+        <EmailContent tenantId={active.tenant.id} canManage={canManage} />
       ) : (
         <CompanySettingsForm
           name={active.tenant.name}
@@ -106,4 +111,18 @@ async function TagsContent({ tenantId }: { tenantId: string }) {
 async function CustomFieldsContent({ tenantId }: { tenantId: string }) {
   const definitions = await listCustomFieldDefinitionsAll(tenantId)
   return <CustomFieldsSection definitions={definitions} />
+}
+
+async function EmailContent({
+  tenantId,
+  canManage,
+}: {
+  tenantId: string
+  canManage: boolean
+}) {
+  const [templates, log] = await Promise.all([
+    listEmailTemplates(tenantId),
+    listEmailLog(tenantId),
+  ])
+  return <EmailSection templates={templates} log={log} canManage={canManage} />
 }

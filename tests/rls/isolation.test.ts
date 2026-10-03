@@ -1263,4 +1263,44 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
     expect(error).not.toBeNull()
   })
+
+  it("A cria modelo de e-mail no próprio tenant e o vê", async () => {
+    const inserted = await clientA.from("email_templates").insert({
+      tenant_id: tenantA,
+      key: "task_due",
+      subject: "Assunto A",
+      body: "<p>corpo</p>",
+    })
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("email_templates")
+      .select("id")
+      .eq("tenant_id", tenantA)
+    expect((data ?? []).length).toBeGreaterThan(0)
+  })
+
+  it("A não vê modelos de e-mail de B", async () => {
+    await admin.from("email_templates").insert({
+      tenant_id: tenantB,
+      key: "task_due",
+      subject: "Assunto B",
+      body: "<p>corpo</p>",
+    })
+    const { data } = await clientA
+      .from("email_templates")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar modelo de e-mail em outro tenant", async () => {
+    const { error } = await clientA.from("email_templates").insert({
+      tenant_id: tenantB,
+      key: "task_due",
+      subject: "Cross",
+      body: "<p>x</p>",
+    })
+    expect(error).not.toBeNull()
+  })
 })

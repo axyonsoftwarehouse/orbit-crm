@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
-import { sendEmail } from "@/lib/email"
 import { createNotification } from "@/server/notifications"
+import { sendTenantEmail } from "@/server/email"
 
 const APP_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -62,10 +62,15 @@ export async function runReminders(): Promise<{
 
       const email = await emailFor(task.assignee_id as string)
       if (email && (await emailAllowed(task.assignee_id as string))) {
-        const result = await sendEmail({
+        const result = await sendTenantEmail(admin, {
+          tenantId: tenant.id,
+          templateKey: "task_due",
           to: email,
-          subject: `[Orbit CRM] Tarefa vencendo: ${task.name}`,
-          html: `<p>Sua tarefa <strong>${task.name}</strong> vence em ${task.due_date}.</p><p><a href="${APP_URL}/app/tarefas/${task.id}">Abrir tarefa</a></p>`,
+          vars: {
+            task: task.name,
+            due_date: task.due_date ?? "",
+            url: `${APP_URL}/app/tarefas/${task.id}`,
+          },
         })
         if (result.sent) emails++
       }
@@ -102,10 +107,15 @@ export async function runReminders(): Promise<{
 
           const email = await emailFor(adminUser.user_id)
           if (email && (await emailAllowed(adminUser.user_id))) {
-            const result = await sendEmail({
+            const result = await sendTenantEmail(admin, {
+              tenantId: tenant.id,
+              templateKey: "invoice_overdue",
               to: email,
-              subject: `[Orbit CRM] Fatura vencida ${invoice.formatted_number}`,
-              html: `<p>A fatura <strong>${invoice.formatted_number}</strong> venceu em ${invoice.due_date}.</p><p><a href="${APP_URL}/app/faturas/${invoice.id}">Abrir fatura</a></p>`,
+              vars: {
+                number: invoice.formatted_number,
+                due_date: invoice.due_date ?? "",
+                url: `${APP_URL}/app/faturas/${invoice.id}`,
+              },
             })
             if (result.sent) emails++
           }

@@ -8,6 +8,7 @@ import { expenseSchema } from "@/lib/validations/expenses"
 import { contractSchema } from "@/lib/validations/contracts"
 import { calendarEventSchema } from "@/lib/validations/calendar"
 import { goalSchema } from "@/lib/validations/goals"
+import { renderTemplate } from "@/lib/email-templates"
 import {
   acceptInvitationSchema,
   inviteMemberSchema,
@@ -266,5 +267,15 @@ describe("goalSchema", () => {
       target: "1",
     })
     expect(result.success).toBe(false)
+  })
+})
+
+describe("renderTemplate", () => {
+  it("substitui as variáveis informadas", () => {
+    expect(renderTemplate("Olá {{nome}}!", { nome: "Ana" })).toBe("Olá Ana!")
+  })
+
+  it("remove variáveis ausentes", () => {
+    expect(renderTemplate("{{x}}{{y}}", { x: "a" })).toBe("a")
   })
 })

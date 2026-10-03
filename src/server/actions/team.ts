@@ -11,7 +11,7 @@ import {
   acceptInvitationSchema,
   inviteMemberSchema,
 } from "@/lib/validations/team"
-import { sendEmail } from "@/lib/email"
+import { sendTenantEmail } from "@/server/email"
 
 export type TeamFormState =
   { error?: string; success?: string; inviteLink?: string } | undefined
@@ -106,14 +106,11 @@ export async function inviteMemberAction(
   if (error) return { error: error.message }
 
   const link = `${await getBaseUrl()}/convite/${invitation.token}`
-  const result = await sendEmail({
+  const result = await sendTenantEmail(supabase, {
+    tenantId: active.tenantId,
+    templateKey: "member_invite",
     to: parsed.data.email,
-    subject: `Convite para ${active.tenant.name}`,
-    html: `
-      <p>Você foi convidado para a empresa <strong>${active.tenant.name}</strong> no Orbit CRM.</p>
-      <p><a href="${link}">Aceitar convite</a></p>
-      <p>Ou copie e cole no navegador:<br />${link}</p>
-    `,
+    vars: { tenant: active.tenant.name, link },
   })
 
   revalidatePath("/app/configuracoes")
