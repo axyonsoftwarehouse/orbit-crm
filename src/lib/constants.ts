@@ -60,6 +60,28 @@ export const MILESTONE_COLORS = [
   "#A461D8",
 ] as const
 
+export const TAG_COLORS = MILESTONE_COLORS
+
+export const CUSTOM_FIELD_TYPES = {
+  text: { label: "Texto" },
+  textarea: { label: "Texto longo" },
+  number: { label: "Número" },
+  date: { label: "Data" },
+  select: { label: "Seleção" },
+  checkbox: { label: "Checkbox" },
+} as const
+
+export type CustomFieldType = keyof typeof CUSTOM_FIELD_TYPES
+
+export const CUSTOM_FIELD_ENTITIES = {
+  company: { label: "Clientes" },
+  project: { label: "Projetos" },
+  task: { label: "Tarefas" },
+  lead: { label: "Leads" },
+} as const
+
+export type CustomFieldEntity = keyof typeof CUSTOM_FIELD_ENTITIES
+
 export const ESTIMATE_STATUSES = {
   1: { label: "Rascunho", color: "#64748b" },
   2: { label: "Enviado", color: "#2563eb" },

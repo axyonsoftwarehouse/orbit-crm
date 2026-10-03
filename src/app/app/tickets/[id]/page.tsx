@@ -10,6 +10,7 @@ import {
   TicketTypeBadge,
 } from "@/components/app/ticket-bits"
 import { AttachmentsSection } from "@/components/app/attachments-section"
+import { TagPicker } from "@/components/app/tag-picker"
 import { TICKET_STATUSES } from "@/lib/constants"
 import { formatDate } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
@@ -22,6 +23,7 @@ import {
   listDepartments,
   listTicketReplies,
 } from "@/server/queries/tickets"
+import { listTags, tagsForEntity } from "@/server/queries/tags"
 import {
   addTicketReplyAction,
   updateTicketStatusAction,
@@ -64,6 +66,11 @@ export default async function TicketDetailPage({
       listProjects(active.tenantId),
       listTenantMembers(active.tenantId),
     ])
+
+  const [entityTags, allTags] = await Promise.all([
+    tagsForEntity(active.tenantId, "ticket", ticket.id),
+    listTags(active.tenantId),
+  ])
 
   const company = ticket.company_id
     ? await getCompany(active.tenantId, ticket.company_id)
@@ -114,6 +121,12 @@ export default async function TicketDetailPage({
             <TicketPriorityBadge priority={ticket.priority} />
             <TicketTypeBadge type={ticket.type} />
           </div>
+          <TagPicker
+            entityType="ticket"
+            entityId={ticket.id}
+            assigned={entityTags}
+            all={allTags}
+          />
         </div>
         <div className="flex items-center gap-2">
           <TicketFormDialog
