@@ -4,6 +4,7 @@ import { EntityAvatar } from "@/components/app/entity-avatar"
 import { TagFilter } from "@/components/app/tag-filter"
 import { Pagination } from "@/components/app/pagination"
 import { ExportButton } from "@/components/app/export-button"
+import { ImportCsvDialog } from "@/components/app/import-csv-dialog"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { PAGE_SIZE, parsePage } from "@/lib/pagination"
@@ -13,6 +14,7 @@ import {
 } from "@/server/queries/companies"
 import { entityIdsByTag, listTags } from "@/server/queries/tags"
 import { listCustomFieldDefinitions } from "@/server/queries/custom-fields"
+import { importCompaniesAction } from "@/server/actions/import"
 import { CompanyFormDialog } from "./company-form-dialog"
 
 export default async function ClientesPage({
@@ -51,8 +53,12 @@ export default async function ClientesPage({
             {total} empresa(s) · contatos, telefone e localização.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <ExportButton href="/app/exportar/clientes" />
+          <ImportCsvDialog
+            action={importCompaniesAction}
+            hint="Colunas: Nome; Telefone; Site; Cidade; País (cabeçalho opcional)."
+          />
           <CompanyFormDialog label="Novo cliente" customFields={customFields} />
         </div>
       </div>

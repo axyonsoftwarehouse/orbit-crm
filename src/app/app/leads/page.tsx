@@ -12,6 +12,7 @@ import { StatusPill } from "@/components/app/status-pill"
 import { TagFilter } from "@/components/app/tag-filter"
 import { Pagination } from "@/components/app/pagination"
 import { ExportButton } from "@/components/app/export-button"
+import { ImportCsvDialog } from "@/components/app/import-csv-dialog"
 import { cn } from "@/lib/utils"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
@@ -27,6 +28,7 @@ import {
 } from "@/server/queries/leads"
 import { entityIdsByTag, listTags } from "@/server/queries/tags"
 import { listCustomFieldDefinitions } from "@/server/queries/custom-fields"
+import { importLeadsAction } from "@/server/actions/import"
 import { LeadFormDialog } from "./lead-form-dialog"
 import { LeadSettingsDialog } from "./lead-settings"
 import { LeadKanban } from "./lead-kanban"
@@ -114,6 +116,10 @@ export default async function LeadsPage({
                 ? `/app/exportar/leads?status=${status}`
                 : "/app/exportar/leads"
             }
+          />
+          <ImportCsvDialog
+            action={importLeadsAction}
+            hint="Colunas: Nome; Empresa; E-mail; Valor (cabeçalho opcional)."
           />
           <LeadSettingsDialog statuses={statuses} sources={sources} />
           <LeadFormDialog
