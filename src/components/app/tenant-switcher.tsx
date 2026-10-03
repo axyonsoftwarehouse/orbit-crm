@@ -5,6 +5,7 @@ import { Building2, Check, ChevronsUpDown } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -65,24 +66,26 @@ export function TenantSwitcher({
             side="bottom"
             sideOffset={4}
           >
-            <DropdownMenuLabel>Empresas</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            {memberships.map((membership) => (
-              <DropdownMenuItem
-                key={membership.tenant.id}
-                onClick={() =>
-                  startTransition(() =>
-                    setActiveTenantAction(membership.tenant.id),
-                  )
-                }
-              >
-                <Building2 className="size-4" />
-                <span className="truncate">{membership.tenant.name}</span>
-                {membership.tenant.id === active.tenant.id && (
-                  <Check className="ml-auto size-4" />
-                )}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuGroup>
+              <DropdownMenuLabel>Empresas</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {memberships.map((membership) => (
+                <DropdownMenuItem
+                  key={membership.tenant.id}
+                  onClick={() =>
+                    startTransition(() =>
+                      setActiveTenantAction(membership.tenant.id),
+                    )
+                  }
+                >
+                  <Building2 className="size-4" />
+                  <span className="truncate">{membership.tenant.name}</span>
+                  {membership.tenant.id === active.tenant.id && (
+                    <Check className="ml-auto size-4" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>

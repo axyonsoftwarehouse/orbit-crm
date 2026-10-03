@@ -7,7 +7,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -45,7 +44,7 @@ export function NotificationsBell({
         ) : null}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        <DropdownMenuLabel className="flex items-center justify-between">
+        <div className="text-muted-foreground flex items-center justify-between px-1.5 py-1 text-xs font-medium">
           <span>Notificações</span>
           {unread > 0 ? (
             <button
@@ -58,7 +57,7 @@ export function NotificationsBell({
               Marcar lidas
             </button>
           ) : null}
-        </DropdownMenuLabel>
+        </div>
         <DropdownMenuSeparator />
         {notifications.length === 0 ? (
           <div className="text-muted-foreground p-3 text-sm">

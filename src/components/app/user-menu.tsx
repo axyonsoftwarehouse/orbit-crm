@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -46,14 +47,16 @@ export function UserMenu({
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-56">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">
-              {profile?.full_name ?? "Usuário"}
-            </span>
-            <span className="text-muted-foreground text-xs">{email}</span>
-          </div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">
+                {profile?.full_name ?? "Usuário"}
+              </span>
+              <span className="text-muted-foreground text-xs">{email}</span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"
