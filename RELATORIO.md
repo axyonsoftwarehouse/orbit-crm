@@ -15,13 +15,13 @@ de **entrega** (clientes → projetos → tarefas → horas) e os módulos
 **financeiro, comercial, atendimento e portal do cliente**, além de itens de
 **plataforma SaaS** (planos/limites, notificações, relatórios, branding e equipe).
 
-- **Fases concluídas:** F0 a F13, além de melhorias transversais (tipagem do banco,
+- **Fases concluídas:** F0 a F14, além de melhorias transversais (tipagem do banco,
   paginação das listas, import/export CSV, confiabilidade e engajamento).
-- **Migrations:** 29 (`0001`–`0029`).
-- **Testes:** 32 unitários + 82 de isolamento RLS (todos verdes).
+- **Migrations:** 30 (`0001`–`0030`).
+- **Testes:** 35 unitários + 85 de isolamento RLS (todos verdes).
 - **Cobertura funcional:** clientes, projetos, tarefas, horas, financeiro (orçamento,
   fatura, pagamento, despesa, contrato), comercial, atendimento, portal do cliente,
-  calendário, atividades (auditoria), tags/campos, planos e branding.
+  calendário, metas, atividades (auditoria), tags/campos, planos e branding.
 - **Falta do plano original:** apenas **cobrança automática** (F6) — adiada por decisão.
 
 **Recomendação:** o produto é um MVP comercializável. Os próximos saltos são
@@ -64,6 +64,7 @@ por projeto/hora e precisam faturar horas e acompanhar a rentabilidade.
 | **Despesas**          | Custos por categoria/projeto/cliente, faturável, relatórios e dashboard.                                                                    |
 | **Contratos**         | Vigência, valor, status e alerta de vencido.                                                                                                |
 | **Calendário**        | Visão mensal agregando eventos, prazos de tarefas, faturas e contratos; cadastro de eventos.                                                |
+| **Metas**             | Metas por período (faturamento, novos leads ou horas faturáveis) com acompanhamento do progresso.                                           |
 | **Atividades**        | Trilha de auditoria (quem criou/atualizou/excluiu) com filtro por entidade.                                                                 |
 | **Relatórios**        | Funil de leads, financeiro, despesas e horas (períodos 30/90/365 dias).                                                                     |
 | **Atendimento**       | Tickets (departamentos, prioridade, notas internas, anexos) + base de conhecimento/FAQ.                                                     |
@@ -111,7 +112,7 @@ middleware (sessão + tenant por subdomínio)
 
 ---
 
-## 5. Modelo de dados (39 tabelas)
+## 5. Modelo de dados (40 tabelas)
 
 **Plataforma:** `profiles`, `tenants`, `memberships`, `invitations`, `plans`,
 `roadmap_items`, `notifications`.
@@ -128,6 +129,8 @@ middleware (sessão + tenant por subdomínio)
 `kb_articles`, `faqs`.
 
 **Agenda e auditoria:** `calendar_events`, `activity_log`.
+
+**Metas:** `goals`.
 
 **Transversais:** `tags`, `taggables`, `custom_field_definitions`,
 `custom_field_values`.
@@ -157,15 +160,15 @@ middleware (sessão + tenant por subdomínio)
 - **Super-admin:** bypass controlado por flag em `profiles`.
 
 > **Risco nº 1 do projeto:** RLS. Por isso há uma suíte dedicada de testes de
-> isolamento (82 casos) — ver seção 7/11 sobre rodá-los localmente.
+> isolamento (85 casos) — ver seção 7/11 sobre rodá-los localmente.
 
 ---
 
 ## 7. Qualidade, testes e CI
 
-- **Unit (Vitest):** 32 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
-  tenant, equipe, despesas, contratos, calendário e CSV).
-- **RLS (Vitest, ambiente node):** 82 testes de isolamento entre dois tenants,
+- **Unit (Vitest):** 35 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
+  tenant, equipe, despesas, contratos, calendário, metas e CSV).
+- **RLS (Vitest, ambiente node):** 85 testes de isolamento entre dois tenants,
   cobrindo seleção/inserção/atualização/exclusão, Storage e auditoria.
 - **E2E:** Playwright configurado (smoke), cobertura a ampliar.
 - **CI (GitHub Actions):** `ci.yml` roda `format:check`, `lint`, `typecheck`, `test` e
@@ -201,11 +204,10 @@ middleware (sessão + tenant por subdomínio)
 
 **Prioridade média (ampliação de valor)**
 
-5. **Metas/goals de vendas** e dashboard comercial.
-6. **Relatórios adicionais** (produtividade, leads por origem, despesas).
-7. **Modelos de e-mail editáveis + histórico de envios**.
-8. **Contratos e despesas no portal do cliente** (visibilidade controlada).
-9. **Campos personalizados/tags no portal** e **tipos extras** (URL/moeda/multisseleção).
+5. **Relatórios adicionais** (produtividade, leads por origem, despesas).
+6. **Modelos de e-mail editáveis + histórico de envios**.
+7. **Contratos e despesas no portal do cliente** (visibilidade controlada).
+8. **Campos personalizados/tags no portal** e **tipos extras** (URL/moeda/multisseleção).
 
 **Prioridade de plataforma (escala/enterprise)**
 
@@ -282,7 +284,7 @@ middleware (sessão + tenant por subdomínio)
 ### Rotas internas (`/app`)
 
 `/app` (dashboard), `clientes`, `leads`, `projetos`, `tarefas`, `timesheet`,
-`calendario`, `orcamentos`, `faturas`, `despesas`, `contratos`, `relatorios`,
+`calendario`, `orcamentos`, `faturas`, `despesas`, `contratos`, `metas`, `relatorios`,
 `atividades`, `tickets`, `base-conhecimento`, `configuracoes`, `exportar/[entity]`.
 
 ### Rotas do portal (`/portal`)

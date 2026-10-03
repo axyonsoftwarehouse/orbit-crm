@@ -117,6 +117,8 @@ tags/campos personalizados, portal do cliente.
 - **Engajamento** ✅ `notifications` em tempo real (Realtime + `router.refresh`) e preferências de e-mail em Configurações.
 - **F13 — Log de auditoria** ✅ **concluída**
   - ✅ **F13.1 — Atividades** (migration `0029`: `activity_log` + trigger genérico `log_activity` em 11 tabelas de negócio; `/app/atividades` com filtro por entidade, autor e paginação; escrita exclusivamente via trigger).
+- **F14 — Metas** ✅ **concluída**
+  - ✅ **F14.1 — Metas** (migration `0030`: `goals` por período com métrica faturamento/leads/horas; progresso calculado; `/app/metas` com CRUD e barras de progresso).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura
