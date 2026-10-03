@@ -33,6 +33,34 @@ export async function setActiveTenantAction(tenantId: string) {
 export type TenantSettingsState =
   { error?: string; success?: string } | undefined
 
+export async function updateWebToLeadAction(
+  _prevState: TenantSettingsState,
+  formData: FormData,
+): Promise<TenantSettingsState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+  if (!["owner", "admin"].includes(active.role)) {
+    return { error: "Você não tem permissão para editar a empresa." }
+  }
+
+  const enabled = formData.get("web_to_lead_enabled") === "on"
+  const sourceId = String(formData.get("web_to_lead_source_id") ?? "") || null
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("tenants")
+    .update({
+      web_to_lead_enabled: enabled,
+      web_to_lead_source_id: sourceId,
+    })
+    .eq("id", active.tenantId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath("/app/configuracoes")
+  return { success: "Configuração salva." }
+}
+
 const MAX_LOGO_BYTES = 2 * 1024 * 1024
 
 export async function updateTenantSettingsAction(

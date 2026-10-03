@@ -5,6 +5,7 @@ import { getActiveTenant } from "@/lib/tenant"
 import { listTags } from "@/server/queries/tags"
 import { listCustomFieldDefinitionsAll } from "@/server/queries/custom-fields"
 import { listEmailLog, listEmailTemplates } from "@/server/queries/email"
+import { listLeadSources } from "@/server/queries/leads"
 import { listPendingInvitations, listTeamMembers } from "@/server/queries/team"
 import { TagsSection } from "./tags-section"
 import { CustomFieldsSection } from "./custom-fields-section"
@@ -12,6 +13,7 @@ import { CompanySettingsForm } from "./company-settings-form"
 import { TeamSection } from "./team-section"
 import { NotificationPrefsForm } from "./notification-prefs-form"
 import { EmailSection } from "./email-section"
+import { WebToLeadForm } from "./web-to-lead-form"
 
 const TABS = [
   { key: "empresa", label: "Empresa" },
@@ -20,6 +22,7 @@ const TABS = [
   { key: "campos", label: "Campos personalizados" },
   { key: "notificacoes", label: "Notificações" },
   { key: "email", label: "E-mail" },
+  { key: "captacao", label: "Captação" },
 ]
 
 export default async function ConfiguracoesPage({
@@ -71,6 +74,14 @@ export default async function ConfiguracoesPage({
         <NotificationPrefsForm notifyEmail={profile?.notify_email ?? true} />
       ) : tab === "email" ? (
         <EmailContent tenantId={active.tenant.id} canManage={canManage} />
+      ) : tab === "captacao" ? (
+        <WebToLeadContent
+          tenantId={active.tenant.id}
+          slug={active.tenant.slug}
+          enabled={active.tenant.webToLeadEnabled}
+          sourceId={active.tenant.webToLeadSourceId}
+          canManage={canManage}
+        />
       ) : (
         <CompanySettingsForm
           name={active.tenant.name}
@@ -125,4 +136,32 @@ async function EmailContent({
     listEmailLog(tenantId),
   ])
   return <EmailSection templates={templates} log={log} canManage={canManage} />
+}
+
+async function WebToLeadContent({
+  tenantId,
+  slug,
+  enabled,
+  sourceId,
+  canManage,
+}: {
+  tenantId: string
+  slug: string
+  enabled: boolean
+  sourceId: string | null
+  canManage: boolean
+}) {
+  const sources = await listLeadSources(tenantId)
+  return (
+    <WebToLeadForm
+      enabled={enabled}
+      sourceId={sourceId}
+      slug={slug}
+      sources={sources.map((source) => ({
+        id: source.id,
+        name: source.name,
+      }))}
+      canManage={canManage}
+    />
+  )
 }

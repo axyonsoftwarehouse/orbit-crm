@@ -9,6 +9,8 @@ export type MembershipTenant = {
   slug: string
   primaryColor: string | null
   logoUrl: string | null
+  webToLeadEnabled: boolean
+  webToLeadSourceId: string | null
 }
 
 export type Membership = {
@@ -33,6 +35,8 @@ type RawMembership = {
     slug: string
     primary_color: string | null
     logo_url: string | null
+    web_to_lead_enabled: boolean
+    web_to_lead_source_id: string | null
   } | null
 }
 
@@ -71,7 +75,9 @@ export const getMemberships = cache(async (): Promise<Membership[]> => {
   const supabase = await createClient()
   const { data } = await supabase
     .from("memberships")
-    .select("role, tenant:tenants(id, name, slug, primary_color, logo_url)")
+    .select(
+      "role, tenant:tenants(id, name, slug, primary_color, logo_url, web_to_lead_enabled, web_to_lead_source_id)",
+    )
     .eq("user_id", user.id)
     .eq("status", "active")
 
@@ -88,6 +94,8 @@ export const getMemberships = cache(async (): Promise<Membership[]> => {
         slug: row.tenant!.slug,
         primaryColor: row.tenant!.primary_color,
         logoUrl: row.tenant!.logo_url,
+        webToLeadEnabled: row.tenant!.web_to_lead_enabled,
+        webToLeadSourceId: row.tenant!.web_to_lead_source_id,
       },
     }))
 })

@@ -2258,6 +2258,8 @@ export type Database = {
           ticket_prefix: string
           trial_ends_at: string | null
           updated_at: string
+          web_to_lead_enabled: boolean
+          web_to_lead_source_id: string | null
         }
         Insert: {
           created_at?: string
@@ -2280,6 +2282,8 @@ export type Database = {
           ticket_prefix?: string
           trial_ends_at?: string | null
           updated_at?: string
+          web_to_lead_enabled?: boolean
+          web_to_lead_source_id?: string | null
         }
         Update: {
           created_at?: string
@@ -2302,6 +2306,8 @@ export type Database = {
           ticket_prefix?: string
           trial_ends_at?: string | null
           updated_at?: string
+          web_to_lead_enabled?: boolean
+          web_to_lead_source_id?: string | null
         }
         Relationships: [
           {
@@ -2309,6 +2315,13 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenants_web_to_lead_source_fk"
+            columns: ["web_to_lead_source_id"]
+            isOneToOne: false
+            referencedRelation: "lead_sources"
             referencedColumns: ["id"]
           },
         ]

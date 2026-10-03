@@ -9,6 +9,7 @@ import { contractSchema } from "@/lib/validations/contracts"
 import { calendarEventSchema } from "@/lib/validations/calendar"
 import { goalSchema } from "@/lib/validations/goals"
 import { renderTemplate } from "@/lib/email-templates"
+import { publicLeadSchema } from "@/lib/validations/public-lead"
 import {
   acceptInvitationSchema,
   inviteMemberSchema,
@@ -277,5 +278,31 @@ describe("renderTemplate", () => {
 
   it("remove variáveis ausentes", () => {
     expect(renderTemplate("{{x}}{{y}}", { x: "a" })).toBe("a")
+  })
+})
+
+describe("publicLeadSchema", () => {
+  it("aceita nome e e-mail válidos", () => {
+    const result = publicLeadSchema.safeParse({
+      name: "Ana",
+      email: "ana@orbit.test",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejeita nome vazio", () => {
+    expect(publicLeadSchema.safeParse({ name: "" }).success).toBe(false)
+  })
+
+  it("rejeita e-mail inválido", () => {
+    expect(
+      publicLeadSchema.safeParse({ name: "Ana", email: "invalido" }).success,
+    ).toBe(false)
+  })
+
+  it("aceita e-mail em branco", () => {
+    expect(publicLeadSchema.safeParse({ name: "Ana", email: "" }).success).toBe(
+      true,
+    )
   })
 })
