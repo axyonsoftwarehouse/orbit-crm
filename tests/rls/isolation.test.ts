@@ -36,6 +36,8 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   let projectBId = ""
   let taskAId = ""
   let taskBId = ""
+  let milestoneAId = ""
+  let milestoneBId = ""
   let estimateAId = ""
   let estimateBId = ""
   let invoiceAId = ""
@@ -136,6 +138,28 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     if (tskA.error || tskB.error) throw tskA.error ?? tskB.error
     taskAId = tskA.data!.id
     taskBId = tskB.data!.id
+
+    const mA = await admin
+      .from("milestones")
+      .insert({
+        tenant_id: tenantA,
+        project_id: projectAId,
+        name: `Marco A ${suffix}`,
+      })
+      .select("id")
+      .single()
+    const mB = await admin
+      .from("milestones")
+      .insert({
+        tenant_id: tenantB,
+        project_id: projectBId,
+        name: `Marco B ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (mA.error || mB.error) throw mA.error ?? mB.error
+    milestoneAId = mA.data!.id
+    milestoneBId = mB.data!.id
 
     const today = new Date().toISOString().slice(0, 10)
     const eA = await admin
@@ -734,5 +758,46 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       .eq("id", id)
       .select("id")
     expect(deleted.data ?? []).toEqual([])
+  })
+
+  it("A vê o marco do próprio projeto", async () => {
+    const { data } = await clientA
+      .from("milestones")
+      .select("id")
+      .eq("id", milestoneAId)
+    expect(data?.length).toBe(1)
+  })
+
+  it("A não vê o marco de B", async () => {
+    const { data } = await clientA
+      .from("milestones")
+      .select("id")
+      .eq("id", milestoneBId)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar marco em projeto de outro tenant", async () => {
+    const { error } = await clientA.from("milestones").insert({
+      tenant_id: tenantA,
+      project_id: projectBId,
+      name: "Cross tenant",
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A vincula uma tarefa a um marco do próprio projeto", async () => {
+    const { error } = await clientA
+      .from("tasks")
+      .update({ milestone_id: milestoneAId })
+      .eq("id", taskAId)
+    expect(error).toBeNull()
+  })
+
+  it("A não pode vincular tarefa a marco de outro projeto", async () => {
+    const { error } = await clientA
+      .from("tasks")
+      .update({ milestone_id: milestoneBId })
+      .eq("id", taskAId)
+    expect(error).not.toBeNull()
   })
 })

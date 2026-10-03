@@ -12,6 +12,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { ProgressBar, ProjectStatusBadge } from "@/components/app/project-bits"
+import { MilestoneStatusBadge } from "@/components/app/milestone-bits"
+import { ProjectGantt } from "@/components/app/project-gantt"
 import { TaskStatusBadge } from "@/components/app/task-bits"
 import { CommentsSection } from "@/components/app/comments-section"
 import { AttachmentsSection } from "@/components/app/attachments-section"
@@ -33,12 +35,18 @@ import {
   listProjects,
   listTenantMembers,
 } from "@/server/queries/projects"
+import {
+  listMilestoneOptions,
+  listMilestones,
+} from "@/server/queries/milestones"
 import { listTasks } from "@/server/queries/tasks"
 import { addProjectMemberAction } from "@/server/actions/projects"
 import { TaskFormDialog } from "../../tarefas/task-form-dialog"
 import { ProjectFormDialog } from "../project-form-dialog"
 import { DeleteProjectButton } from "../delete-project-button"
 import { RemoveMemberButton } from "./remove-member-button"
+import { MilestoneFormDialog } from "./milestone-form-dialog"
+import { DeleteMilestoneButton } from "./delete-milestone-button"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -85,6 +93,8 @@ export default async function ProjectDetailPage({
     tenantMembers,
     tasks,
     billableEntries,
+    milestones,
+    milestoneOptions,
   ] = await Promise.all([
     project.company_id
       ? getCompany(active.tenantId, project.company_id)
@@ -95,6 +105,8 @@ export default async function ProjectDetailPage({
     listTenantMembers(active.tenantId),
     listTasks(active.tenantId, { projectId: project.id }),
     listUnbilledBillableEntries(active.tenantId, project.id),
+    listMilestones(active.tenantId, project.id),
+    listMilestoneOptions(active.tenantId),
   ])
 
   const billable = summarizeBillable(billableEntries)
@@ -185,6 +197,68 @@ export default async function ProjectDetailPage({
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-base">
+            Marcos
+            {milestones.length > 0 ? (
+              <span className="text-muted-foreground ml-2 text-xs font-normal">
+                {milestones.filter((item) => item.status === 3).length}/
+                {milestones.length}
+              </span>
+            ) : null}
+          </CardTitle>
+          <MilestoneFormDialog projectId={project.id} label="Novo marco" />
+        </CardHeader>
+        <CardContent className="px-0">
+          {milestones.length === 0 ? (
+            <p className="text-muted-foreground px-6 py-4 text-sm">
+              Nenhum marco definido neste projeto.
+            </p>
+          ) : (
+            <ul className="divide-y">
+              {milestones.map((milestone) => (
+                <li
+                  key={milestone.id}
+                  className="flex flex-wrap items-center justify-between gap-3 px-6 py-3"
+                >
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="size-2.5 shrink-0 rounded-full"
+                      style={{ backgroundColor: milestone.color }}
+                    />
+                    <div>
+                      <p className="text-sm font-medium">{milestone.name}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {milestone.due_date
+                          ? `Prazo ${date(milestone.due_date)}`
+                          : "Sem prazo"}
+                        {milestone.task_count > 0
+                          ? ` · ${milestone.done_count}/${milestone.task_count} tarefas`
+                          : ""}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <MilestoneStatusBadge status={milestone.status} />
+                    <ProgressBar value={milestone.progress} />
+                    <MilestoneFormDialog
+                      projectId={project.id}
+                      milestone={milestone}
+                      label="Editar"
+                    />
+                    <DeleteMilestoneButton
+                      id={milestone.id}
+                      projectId={project.id}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="flex-row items-center justify-between">
+          <CardTitle className="text-base">
             Tarefas
             {tasks.length > 0 ? (
               <span className="text-muted-foreground ml-2 text-xs font-normal">
@@ -195,6 +269,7 @@ export default async function ProjectDetailPage({
           <TaskFormDialog
             projects={projectOptions}
             members={tenantMembers}
+            milestones={milestoneOptions}
             defaultProjectId={project.id}
             label="Nova tarefa"
           />
@@ -246,6 +321,20 @@ export default async function ProjectDetailPage({
               )}
             </TableBody>
           </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Cronograma</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ProjectGantt
+            tasks={tasks}
+            milestones={milestones}
+            projectStart={project.start_date}
+            projectDeadline={project.deadline}
+          />
         </CardContent>
       </Card>
 

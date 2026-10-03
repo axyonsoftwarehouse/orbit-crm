@@ -16,6 +16,7 @@ import {
   listTenantMembers,
 } from "@/server/queries/projects"
 import { getTask, listChecklist } from "@/server/queries/tasks"
+import { listMilestoneOptions } from "@/server/queries/milestones"
 import {
   addChecklistItemAction,
   deleteChecklistItemAction,
@@ -50,17 +51,23 @@ export default async function TaskDetailPage({
   const task = await getTask(active.tenantId, id)
   if (!task) notFound()
 
-  const [project, projects, members, checklist] = await Promise.all([
-    getProject(active.tenantId, task.project_id),
-    listProjects(active.tenantId),
-    listTenantMembers(active.tenantId),
-    listChecklist(active.tenantId, task.id),
-  ])
+  const [project, projects, members, checklist, milestones] = await Promise.all(
+    [
+      getProject(active.tenantId, task.project_id),
+      listProjects(active.tenantId),
+      listTenantMembers(active.tenantId),
+      listChecklist(active.tenantId, task.id),
+      listMilestoneOptions(active.tenantId),
+    ],
+  )
 
   const projectOptions = projects.map((item) => ({
     id: item.id,
     name: item.name,
   }))
+  const milestoneName =
+    milestones.find((milestone) => milestone.id === task.milestone_id)?.name ??
+    null
   const assigneeName =
     members.find((member) => member.user_id === task.assignee_id)?.full_name ??
     null
@@ -88,6 +95,7 @@ export default async function TaskDetailPage({
           <TaskFormDialog
             projects={projectOptions}
             members={members}
+            milestones={milestones}
             task={task}
             label="Editar"
           />
@@ -118,6 +126,7 @@ export default async function TaskDetailPage({
                 </dd>
               </div>
               <DetailRow label="Responsável" value={assigneeName} />
+              <DetailRow label="Marco" value={milestoneName} />
               <DetailRow label="Início" value={formatDate(task.start_date)} />
               <DetailRow label="Prazo" value={formatDate(task.due_date)} />
               <DetailRow

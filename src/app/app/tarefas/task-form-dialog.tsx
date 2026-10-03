@@ -22,6 +22,7 @@ import {
   type TaskFormState,
 } from "@/server/actions/tasks"
 import type { Task } from "@/server/queries/tasks"
+import type { MilestoneOption } from "@/server/queries/milestones"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -29,17 +30,25 @@ const fieldClass =
 export function TaskFormDialog({
   projects,
   members,
+  milestones,
   task,
   defaultProjectId,
   label,
 }: {
   projects: { id: string; name: string }[]
   members: { user_id: string; full_name: string | null }[]
+  milestones?: MilestoneOption[]
   task?: Task
   defaultProjectId?: string
   label: string
 }) {
   const [open, setOpen] = useState(false)
+  const [projectId, setProjectId] = useState(
+    task?.project_id ?? defaultProjectId ?? "",
+  )
+  const projectMilestones = (milestones ?? []).filter(
+    (milestone) => milestone.project_id === projectId,
+  )
   const action = task ? updateTaskAction : createTaskAction
   const [state, formAction, isPending] = useActionState<
     TaskFormState,
@@ -92,7 +101,8 @@ export function TaskFormDialog({
                 id="task-project"
                 name="project_id"
                 required
-                defaultValue={task?.project_id ?? defaultProjectId ?? ""}
+                value={projectId}
+                onChange={(event) => setProjectId(event.target.value)}
                 className={fieldClass}
               >
                 <option value="" disabled>
@@ -105,6 +115,25 @@ export function TaskFormDialog({
                 ))}
               </select>
             </div>
+            {milestones && projectMilestones.length > 0 ? (
+              <div className="space-y-2">
+                <Label htmlFor="task-milestone">Marco</Label>
+                <select
+                  id="task-milestone"
+                  name="milestone_id"
+                  key={projectId}
+                  defaultValue={task?.milestone_id ?? ""}
+                  className={fieldClass}
+                >
+                  <option value="">— Nenhum —</option>
+                  {projectMilestones.map((milestone) => (
+                    <option key={milestone.id} value={milestone.id}>
+                      {milestone.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div className="space-y-2">
               <Label htmlFor="task-assignee">Responsável</Label>
               <select

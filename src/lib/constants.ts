@@ -42,6 +42,24 @@ export const TASK_PRIORITIES = {
 
 export type TaskPriority = keyof typeof TASK_PRIORITIES
 
+export const MILESTONE_STATUSES = {
+  1: { label: "Pendente", color: "#64748b" },
+  2: { label: "Em andamento", color: "#2563eb" },
+  3: { label: "Concluído", color: "#16a34a" },
+} as const
+
+export type MilestoneStatus = keyof typeof MILESTONE_STATUSES
+
+export const MILESTONE_COLORS = [
+  "#0062FF",
+  "#FFC542",
+  "#50B5FF",
+  "#3DD598",
+  "#FF974A",
+  "#FF5A5A",
+  "#A461D8",
+] as const
+
 export const ESTIMATE_STATUSES = {
   1: { label: "Rascunho", color: "#64748b" },
   2: { label: "Enviado", color: "#2563eb" },

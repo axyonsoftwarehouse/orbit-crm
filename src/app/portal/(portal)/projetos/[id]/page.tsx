@@ -3,10 +3,12 @@ import { notFound } from "next/navigation"
 import { ArrowLeft, FileText } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ProgressBar, ProjectStatusBadge } from "@/components/app/project-bits"
+import { MilestoneStatusBadge } from "@/components/app/milestone-bits"
 import { TaskStatusBadge } from "@/components/app/task-bits"
 import { formatDate } from "@/lib/format"
 import { getPortalContact, getPortalProject } from "@/server/queries/portal"
 import { listTasks } from "@/server/queries/tasks"
+import { listMilestones } from "@/server/queries/milestones"
 import { listAttachments } from "@/server/queries/attachments"
 
 export default async function PortalProjectDetailPage({
@@ -21,8 +23,9 @@ export default async function PortalProjectDetailPage({
   const project = await getPortalProject(contact.company_id, id)
   if (!project) notFound()
 
-  const [tasks, attachments] = await Promise.all([
+  const [tasks, milestones, attachments] = await Promise.all([
     listTasks(contact.tenant_id, { projectId: project.id }),
+    listMilestones(contact.tenant_id, project.id),
     listAttachments(contact.tenant_id, "project", project.id),
   ])
 
@@ -82,6 +85,36 @@ export default async function PortalProjectDetailPage({
           )}
         </CardContent>
       </Card>
+
+      {milestones.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Marcos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {milestones.map((milestone) => (
+              <div
+                key={milestone.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-b pb-2 last:border-0 last:pb-0"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className="size-2.5 rounded-full"
+                    style={{ backgroundColor: milestone.color }}
+                  />
+                  <span className="text-sm">{milestone.name}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-muted-foreground text-xs">
+                    {formatDate(milestone.due_date)}
+                  </span>
+                  <MilestoneStatusBadge status={milestone.status} />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ) : null}
 
       {attachments.length > 0 ? (
         <Card>

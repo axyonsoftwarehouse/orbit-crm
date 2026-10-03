@@ -24,6 +24,7 @@ export type Task = {
   due_date: string | null
   date_finished: string | null
   assignee_id: string | null
+  milestone_id: string | null
   billable: boolean
   hourly_rate: number | null
 }

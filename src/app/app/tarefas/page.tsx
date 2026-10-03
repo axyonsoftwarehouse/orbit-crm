@@ -4,6 +4,7 @@ import { getActiveTenant } from "@/lib/tenant"
 import { TASK_STATUSES } from "@/lib/constants"
 import { cn } from "@/lib/utils"
 import { listProjects, listTenantMembers } from "@/server/queries/projects"
+import { listMilestoneOptions } from "@/server/queries/milestones"
 import { listTasks, type TaskListRow } from "@/server/queries/tasks"
 import { TaskFormDialog } from "./task-form-dialog"
 import { TaskDetailDialog } from "./task-detail-dialog"
@@ -85,10 +86,11 @@ export default async function TarefasPage({
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [tasks, projects, members] = await Promise.all([
+  const [tasks, projects, members, milestones] = await Promise.all([
     listTasks(active.tenantId),
     listProjects(active.tenantId),
     listTenantMembers(active.tenantId),
+    listMilestoneOptions(active.tenantId),
   ])
 
   const projectOptions = projects.map((project) => ({
@@ -129,6 +131,7 @@ export default async function TarefasPage({
           <TaskFormDialog
             projects={projectOptions}
             members={members}
+            milestones={milestones}
             label="Nova tarefa"
           />
         </div>

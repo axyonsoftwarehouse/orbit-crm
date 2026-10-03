@@ -14,6 +14,7 @@ export const taskSchema = z.object({
   start_date: optionalDate,
   due_date: optionalDate,
   assignee_id: z.string().uuid().optional(),
+  milestone_id: z.string().uuid().optional(),
   billable: z.boolean().default(false),
   hourly_rate: optionalNumber(),
 })

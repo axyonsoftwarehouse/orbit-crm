@@ -20,6 +20,7 @@ function parseTask(formData: FormData) {
     start_date: formData.get("start_date") || undefined,
     due_date: formData.get("due_date") || undefined,
     assignee_id: formData.get("assignee_id") || undefined,
+    milestone_id: formData.get("milestone_id") || undefined,
     billable: formData.get("billable") === "on",
     hourly_rate: formData.get("hourly_rate"),
   })
