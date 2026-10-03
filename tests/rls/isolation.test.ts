@@ -47,6 +47,7 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   let invoiceAId = ""
   let invoiceBId = ""
   const storagePaths: string[] = []
+  const brandingPaths: string[] = []
   let clientA: SupabaseClient
   let clientB: SupabaseClient
 
@@ -280,6 +281,9 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   afterAll(async () => {
     if (storagePaths.length > 0) {
       await admin.storage.from("attachments").remove(storagePaths)
+    }
+    if (brandingPaths.length > 0) {
+      await admin.storage.from("branding").remove(brandingPaths)
     }
     if (tenantA && tenantB) {
       await admin.from("tenants").delete().in("id", [tenantA, tenantB])
@@ -965,5 +969,50 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       .select("id")
       .eq("entity_id", companyBId)
     expect(data).toEqual([])
+  })
+
+  it("A cria convite no próprio tenant e não vê de B", async () => {
+    const created = await clientA
+      .from("invitations")
+      .insert({ tenant_id: tenantA, email: `novo-${suffix}@orbit.test` })
+    expect(created.error).toBeNull()
+
+    const { data } = await clientA
+      .from("invitations")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar convite em outro tenant", async () => {
+    const { error } = await clientA
+      .from("invitations")
+      .insert({ tenant_id: tenantB, email: `cross-${suffix}@orbit.test` })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não vê os membros de B", async () => {
+    const { data } = await clientA
+      .from("memberships")
+      .select("user_id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("Storage branding: A envia no próprio tenant e é barrado em outro", async () => {
+    const blob = new Blob(["logo"], { type: "image/png" })
+
+    const ownPath = `${tenantA}/logo-${randomUUID()}.png`
+    const own = await clientA.storage
+      .from("branding")
+      .upload(ownPath, blob, { contentType: "image/png" })
+    if (!own.error) brandingPaths.push(ownPath)
+    expect(own.error).toBeNull()
+
+    const otherPath = `${tenantB}/logo-${randomUUID()}.png`
+    const other = await clientA.storage
+      .from("branding")
+      .upload(otherPath, blob, { contentType: "image/png" })
+    expect(other.error).not.toBeNull()
   })
 })

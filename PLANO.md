@@ -105,6 +105,9 @@ tags/campos personalizados, portal do cliente.
 - **F8 — Tags + Campos personalizados** ✅ **concluída**
   - ✅ **F8.1 — Tags** (migration `0019`: `tags` + vínculo polimórfico `taggables`; projetos, tarefas, leads, tickets e clientes; chips no detalhe, filtro `?tag=` nas listas, gestão em Configurações).
   - ✅ **F8.2 — Campos personalizados** (migration `0020`: `custom_field_definitions` + `custom_field_values` polimórficos; clientes, projetos, tarefas e leads; tipos texto, texto longo, número, data, seleção e checkbox; definição em Configurações, edição nos dialogs e leitura no detalhe).
+- **F9 — Empresa & Equipe** ✅ **concluída**
+  - ✅ **F9.1 — Configurações da empresa** (migration `0021`: bucket público `branding`; nome, cor primária aplicada como CSS vars no `/app` e logo por tenant).
+  - ✅ **F9.2 — Equipe & convites** (`invitations` antes sem uso: convidar por e-mail (Resend) com link `/convite/<token>`, papéis, remover membro, revogar convite e aceite que cria/reaproveita o usuário e associa o membership).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura

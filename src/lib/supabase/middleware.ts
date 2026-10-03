@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
 const PROTECTED_PREFIXES = ["/app", "/plataforma", "/portal"]
-const AUTH_PREFIXES = ["/login", "/convite", "/portal/login"]
+const AUTH_PREFIXES = ["/login", "/portal/login"]
 
 export async function updateSession(request: NextRequest) {
   // Resolução de tenant por subdomínio (inativo até definir NEXT_PUBLIC_ROOT_DOMAIN)

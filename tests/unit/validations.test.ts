@@ -3,6 +3,11 @@ import { signInSchema } from "@/lib/validations/auth"
 import { milestoneSchema } from "@/lib/validations/milestones"
 import { tagSchema } from "@/lib/validations/tags"
 import { customFieldDefinitionSchema } from "@/lib/validations/custom-fields"
+import { tenantSettingsSchema } from "@/lib/validations/tenant"
+import {
+  acceptInvitationSchema,
+  inviteMemberSchema,
+} from "@/lib/validations/team"
 
 describe("signInSchema", () => {
   it("aceita e-mail e senha válidos", () => {
@@ -104,6 +109,51 @@ describe("customFieldDefinitionSchema", () => {
     const result = customFieldDefinitionSchema.safeParse({
       ...base,
       entity_type: "invoice",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("tenantSettingsSchema", () => {
+  it("aceita nome e cor válidos", () => {
+    const result = tenantSettingsSchema.safeParse({
+      name: "Minha Empresa",
+      primary_color: "#ff0000",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("rejeita cor inválida", () => {
+    const result = tenantSettingsSchema.safeParse({
+      name: "Empresa",
+      primary_color: "vermelho",
+    })
+    expect(result.success).toBe(false)
+  })
+})
+
+describe("team schemas", () => {
+  it("normaliza e-mail e define papel padrão", () => {
+    const result = inviteMemberSchema.safeParse({ email: " User@Orbit.TEST " })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data.email).toBe("user@orbit.test")
+      expect(result.data.role).toBe("member")
+    }
+  })
+
+  it("rejeita papel inválido", () => {
+    const result = inviteMemberSchema.safeParse({
+      email: "user@orbit.test",
+      role: "owner",
+    })
+    expect(result.success).toBe(false)
+  })
+
+  it("exige senha com ao menos 8 caracteres", () => {
+    const result = acceptInvitationSchema.safeParse({
+      full_name: "Fulano",
+      password: "123",
     })
     expect(result.success).toBe(false)
   })
