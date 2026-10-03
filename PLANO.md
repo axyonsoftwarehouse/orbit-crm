@@ -121,6 +121,8 @@ tags/campos personalizados, portal do cliente.
   - ✅ **F14.1 — Metas** (migration `0030`: `goals` por período com métrica faturamento/leads/horas; progresso calculado; `/app/metas` com CRUD e barras de progresso).
 - **F15 — Modelos de e-mail e histórico** ✅ **concluída**
   - ✅ **F15.1 — E-mail** (migration `0031`: `email_templates` (assunto/corpo por tenant) e `email_log`; envio com variáveis `{{...}}` e fallback padrão; Configurações › E-mail com edição de modelos e envios recentes; lembretes e convites usam os modelos).
+- **F16 — Web-to-lead** ✅ **concluída**
+  - ✅ **F16.1 — Formulário público** (migration `0032`: `tenants.web_to_lead_enabled`/`web_to_lead_source_id`; página pública `/f/[slug]` com honeypot anti-bot; envios viram leads com origem; Configurações › Captação para ativar e copiar o link).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura

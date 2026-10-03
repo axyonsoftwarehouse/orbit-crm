@@ -15,14 +15,14 @@ de **entrega** (clientes → projetos → tarefas → horas) e os módulos
 **financeiro, comercial, atendimento e portal do cliente**, além de itens de
 **plataforma SaaS** (planos/limites, notificações, relatórios, branding e equipe).
 
-- **Fases concluídas:** F0 a F15, além de melhorias transversais (tipagem do banco,
+- **Fases concluídas:** F0 a F16, além de melhorias transversais (tipagem do banco,
   paginação das listas, import/export CSV, confiabilidade e engajamento).
-- **Migrations:** 31 (`0001`–`0031`).
-- **Testes:** 37 unitários + 88 de isolamento RLS (todos verdes).
+- **Migrations:** 32 (`0001`–`0032`).
+- **Testes:** 41 unitários + 88 de isolamento RLS (todos verdes).
 - **Cobertura funcional:** clientes, projetos, tarefas, horas, financeiro (orçamento,
-  fatura, pagamento, despesa, contrato), comercial, atendimento, portal do cliente,
-  calendário, metas, atividades (auditoria), modelos de e-mail, tags/campos, planos e
-  branding.
+  fatura, pagamento, despesa, contrato), comercial, captação web-to-lead, atendimento,
+  portal do cliente, calendário, metas, atividades (auditoria), modelos de e-mail,
+  tags/campos, planos e branding.
 - **Falta do plano original:** apenas **cobrança automática** (F6) — adiada por decisão.
 
 **Recomendação:** o produto é um MVP comercializável. Os próximos saltos são
@@ -57,6 +57,7 @@ por projeto/hora e precisam faturar horas e acompanhar a rentabilidade.
 | **Empresas e equipe** | Criar workspace, convidar equipe por e-mail (papéis), gerenciar membros e branding (nome, cor, logo).                                       |
 | **Clientes**          | Cadastrar empresas e contatos, importar/exportar CSV, convidar contato para o portal.                                                       |
 | **Leads (CRM)**       | Pipeline Kanban, status/origens configuráveis, atividades, conversão em cliente, importar/exportar CSV.                                     |
+| **Captação**          | Formulário público por empresa (`/f/slug`) que cria leads, com anti-bot e origem configurável.                                              |
 | **Projetos**          | Equipe, orçamento/valores, prazos, progresso, **marcos** e **cronograma (Gantt)**.                                                          |
 | **Tarefas**           | Lista/Kanban, checklist, responsável, prioridade, prazo, vínculo a marcos.                                                                  |
 | **Timesheet**         | Timer e lançamento manual, faturável/valor-hora, totais e exportação.                                                                       |
@@ -170,8 +171,8 @@ middleware (sessão + tenant por subdomínio)
 
 ## 7. Qualidade, testes e CI
 
-- **Unit (Vitest):** 37 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
-  tenant, equipe, despesas, contratos, calendário, metas, templates e CSV).
+- **Unit (Vitest):** 41 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
+  tenant, equipe, despesas, contratos, calendário, metas, templates, captação e CSV).
 - **RLS (Vitest, ambiente node):** 88 testes de isolamento entre dois tenants,
   cobrindo seleção/inserção/atualização/exclusão, Storage, auditoria e e-mail.
 - **E2E:** Playwright configurado (smoke), cobertura a ampliar.
@@ -216,7 +217,7 @@ middleware (sessão + tenant por subdomínio)
 
 8. **API pública + webhooks**, **2FA**, **permissões granulares**.
 9. **Multi-moeda e impostos**, **self-signup/onboarding** e ativação do subdomínio.
-10. **Pesquisas (surveys)**, **anúncios**, **web-to-lead** (formulários públicos).
+10. **Pesquisas (surveys)** e **anúncios** no portal.
 11. **Gantt interativo** (drag/dependências) e **visão de portfólio**.
 
 ---
@@ -293,6 +294,10 @@ middleware (sessão + tenant por subdomínio)
 ### Rotas do portal (`/portal`)
 
 `projetos`, `orcamentos`, `faturas`, `tickets`, `ajuda`.
+
+### Rotas públicas
+
+`/login`, `/convite/[token]` (aceite de convite) e `/f/[slug]` (formulário de captação).
 
 ### Scripts npm
 
