@@ -3,7 +3,7 @@
 > Documento único, com duas leituras: **negócio** (seções 1–3 e 9) e **técnica**
 > (seções 4–8 e 10–13). Atualizado em outubro/2026.
 > Fonte da verdade do planejamento: `PLANO.md` e a tabela `roadmap_items`
-> (migration `0017`/`0022`).
+> (migrations `0017`, `0022` e `0026`).
 
 ---
 
@@ -15,17 +15,20 @@ de **entrega** (clientes → projetos → tarefas → horas) e os módulos
 **financeiro, comercial, atendimento e portal do cliente**, além de itens de
 **plataforma SaaS** (planos/limites, notificações, relatórios, branding e equipe).
 
-- **Fases concluídas:** F0 a F11.
-- **Migrations:** 25 (`0001`–`0025`).
-- **Testes:** 29 unitários + 75 de isolamento RLS (todos verdes).
+- **Fases concluídas:** F0 a F13, além de melhorias transversais (tipagem do banco,
+  paginação das listas, import/export CSV, confiabilidade e engajamento).
+- **Migrations:** 29 (`0001`–`0029`).
+- **Testes:** 32 unitários + 82 de isolamento RLS (todos verdes).
+- **Cobertura funcional:** clientes, projetos, tarefas, horas, financeiro (orçamento,
+  fatura, pagamento, despesa, contrato), comercial, atendimento, portal do cliente,
+  calendário, atividades (auditoria), tags/campos, planos e branding.
 - **Falta do plano original:** apenas **cobrança automática** (F6) — adiada por decisão.
-- **Backlog organizado:** ~50 itens em `roadmap_items` (features, melhorias e
-  dívida técnica), dos quais 6 já foram entregues e precisam de atualização de status.
 
-**Recomendação:** o produto já é um MVP comercializável de gestão de serviços.
-O próximo salto de valor está em **(a)** fechar a monetização (cobrança/assinaturas
-e pagamento online) e **(b)** consolidar confiabilidade (observabilidade, CI com
-e2e/RLS e testes locais). O detalhamento está nas seções 9 e 10.
+**Recomendação:** o produto é um MVP comercializável. Os próximos saltos são
+**(a)** monetização (cobrança/assinaturas e pagamento online) e **(b)** itens
+enterprise (API/webhooks, 2FA, permissões). Observabilidade e CI já estão ativos
+(Vercel Analytics/Speed Insights, logger estruturado e workflows no GitHub Actions).
+O detalhamento está nas seções 9 e 10.
 
 ---
 
@@ -60,10 +63,12 @@ por projeto/hora e precisam faturar horas e acompanhar a rentabilidade.
 | **Faturas**           | Pagamentos parciais, status, vencimento, faturar horas apontadas.                                                                           |
 | **Despesas**          | Custos por categoria/projeto/cliente, faturável, relatórios e dashboard.                                                                    |
 | **Contratos**         | Vigência, valor, status e alerta de vencido.                                                                                                |
+| **Calendário**        | Visão mensal agregando eventos, prazos de tarefas, faturas e contratos; cadastro de eventos.                                                |
+| **Atividades**        | Trilha de auditoria (quem criou/atualizou/excluiu) com filtro por entidade.                                                                 |
 | **Relatórios**        | Funil de leads, financeiro, despesas e horas (períodos 30/90/365 dias).                                                                     |
 | **Atendimento**       | Tickets (departamentos, prioridade, notas internas, anexos) + base de conhecimento/FAQ.                                                     |
 | **Portal do cliente** | Projetos, tarefas, arquivos, marcos, orçamentos, faturas, tickets e ajuda — somente leitura + aprovação de orçamento e abertura de tickets. |
-| **SaaS/Plataforma**   | Planos e limites por recurso, painel super-admin, notificações no app, e-mails e lembretes automáticos.                                     |
+| **SaaS/Plataforma**   | Planos e limites por recurso, painel super-admin, notificações no app **em tempo real** com preferências de e-mail e lembretes automáticos. |
 | **Dados**             | Tags por registro, campos personalizados por entidade, exportação/importação CSV.                                                           |
 
 ---
@@ -77,6 +82,9 @@ por projeto/hora e precisam faturar horas e acompanhar a rentabilidade.
   **tipados** com `src/lib/database.types.ts` (gerado via `npm run db:types`).
 - **Interatividade pontual:** TanStack Query (timer/telas dinâmicas).
 - **E-mail:** Resend (via `fetch`, sem SDK) com templates em HTML.
+- **Observabilidade:** Vercel Analytics + Speed Insights no layout raiz e logger
+  estruturado (`src/lib/logger.ts`).
+- **Realtime:** Supabase Realtime na tabela `notifications`.
 - **Testes:** Vitest (unit) + Vitest config de RLS (isolamento por API) + Playwright (e2e, scaffold).
 - **Deploy:** Vercel (app) + Supabase (banco). Worker/rotinas via rota de cron do Vercel.
 - **Padrões:** Zod para validação; mutações retornam `{ error | success }`;
@@ -93,7 +101,7 @@ middleware (sessão + tenant por subdomínio)
 
 ### Estrutura de pastas (resumo)
 
-- `src/app/app/*` — área interna (14 rotas).
+- `src/app/app/*` — área interna (16 rotas).
 - `src/app/portal/(portal)/*` — portal do cliente.
 - `src/app/plataforma/*` — super-admin.
 - `src/app/(auth)/*` — login e aceite de convite.
@@ -103,7 +111,7 @@ middleware (sessão + tenant por subdomínio)
 
 ---
 
-## 5. Modelo de dados (37 tabelas)
+## 5. Modelo de dados (39 tabelas)
 
 **Plataforma:** `profiles`, `tenants`, `memberships`, `invitations`, `plans`,
 `roadmap_items`, `notifications`.
@@ -118,6 +126,8 @@ middleware (sessão + tenant por subdomínio)
 
 **Atendimento:** `departments`, `tickets`, `ticket_replies`, `kb_categories`,
 `kb_articles`, `faqs`.
+
+**Agenda e auditoria:** `calendar_events`, `activity_log`.
 
 **Transversais:** `tags`, `taggables`, `custom_field_definitions`,
 `custom_field_values`.
@@ -147,19 +157,21 @@ middleware (sessão + tenant por subdomínio)
 - **Super-admin:** bypass controlado por flag em `profiles`.
 
 > **Risco nº 1 do projeto:** RLS. Por isso há uma suíte dedicada de testes de
-> isolamento (75 casos) — ver seção 7/11 sobre rodá-los localmente.
+> isolamento (82 casos) — ver seção 7/11 sobre rodá-los localmente.
 
 ---
 
 ## 7. Qualidade, testes e CI
 
-- **Unit (Vitest):** 29 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
-  tenant, equipe, despesas, contratos, CSV).
-- **RLS (Vitest, ambiente node):** 75 testes de isolamento entre dois tenants,
-  cobrindo seleção/inserção/atualização/exclusão e Storage.
+- **Unit (Vitest):** 32 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
+  tenant, equipe, despesas, contratos, calendário e CSV).
+- **RLS (Vitest, ambiente node):** 82 testes de isolamento entre dois tenants,
+  cobrindo seleção/inserção/atualização/exclusão, Storage e auditoria.
 - **E2E:** Playwright configurado (smoke), cobertura a ampliar.
-- **CI (GitHub Actions):** `ci.yml` roda `npm ci`, `lint`, `typecheck`, `test` e `build`.
-  **Falta** job de e2e/RLS e auditoria de dependências.
+- **CI (GitHub Actions):** `ci.yml` roda `format:check`, `lint`, `typecheck`, `test` e
+  `build` (com `concurrency`); `rls.yml` roda os testes de RLS **manualmente**
+  (`workflow_dispatch`) contra um projeto dedicado. **Falta** job de e2e e `npm audit`.
+- **Resiliência:** error boundaries (`error.tsx`, `global-error.tsx`, `not-found.tsx`).
 - **Verificações locais padrão:** `lint`, `typecheck`, `format:check`, `test`,
   `test:rls`, `build`.
 
@@ -184,37 +196,46 @@ middleware (sessão + tenant por subdomínio)
 
 1. **Cobrança automática / assinaturas** (Stripe/Asaas) — único item de F6 pendente.
 2. **Pagamento online de faturas no portal** (gateway) — acelera o caixa.
-3. **Notificações em tempo real + preferências** por usuário/tipo.
-4. **Faturas recorrentes / assinaturas**.
-5. **Propostas com aceite online** (distinto de orçamento).
+3. **Faturas recorrentes / assinaturas**.
+4. **Propostas com aceite online** (distinto de orçamento).
 
-**Prioridade média (ampliação de valor)** 6. **Metas/goals de vendas** e dashboard comercial. 7. **Calendário** (tarefas/eventos/prazos). 8. **Relatórios adicionais** (produtividade, leads por origem) e **log de auditoria**. 9. **Modelos de e-mail editáveis + histórico de envios**. 10. **Contratos e despesas no portal do cliente** (visibilidade controlada). 11. **Campos personalizados/tags no portal** e **tipos extras** (URL/moeda/multisseleção).
+**Prioridade média (ampliação de valor)**
 
-**Prioridade de plataforma (escala/enterprise)** 12. **API pública + webhooks**, **2FA**, **permissões granulares**. 13. **Multi-moeda e impostos**, **self-signup/onboarding** e ativação do subdomínio. 14. **Pesquisas (surveys)**, **anúncios**, **web-to-lead** (formulários públicos). 15. **Gantt interativo** (drag/dependências) e **visão de portfólio**.
+5. **Metas/goals de vendas** e dashboard comercial.
+6. **Relatórios adicionais** (produtividade, leads por origem, despesas).
+7. **Modelos de e-mail editáveis + histórico de envios**.
+8. **Contratos e despesas no portal do cliente** (visibilidade controlada).
+9. **Campos personalizados/tags no portal** e **tipos extras** (URL/moeda/multisseleção).
+
+**Prioridade de plataforma (escala/enterprise)**
+
+10. **API pública + webhooks**, **2FA**, **permissões granulares**.
+11. **Multi-moeda e impostos**, **self-signup/onboarding** e ativação do subdomínio.
+12. **Pesquisas (surveys)**, **anúncios**, **web-to-lead** (formulários públicos).
+13. **Gantt interativo** (drag/dependências) e **visão de portfólio**.
 
 ---
 
 ## 10. Backlog técnico e dívida (técnico)
 
-| Item                                                   | Tipo     | Impacto | Observação                                                       |
-| ------------------------------------------------------ | -------- | ------- | ---------------------------------------------------------------- |
-| **Observabilidade** (Sentry + Analytics/logs)          | melhoria | alto    | Previsto no plano, ainda ausente.                                |
-| **CI com e2e + RLS e audit**                           | melhoria | alto    | Existe CI básico; falta e2e/RLS/`npm audit`.                     |
-| **RLS em banco local**                                 | dívida   | alto    | Hoje os testes rodam contra o remoto; risco de mutar dados.      |
-| **`listTeamMembers` usa `admin.listUsers(200)`**       | dívida   | médio   | Escalabilidade/segurança: guardar e-mail em `profiles` ou RPC.   |
-| **N+1 em projetos/tarefas**                            | dívida   | médio   | Revisar contagens/embeds em listas grandes.                      |
-| **Enforcement de plano** p/ tags/campos/marcos/storage | melhoria | médio   | Hoje só clientes/projetos/tarefas/tickets/leads.                 |
-| **Anexos**: preview, upload múltiplo, validação        | melhoria | médio   | Só upload simples hoje.                                          |
-| **Fim de linha (CRLF/LF)**                             | dívida   | baixo   | `core.autocrlf=true` global gera ruído; adotar `.gitattributes`. |
-| **`db:types` requer login** (`--linked`)               | dívida   | baixo   | Alternativa: gerar em CI/script com `--project-id`.              |
-| **Aprovação de horas (timesheet)**                     | feature  | médio   | Fluxo de aprovação antes de faturar.                             |
-| **Command palette (Cmd/Ctrl+K)**                       | melhoria | baixo   | Unificar a busca global.                                         |
-| **Rate limiting** em rotas públicas (convite/aceite)   | dívida   | médio   | Proteção contra abuso.                                           |
+| Item                                                   | Tipo     | Impacto | Observação                                                                 |
+| ------------------------------------------------------ | -------- | ------- | -------------------------------------------------------------------------- |
+| **Sentry** (erros)                                     | melhoria | médio   | Analytics/Speed Insights e logger já ativos; falta o rastreio de exceções. |
+| **CI com e2e e `npm audit`**                           | melhoria | médio   | CI cobre format/lint/types/test/build; RLS é manual.                       |
+| **RLS em banco local**                                 | dívida   | alto    | Hoje os testes de RLS rodam contra um projeto remoto dedicado.             |
+| **`listTeamMembers` usa `admin.listUsers(200)`**       | dívida   | médio   | Escalabilidade/segurança: guardar e-mail em `profiles` ou RPC.             |
+| **N+1 em projetos/tarefas**                            | dívida   | médio   | Revisar contagens/embeds em listas grandes.                                |
+| **Enforcement de plano** p/ tags/campos/marcos/storage | melhoria | médio   | Hoje só clientes/projetos/tarefas/tickets/leads.                           |
+| **Anexos**: preview, upload múltiplo, validação        | melhoria | médio   | Só upload simples hoje.                                                    |
+| **`db:types` requer login** (`--linked`)               | dívida   | baixo   | Alternativa: gerar em CI/script com `--project-id`.                        |
+| **Aprovação de horas (timesheet)**                     | feature  | médio   | Fluxo de aprovação antes de faturar.                                       |
+| **Command palette (Cmd/Ctrl+K)**                       | melhoria | baixo   | Unificar a busca global.                                                   |
+| **Rate limiting** em rotas públicas (convite/aceite)   | dívida   | médio   | Proteção contra abuso.                                                     |
 
-> Os itens acima estão registrados em `roadmap_items`. Recomenda-se criar uma
-> pequena migration para **atualizar o status** dos itens já entregues
-> (paginação, tipagem, exportação, importação, despesas, contratos) e,
-> futuramente, expor uma tela de roadmap no `/plataforma`.
+> Os itens entregues foram refletidos no `roadmap_items` via migration `0026`
+> (paginação, tipagem, importação CSV, despesas, contratos, etc.). Sugere-se, no
+> futuro, expor uma tela de roadmap no `/plataforma`. O `Fim de linha (CRLF)`
+> foi resolvido com `.gitattributes` (`eol=lf`).
 
 ---
 
@@ -245,11 +266,13 @@ middleware (sessão + tenant por subdomínio)
 
 ## 13. Próximos passos sugeridos (fatiamento para o time)
 
-1. **Confiabilidade (1ª sprint):** observabilidade (Sentry/Analytics) + CI com
-   e2e/RLS + `.gitattributes` + atualizar status no `roadmap_items`.
-2. **Monetização (2ª–3ª sprint):** cobrança automática + pagamento online no portal
-   - faturas recorrentes.
-3. **Engajamento (4ª sprint):** notificações em tempo real + preferências + calendário.
+1. **Confiabilidade (feito):** Vercel Analytics/Speed Insights + logger + error
+   boundaries + CI (`format:check`/`concurrency`) + `rls.yml` manual + `.gitattributes`.
+   Pendente: Sentry e job de e2e.
+2. **Engajamento (feito):** notificações em tempo real + preferências, calendário e
+   log de auditoria.
+3. **Monetização (próxima):** cobrança automática + pagamento online no portal +
+   faturas recorrentes.
 4. **Enterprise (depois):** API/webhooks, 2FA, permissões granulares, multi-moeda.
 
 ---
@@ -259,8 +282,8 @@ middleware (sessão + tenant por subdomínio)
 ### Rotas internas (`/app`)
 
 `/app` (dashboard), `clientes`, `leads`, `projetos`, `tarefas`, `timesheet`,
-`orcamentos`, `faturas`, `despesas`, `contratos`, `relatorios`, `tickets`,
-`base-conhecimento`, `configuracoes`, `exportar/[entity]`.
+`calendario`, `orcamentos`, `faturas`, `despesas`, `contratos`, `relatorios`,
+`atividades`, `tickets`, `base-conhecimento`, `configuracoes`, `exportar/[entity]`.
 
 ### Rotas do portal (`/portal`)
 
@@ -275,4 +298,5 @@ middleware (sessão + tenant por subdomínio)
 ### Dependências principais
 
 Next 15, React 19, `@supabase/ssr`/`supabase-js`, `@base-ui/react`, `@tanstack/react-query`,
-Tailwind 4, Zod, `lucide-react`, `sonner`, `next-themes`.
+Tailwind 4, Zod, `lucide-react`, `sonner`, `next-themes`, `@vercel/analytics`,
+`@vercel/speed-insights`.
