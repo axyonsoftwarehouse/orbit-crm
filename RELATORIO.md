@@ -15,13 +15,14 @@ de **entrega** (clientes → projetos → tarefas → horas) e os módulos
 **financeiro, comercial, atendimento e portal do cliente**, além de itens de
 **plataforma SaaS** (planos/limites, notificações, relatórios, branding e equipe).
 
-- **Fases concluídas:** F0 a F14, além de melhorias transversais (tipagem do banco,
+- **Fases concluídas:** F0 a F15, além de melhorias transversais (tipagem do banco,
   paginação das listas, import/export CSV, confiabilidade e engajamento).
-- **Migrations:** 30 (`0001`–`0030`).
-- **Testes:** 35 unitários + 85 de isolamento RLS (todos verdes).
+- **Migrations:** 31 (`0001`–`0031`).
+- **Testes:** 37 unitários + 88 de isolamento RLS (todos verdes).
 - **Cobertura funcional:** clientes, projetos, tarefas, horas, financeiro (orçamento,
   fatura, pagamento, despesa, contrato), comercial, atendimento, portal do cliente,
-  calendário, metas, atividades (auditoria), tags/campos, planos e branding.
+  calendário, metas, atividades (auditoria), modelos de e-mail, tags/campos, planos e
+  branding.
 - **Falta do plano original:** apenas **cobrança automática** (F6) — adiada por decisão.
 
 **Recomendação:** o produto é um MVP comercializável. Os próximos saltos são
@@ -67,6 +68,7 @@ por projeto/hora e precisam faturar horas e acompanhar a rentabilidade.
 | **Metas**             | Metas por período (faturamento, novos leads ou horas faturáveis) com acompanhamento do progresso.                                           |
 | **Atividades**        | Trilha de auditoria (quem criou/atualizou/excluiu) com filtro por entidade.                                                                 |
 | **Relatórios**        | Funil de leads, financeiro, despesas e horas (períodos 30/90/365 dias).                                                                     |
+| **E-mail**            | Modelos editáveis (assunto/corpo com variáveis) e histórico de envios em Configurações.                                                     |
 | **Atendimento**       | Tickets (departamentos, prioridade, notas internas, anexos) + base de conhecimento/FAQ.                                                     |
 | **Portal do cliente** | Projetos, tarefas, arquivos, marcos, orçamentos, faturas, tickets e ajuda — somente leitura + aprovação de orçamento e abertura de tickets. |
 | **SaaS/Plataforma**   | Planos e limites por recurso, painel super-admin, notificações no app **em tempo real** com preferências de e-mail e lembretes automáticos. |
@@ -112,7 +114,7 @@ middleware (sessão + tenant por subdomínio)
 
 ---
 
-## 5. Modelo de dados (40 tabelas)
+## 5. Modelo de dados (42 tabelas)
 
 **Plataforma:** `profiles`, `tenants`, `memberships`, `invitations`, `plans`,
 `roadmap_items`, `notifications`.
@@ -131,6 +133,8 @@ middleware (sessão + tenant por subdomínio)
 **Agenda e auditoria:** `calendar_events`, `activity_log`.
 
 **Metas:** `goals`.
+
+**Comunicação:** `email_templates`, `email_log`.
 
 **Transversais:** `tags`, `taggables`, `custom_field_definitions`,
 `custom_field_values`.
@@ -160,16 +164,16 @@ middleware (sessão + tenant por subdomínio)
 - **Super-admin:** bypass controlado por flag em `profiles`.
 
 > **Risco nº 1 do projeto:** RLS. Por isso há uma suíte dedicada de testes de
-> isolamento (85 casos) — ver seção 7/11 sobre rodá-los localmente.
+> isolamento (88 casos) — ver seção 7/11 sobre rodá-los localmente.
 
 ---
 
 ## 7. Qualidade, testes e CI
 
-- **Unit (Vitest):** 35 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
-  tenant, equipe, despesas, contratos, calendário, metas e CSV).
-- **RLS (Vitest, ambiente node):** 85 testes de isolamento entre dois tenants,
-  cobrindo seleção/inserção/atualização/exclusão, Storage e auditoria.
+- **Unit (Vitest):** 37 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
+  tenant, equipe, despesas, contratos, calendário, metas, templates e CSV).
+- **RLS (Vitest, ambiente node):** 88 testes de isolamento entre dois tenants,
+  cobrindo seleção/inserção/atualização/exclusão, Storage, auditoria e e-mail.
 - **E2E:** Playwright configurado (smoke), cobertura a ampliar.
 - **CI (GitHub Actions):** `ci.yml` roda `format:check`, `lint`, `typecheck`, `test` e
   `build` (com `concurrency`); `rls.yml` roda os testes de RLS **manualmente**
@@ -205,16 +209,15 @@ middleware (sessão + tenant por subdomínio)
 **Prioridade média (ampliação de valor)**
 
 5. **Relatórios adicionais** (produtividade, leads por origem, despesas).
-6. **Modelos de e-mail editáveis + histórico de envios**.
-7. **Contratos e despesas no portal do cliente** (visibilidade controlada).
-8. **Campos personalizados/tags no portal** e **tipos extras** (URL/moeda/multisseleção).
+6. **Contratos e despesas no portal do cliente** (visibilidade controlada).
+7. **Campos personalizados/tags no portal** e **tipos extras** (URL/moeda/multisseleção).
 
 **Prioridade de plataforma (escala/enterprise)**
 
-10. **API pública + webhooks**, **2FA**, **permissões granulares**.
-11. **Multi-moeda e impostos**, **self-signup/onboarding** e ativação do subdomínio.
-12. **Pesquisas (surveys)**, **anúncios**, **web-to-lead** (formulários públicos).
-13. **Gantt interativo** (drag/dependências) e **visão de portfólio**.
+8. **API pública + webhooks**, **2FA**, **permissões granulares**.
+9. **Multi-moeda e impostos**, **self-signup/onboarding** e ativação do subdomínio.
+10. **Pesquisas (surveys)**, **anúncios**, **web-to-lead** (formulários públicos).
+11. **Gantt interativo** (drag/dependências) e **visão de portfólio**.
 
 ---
 
