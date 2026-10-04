@@ -8,6 +8,7 @@ import { listLeads } from "@/server/queries/leads"
 import { listEstimates, listInvoices } from "@/server/queries/documents"
 import { listExpenses } from "@/server/queries/expenses"
 import { listTimeEntries, formatDuration } from "@/server/queries/time"
+import { getReportData } from "@/server/queries/reports"
 
 function csvResponse(filename: string, csv: string) {
   return new Response(`\uFEFF${csv}`, {
@@ -166,6 +167,114 @@ export async function GET(
         }),
       )
       return csvResponse(`timesheet-${stamp}.csv`, csv)
+    }
+
+    case "relatorios": {
+      const report = search.get("report")
+      const data = await getReportData(tenantId, {
+        days: Number(search.get("range") ?? "90"),
+        companyId: search.get("company") ?? undefined,
+        projectId: search.get("project") ?? undefined,
+      })
+
+      let headers: string[] = []
+      let rows: (string | number | null)[][] = []
+
+      switch (report) {
+        case "leads": {
+          headers = [
+            "Origem",
+            "Leads",
+            "Ganhos",
+            "Perdidos",
+            "Abertos",
+            "Conversão (%)",
+            "Valor ganho",
+          ]
+          rows = data.conversionRows.map((row) => [
+            row.source,
+            row.total,
+            row.won,
+            row.lost,
+            row.open,
+            row.rate,
+            row.wonValue,
+          ])
+          break
+        }
+        case "financeiro": {
+          headers = ["Mês", "Faturamento"]
+          rows = data.months.map((month) => [month.label, month.total])
+          break
+        }
+        case "rentabilidade": {
+          headers = ["Escopo", "Nome", "Faturado", "Despesas", "Margem"]
+          rows = [
+            ...data.profitByProject.map((row) => [
+              "Projeto",
+              row.label,
+              row.revenue,
+              row.expense,
+              row.margin,
+            ]),
+            ...data.profitByClient.map((row) => [
+              "Cliente",
+              row.label,
+              row.revenue,
+              row.expense,
+              row.margin,
+            ]),
+          ]
+          break
+        }
+        case "produtividade": {
+          headers = ["Pessoa", "Tarefas concluídas", "Horas", "Valor faturável"]
+          rows = data.productivity.map((row) => [
+            row.name,
+            row.tasksDone,
+            formatDuration(row.seconds),
+            row.billableAmount,
+          ])
+          break
+        }
+        case "despesas": {
+          headers = ["Escopo", "Nome", "Valor"]
+          rows = [
+            ...data.topCategories.map(([name, value]) => [
+              "Categoria",
+              name,
+              value,
+            ]),
+            ...data.topExpenseProjects.map(([name, value]) => [
+              "Projeto",
+              name,
+              value,
+            ]),
+          ]
+          break
+        }
+        case "horas": {
+          headers = ["Escopo", "Nome", "Duração"]
+          rows = [
+            ...data.topProjects.map(([name, seconds]) => [
+              "Projeto",
+              name,
+              formatDuration(seconds),
+            ]),
+            ...data.topUsers.map(([name, seconds]) => [
+              "Pessoa",
+              name,
+              formatDuration(seconds),
+            ]),
+          ]
+          break
+        }
+        default:
+          return new Response("Relatório não encontrado", { status: 404 })
+      }
+
+      const csv = toCsv(headers, rows)
+      return csvResponse(`relatorio-${report}-${stamp}.csv`, csv)
     }
 
     default:

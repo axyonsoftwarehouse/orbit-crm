@@ -127,6 +127,7 @@ tags/campos personalizados, portal do cliente.
   - ✅ **F17.1 — Contratos + despesas faturáveis no portal** (migration `0034`: RLS de leitura do cliente para `contracts` e `expenses` faturáveis da própria empresa; páginas `/portal/contratos` e `/portal/despesas`).
 - **F18 — Relatórios adicionais** ✅ **concluída**
   - ✅ **F18.1 — Rentabilidade, produtividade, conversão e filtros** (`/app/relatorios`: margem por projeto/cliente (faturado − despesas), produtividade da equipe (tarefas concluídas + horas + valor faturável), conversão por origem de lead e filtros por cliente/projeto; agregações puras em `src/lib/reports.ts` com testes).
+  - ✅ **F18.2 — Exportação CSV dos relatórios** (rota `/app/exportar/relatorios?report=leads|financeiro|rentabilidade|produtividade|despesas|horas`, respeitando período/cliente/projeto; dados via `getReportData`).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura
