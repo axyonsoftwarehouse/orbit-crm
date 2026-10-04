@@ -132,6 +132,58 @@ export async function listPortalInvoices(
   return (data ?? []) as unknown as PortalDocumentRow[]
 }
 
+export type PortalContractRow = {
+  id: string
+  title: string
+  description: string | null
+  value: number | null
+  start_date: string | null
+  end_date: string | null
+  status: number
+  note: string | null
+}
+
+export async function listPortalContracts(
+  companyId: string,
+): Promise<PortalContractRow[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("contracts")
+    .select("id, title, description, value, start_date, end_date, status, note")
+    .eq("company_id", companyId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+
+  return (data ?? []) as PortalContractRow[]
+}
+
+export type PortalExpenseRow = {
+  id: string
+  title: string
+  category: string | null
+  amount: number
+  date: string
+  note: string | null
+  project: { id: string; name: string } | null
+}
+
+export async function listPortalExpenses(
+  companyId: string,
+): Promise<PortalExpenseRow[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("expenses")
+    .select(
+      "id, title, category, amount, date, note, project:projects(id, name)",
+    )
+    .eq("company_id", companyId)
+    .eq("billable", true)
+    .is("deleted_at", null)
+    .order("date", { ascending: false })
+
+  return (data ?? []) as unknown as PortalExpenseRow[]
+}
+
 export type PortalTicketRow = {
   id: string
   formatted_number: string

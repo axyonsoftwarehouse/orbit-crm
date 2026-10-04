@@ -123,6 +123,8 @@ tags/campos personalizados, portal do cliente.
   - ✅ **F15.1 — E-mail** (migration `0031`: `email_templates` (assunto/corpo por tenant) e `email_log`; envio com variáveis `{{...}}` e fallback padrão; Configurações › E-mail com edição de modelos e envios recentes; lembretes e convites usam os modelos).
 - **F16 — Web-to-lead** ✅ **concluída**
   - ✅ **F16.1 — Formulário público** (migration `0032`: `tenants.web_to_lead_enabled`/`web_to_lead_source_id`; página pública `/f/[slug]` com honeypot anti-bot; envios viram leads com origem; Configurações › Captação para ativar e copiar o link).
+- **F17 — Portal: contratos e despesas** ✅ **concluída**
+  - ✅ **F17.1 — Contratos + despesas faturáveis no portal** (migration `0034`: RLS de leitura do cliente para `contracts` e `expenses` faturáveis da própria empresa; páginas `/portal/contratos` e `/portal/despesas`).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura

@@ -50,6 +50,10 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   const brandingPaths: string[] = []
   let clientA: SupabaseClient
   let clientB: SupabaseClient
+  let clientPortal: SupabaseClient
+  let clientUserId = ""
+  let portalCompanyId = ""
+  const clientEmail = `rls-client-${suffix}@orbit.test`
 
   beforeAll(async () => {
     const tA = await admin
@@ -276,6 +280,37 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       password,
     })
     if (sA.error || sB.error) throw sA.error ?? sB.error
+
+    const uClient = await admin.auth.admin.createUser({
+      email: clientEmail,
+      password,
+      email_confirm: true,
+    })
+    if (uClient.error) throw uClient.error
+    clientUserId = uClient.data.user!.id
+
+    const portalCompany = await admin
+      .from("companies")
+      .insert({ tenant_id: tenantA, name: `Portal A ${suffix}` })
+      .select("id")
+      .single()
+    if (portalCompany.error) throw portalCompany.error
+    portalCompanyId = portalCompany.data!.id
+
+    const contact = await admin.from("contacts").insert({
+      tenant_id: tenantA,
+      company_id: portalCompanyId,
+      first_name: "Cliente A",
+      user_id: clientUserId,
+    })
+    if (contact.error) throw contact.error
+
+    clientPortal = createClient(url!, anonKey!)
+    const sClient = await clientPortal.auth.signInWithPassword({
+      email: clientEmail,
+      password,
+    })
+    if (sClient.error) throw sClient.error
   })
 
   afterAll(async () => {
@@ -290,6 +325,7 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     }
     if (userAId) await admin.auth.admin.deleteUser(userAId)
     if (userBId) await admin.auth.admin.deleteUser(userBId)
+    if (clientUserId) await admin.auth.admin.deleteUser(clientUserId)
   })
 
   it("A vê apenas o próprio tenant", async () => {
@@ -1302,5 +1338,118 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       body: "<p>x</p>",
     })
     expect(error).not.toBeNull()
+  })
+
+  it("Cliente do portal vê contratos da própria empresa", async () => {
+    const created = await admin
+      .from("contracts")
+      .insert({
+        tenant_id: tenantA,
+        company_id: portalCompanyId,
+        title: `Contrato portal ${suffix}`,
+      })
+      .select("id")
+      .single()
+    expect(created.error).toBeNull()
+
+    const { data } = await clientPortal
+      .from("contracts")
+      .select("id")
+      .eq("company_id", portalCompanyId)
+    expect(data?.map((row) => row.id)).toContain(created.data!.id)
+  })
+
+  it("Cliente do portal não vê contratos de outra empresa", async () => {
+    const created = await admin
+      .from("contracts")
+      .insert({
+        tenant_id: tenantB,
+        company_id: companyBId,
+        title: `Contrato B ${suffix}`,
+      })
+      .select("id")
+      .single()
+    expect(created.error).toBeNull()
+
+    const { data } = await clientPortal
+      .from("contracts")
+      .select("id")
+      .eq("id", created.data!.id)
+    expect(data).toEqual([])
+  })
+
+  it("Cliente do portal vê apenas despesas faturáveis da própria empresa", async () => {
+    const billable = await admin
+      .from("expenses")
+      .insert({
+        tenant_id: tenantA,
+        company_id: portalCompanyId,
+        title: `Reembolso ${suffix}`,
+        amount: 50,
+        billable: true,
+      })
+      .select("id")
+      .single()
+    const internal = await admin
+      .from("expenses")
+      .insert({
+        tenant_id: tenantA,
+        company_id: portalCompanyId,
+        title: `Interna ${suffix}`,
+        amount: 20,
+        billable: false,
+      })
+      .select("id")
+      .single()
+    expect(billable.error).toBeNull()
+    expect(internal.error).toBeNull()
+
+    const { data } = await clientPortal
+      .from("expenses")
+      .select("id, billable")
+      .eq("company_id", portalCompanyId)
+    const ids = (data ?? []).map((row) => row.id)
+    expect(ids).toContain(billable.data!.id)
+    expect(ids).not.toContain(internal.data!.id)
+    expect((data ?? []).every((row) => row.billable)).toBe(true)
+  })
+
+  it("Cliente do portal não vê despesas de outra empresa", async () => {
+    const created = await admin
+      .from("expenses")
+      .insert({
+        tenant_id: tenantB,
+        company_id: companyBId,
+        title: `Despesa B ${suffix}`,
+        amount: 10,
+        billable: true,
+      })
+      .select("id")
+      .single()
+    expect(created.error).toBeNull()
+
+    const { data } = await clientPortal
+      .from("expenses")
+      .select("id")
+      .eq("id", created.data!.id)
+    expect(data).toEqual([])
+  })
+
+  it("Cliente do portal não cria contrato nem despesa", async () => {
+    const contract = await clientPortal.from("contracts").insert({
+      tenant_id: tenantA,
+      company_id: portalCompanyId,
+      title: "Não permitido",
+    })
+    expect(contract.error).not.toBeNull()
+
+    const expense = await clientPortal.from("expenses").insert({
+      tenant_id: tenantA,
+      company_id: portalCompanyId,
+      title: "Não permitido",
+      amount: 1,
+      billable: true,
+    })
+    expect(expense.error).not.toBeNull()
   })
 })
