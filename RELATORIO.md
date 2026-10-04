@@ -15,10 +15,10 @@ de **entrega** (clientes → projetos → tarefas → horas) e os módulos
 **financeiro, comercial, atendimento e portal do cliente**, além de itens de
 **plataforma SaaS** (planos/limites, notificações, relatórios, branding e equipe).
 
-- **Fases concluídas:** F0 a F17, além de melhorias transversais (tipagem do banco,
+- **Fases concluídas:** F0 a F18, além de melhorias transversais (tipagem do banco,
   paginação das listas, import/export CSV, confiabilidade e engajamento).
 - **Migrations:** 33 (`0001`–`0034`).
-- **Testes:** 41 unitários + 93 de isolamento RLS (todos verdes).
+- **Testes:** 48 unitários + 93 de isolamento RLS (todos verdes).
 - **Cobertura funcional:** clientes, projetos, tarefas, horas, financeiro (orçamento,
   fatura, pagamento, despesa, contrato), comercial, captação web-to-lead, atendimento,
   portal do cliente (incluindo contratos e despesas faturáveis), calendário, metas,
@@ -52,28 +52,28 @@ por projeto/hora e precisam faturar horas e acompanhar a rentabilidade.
 
 ## 3. Escopo entregue (visão de negócio)
 
-| Módulo                | O que o cliente pode fazer                                                                                                                                                  |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Empresas e equipe** | Criar workspace, convidar equipe por e-mail (papéis), gerenciar membros e branding (nome, cor, logo).                                                                       |
-| **Clientes**          | Cadastrar empresas e contatos, importar/exportar CSV, convidar contato para o portal.                                                                                       |
-| **Leads (CRM)**       | Pipeline Kanban, status/origens configuráveis, atividades, conversão em cliente, importar/exportar CSV.                                                                     |
-| **Captação**          | Formulário público por empresa (`/f/slug`) que cria leads, com anti-bot e origem configurável.                                                                              |
-| **Projetos**          | Equipe, orçamento/valores, prazos, progresso, **marcos** e **cronograma (Gantt)**.                                                                                          |
-| **Tarefas**           | Lista/Kanban, checklist, responsável, prioridade, prazo, vínculo a marcos.                                                                                                  |
-| **Timesheet**         | Timer e lançamento manual, faturável/valor-hora, totais e exportação.                                                                                                       |
-| **Orçamentos**        | Itens, desconto/imposto, numeração, conversão em fatura, aprovação pelo cliente no portal.                                                                                  |
-| **Faturas**           | Pagamentos parciais, status, vencimento, faturar horas apontadas.                                                                                                           |
-| **Despesas**          | Custos por categoria/projeto/cliente, faturável, relatórios e dashboard.                                                                                                    |
-| **Contratos**         | Vigência, valor, status e alerta de vencido.                                                                                                                                |
-| **Calendário**        | Visão mensal agregando eventos, prazos de tarefas, faturas e contratos; cadastro de eventos.                                                                                |
-| **Metas**             | Metas por período (faturamento, novos leads ou horas faturáveis) com acompanhamento do progresso.                                                                           |
-| **Atividades**        | Trilha de auditoria (quem criou/atualizou/excluiu) com filtro por entidade.                                                                                                 |
-| **Relatórios**        | Funil de leads, financeiro, despesas e horas (períodos 30/90/365 dias).                                                                                                     |
-| **E-mail**            | Modelos editáveis (assunto/corpo com variáveis) e histórico de envios em Configurações.                                                                                     |
-| **Atendimento**       | Tickets (departamentos, prioridade, notas internas, anexos) + base de conhecimento/FAQ.                                                                                     |
-| **Portal do cliente** | Projetos, tarefas, arquivos, marcos, orçamentos, faturas, contratos, despesas faturáveis, tickets e ajuda — somente leitura + aprovação de orçamento e abertura de tickets. |
-| **SaaS/Plataforma**   | Planos e limites por recurso, painel super-admin, notificações no app **em tempo real** com preferências de e-mail e lembretes automáticos.                                 |
-| **Dados**             | Tags por registro, campos personalizados por entidade, exportação/importação CSV.                                                                                           |
+| Módulo                | O que o cliente pode fazer                                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Empresas e equipe** | Criar workspace, convidar equipe por e-mail (papéis), gerenciar membros e branding (nome, cor, logo).                                                                                                   |
+| **Clientes**          | Cadastrar empresas e contatos, importar/exportar CSV, convidar contato para o portal.                                                                                                                   |
+| **Leads (CRM)**       | Pipeline Kanban, status/origens configuráveis, atividades, conversão em cliente, importar/exportar CSV.                                                                                                 |
+| **Captação**          | Formulário público por empresa (`/f/slug`) que cria leads, com anti-bot e origem configurável.                                                                                                          |
+| **Projetos**          | Equipe, orçamento/valores, prazos, progresso, **marcos** e **cronograma (Gantt)**.                                                                                                                      |
+| **Tarefas**           | Lista/Kanban, checklist, responsável, prioridade, prazo, vínculo a marcos.                                                                                                                              |
+| **Timesheet**         | Timer e lançamento manual, faturável/valor-hora, totais e exportação.                                                                                                                                   |
+| **Orçamentos**        | Itens, desconto/imposto, numeração, conversão em fatura, aprovação pelo cliente no portal.                                                                                                              |
+| **Faturas**           | Pagamentos parciais, status, vencimento, faturar horas apontadas.                                                                                                                                       |
+| **Despesas**          | Custos por categoria/projeto/cliente, faturável, relatórios e dashboard.                                                                                                                                |
+| **Contratos**         | Vigência, valor, status e alerta de vencido.                                                                                                                                                            |
+| **Calendário**        | Visão mensal agregando eventos, prazos de tarefas, faturas e contratos; cadastro de eventos.                                                                                                            |
+| **Metas**             | Metas por período (faturamento, novos leads ou horas faturáveis) com acompanhamento do progresso.                                                                                                       |
+| **Atividades**        | Trilha de auditoria (quem criou/atualizou/excluiu) com filtro por entidade.                                                                                                                             |
+| **Relatórios**        | Funil de leads (com conversão por origem), financeiro, rentabilidade (margem por projeto/cliente), produtividade da equipe, despesas e horas (períodos 30/90/365 dias, com filtro por cliente/projeto). |
+| **E-mail**            | Modelos editáveis (assunto/corpo com variáveis) e histórico de envios em Configurações.                                                                                                                 |
+| **Atendimento**       | Tickets (departamentos, prioridade, notas internas, anexos) + base de conhecimento/FAQ.                                                                                                                 |
+| **Portal do cliente** | Projetos, tarefas, arquivos, marcos, orçamentos, faturas, contratos, despesas faturáveis, tickets e ajuda — somente leitura + aprovação de orçamento e abertura de tickets.                             |
+| **SaaS/Plataforma**   | Planos e limites por recurso, painel super-admin, notificações no app **em tempo real** com preferências de e-mail e lembretes automáticos.                                                             |
+| **Dados**             | Tags por registro, campos personalizados por entidade, exportação/importação CSV.                                                                                                                       |
 
 ---
 
@@ -171,8 +171,9 @@ middleware (sessão + tenant por subdomínio)
 
 ## 7. Qualidade, testes e CI
 
-- **Unit (Vitest):** 41 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
-  tenant, equipe, despesas, contratos, calendário, metas, templates, captação e CSV).
+- **Unit (Vitest):** 48 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
+  tenant, equipe, despesas, contratos, calendário, metas, templates, captação e CSV;
+  agregações de relatórios: rentabilidade, produtividade e conversão por origem).
 - **RLS (Vitest, ambiente node):** 93 testes de isolamento entre dois tenants,
   cobrindo seleção/inserção/atualização/exclusão, Storage, auditoria, e-mail e a
   leitura do portal (contratos e despesas faturáveis).
@@ -210,7 +211,7 @@ middleware (sessão + tenant por subdomínio)
 
 **Prioridade média (ampliação de valor)**
 
-5. **Relatórios adicionais** (produtividade, leads por origem, despesas).
+5. ~~**Relatórios adicionais** (produtividade, leads por origem, despesas)~~ ✅ **entregue na F18** (rentabilidade, produtividade, conversão por origem e filtros).
 6. ~~**Contratos e despesas no portal do cliente**~~ ✅ **entregue na F17** (contratos + despesas faturáveis, somente leitura).
 7. **Campos personalizados/tags no portal** e **tipos extras** (URL/moeda/multisseleção).
 
@@ -316,16 +317,16 @@ Tailwind 4, Zod, `lucide-react`, `sonner`, `next-themes`, `@vercel/analytics`,
 
 ## 15. Handoff — por onde continuar
 
-**Estado atual:** F0–F17 concluídas; migrations `0001`–`0034` aplicadas no projeto
-Supabase remoto; **41 testes unit + 93 de RLS** verdes; `typecheck`/`lint`/`format`/`build`
+**Estado atual:** F0–F18 concluídas; migrations `0001`–`0034` aplicadas no projeto
+Supabase remoto; **48 testes unit + 93 de RLS** verdes; `typecheck`/`lint`/`format`/`build`
 verdes; árvore Git limpa e sincronizada (`main`).
 
 **Fonte da verdade:** `PLANO.md` (fases), `RELATORIO.md` (este documento) e a tabela
 `roadmap_items` (backlog).
 
-**Próxima fase sugerida (sem cobrança):** **Relatórios adicionais**
-(produtividade / leads por origem / despesas) ou **Gantt interativo** (drag e
-dependências). Alternativas de mesmo porte: **API pública + webhooks** e **2FA**.
+**Próxima fase sugerida (sem cobrança):** **Gantt interativo** (drag e dependências)
+ou **exportação CSV/PDF dos relatórios**. Alternativas de mesmo porte: **API pública +
+webhooks**, **2FA** e **cobrança automática**.
 
 **Passo a passo para retomar:**
 

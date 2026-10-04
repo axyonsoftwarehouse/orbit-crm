@@ -1,20 +1,38 @@
 import Link from "next/link"
-import { BarChart3, Clock, Target, TrendingDown, Wallet } from "lucide-react"
+import {
+  BarChart3,
+  Clock,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { StatCard } from "@/components/app/stat-card"
 import { StatusPill } from "@/components/app/status-pill"
 import { cn } from "@/lib/utils"
 import { formatMoney } from "@/lib/format"
 import { formatDuration } from "@/server/queries/time"
+import {
+  buildLeadConversionBySource,
+  buildProductivity,
+  buildProfitability,
+} from "@/lib/reports"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { createClient } from "@/lib/supabase/server"
-import { listProjects, listTenantMembers } from "@/server/queries/projects"
-import {
-  listLeadSources,
-  listLeadStatuses,
-  listLeads,
-} from "@/server/queries/leads"
+import { listCompanies } from "@/server/queries/companies"
+import { listTenantMembers } from "@/server/queries/projects"
+import { listLeadStatuses, listLeads } from "@/server/queries/leads"
 
 const RANGES = [
   { key: "30", label: "30 dias" },
@@ -22,14 +40,21 @@ const RANGES = [
   { key: "365", label: "12 meses" },
 ]
 
+const EMPTY_IDS = ["00000000-0000-0000-0000-000000000000"]
+
+const fieldClass =
+  "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 rounded-lg border px-2 text-sm outline-none focus-visible:ring-3"
+
 export default async function RelatoriosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string }>
+  searchParams: Promise<{ range?: string; company?: string; project?: string }>
 }) {
-  const { range = "90" } = await searchParams
+  const { range = "90", company, project } = await searchParams
   const days = Number(range)
-  const since = new Date(Date.now() - days * 86_400_000).toISOString()
+  const since = new Date(Date.now() - days * 86_400_000)
+  const sinceISO = since.toISOString()
+  const sinceDate = sinceISO.slice(0, 10)
 
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
@@ -38,45 +63,107 @@ export default async function RelatoriosPage({
   const supabase = await createClient()
   const tenantId = active.tenantId
 
-  const [
-    leads,
-    statuses,
-    sources,
-    invoices,
-    payments,
-    entries,
-    projects,
-    members,
-    expenses,
-  ] = await Promise.all([
+  const [companies, projectsRes, leads, statuses, members] = await Promise.all([
+    listCompanies(tenantId),
+    supabase
+      .from("projects")
+      .select("id, name, company_id")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null)
+      .order("name"),
     listLeads(tenantId),
     listLeadStatuses(tenantId),
-    listLeadSources(tenantId),
-    supabase
-      .from("invoices")
-      .select("id, total, status, date, company:companies(name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .gte("date", since.slice(0, 10)),
-    supabase
-      .from("payments")
-      .select("amount, payment_date")
-      .eq("tenant_id", tenantId)
-      .gte("payment_date", since.slice(0, 10)),
-    supabase
-      .from("time_entries")
-      .select("project_id, user_id, duration_seconds, is_billable, rate")
-      .eq("tenant_id", tenantId)
-      .gte("started_at", since),
-    listProjects(tenantId),
     listTenantMembers(tenantId),
-    supabase
-      .from("expenses")
-      .select("title, category, amount, billable, date, project:projects(name)")
-      .eq("tenant_id", tenantId)
-      .is("deleted_at", null)
-      .gte("date", since.slice(0, 10)),
   ])
+
+  const projectRows = (projectsRes.data ?? []) as {
+    id: string
+    name: string
+    company_id: string | null
+  }[]
+  const projectOptions = company
+    ? projectRows.filter((row) => row.company_id === company)
+    : projectRows
+  const companyProjectIds = company
+    ? projectRows
+        .filter((row) => row.company_id === company)
+        .map((row) => row.id)
+    : null
+
+  let invoicesQuery = supabase
+    .from("invoices")
+    .select(
+      "id, total, status, date, company_id, project_id, company:companies(name)",
+    )
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .gte("date", sinceDate)
+  if (company) invoicesQuery = invoicesQuery.eq("company_id", company)
+  if (project) invoicesQuery = invoicesQuery.eq("project_id", project)
+
+  let allInvoicesQuery = supabase
+    .from("invoices")
+    .select("total, status, date, company_id, project_id")
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+  if (company) allInvoicesQuery = allInvoicesQuery.eq("company_id", company)
+  if (project) allInvoicesQuery = allInvoicesQuery.eq("project_id", project)
+
+  let entriesQuery = supabase
+    .from("time_entries")
+    .select("project_id, user_id, duration_seconds, is_billable, rate")
+    .eq("tenant_id", tenantId)
+    .gte("started_at", sinceISO)
+  if (project) {
+    entriesQuery = entriesQuery.eq("project_id", project)
+  } else if (company) {
+    entriesQuery = entriesQuery.in(
+      "project_id",
+      companyProjectIds?.length ? companyProjectIds : EMPTY_IDS,
+    )
+  }
+
+  let expensesQuery = supabase
+    .from("expenses")
+    .select(
+      "title, category, amount, billable, date, company_id, project_id, project:projects(name)",
+    )
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .gte("date", sinceDate)
+  if (company) expensesQuery = expensesQuery.eq("company_id", company)
+  if (project) expensesQuery = expensesQuery.eq("project_id", project)
+
+  let tasksQuery = supabase
+    .from("tasks")
+    .select("assignee_id, status, updated_at")
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .gte("updated_at", sinceISO)
+  if (project) {
+    tasksQuery = tasksQuery.eq("project_id", project)
+  } else if (company) {
+    tasksQuery = tasksQuery.in(
+      "project_id",
+      companyProjectIds?.length ? companyProjectIds : EMPTY_IDS,
+    )
+  }
+
+  const [invoices, allInvoices, payments, entries, expenses, tasks] =
+    await Promise.all([
+      invoicesQuery,
+      allInvoicesQuery,
+      supabase
+        .from("payments")
+        .select(
+          "amount, payment_date, invoice:invoices(company_id, project_id)",
+        )
+        .eq("tenant_id", tenantId)
+        .gte("payment_date", sinceDate),
+      entriesQuery,
+      expensesQuery,
+      tasksQuery,
+    ])
 
   // ---------- Funil de leads ----------
   const leadTotal = leads.length
@@ -103,13 +190,7 @@ export default async function RelatoriosPage({
   })
   const maxStatus = Math.max(...byStatus.map((s) => s.count), 1)
 
-  const bySource = sources
-    .map((source) => ({
-      source,
-      count: leads.filter((l) => l.source?.id === source.id).length,
-    }))
-    .filter((s) => s.count > 0)
-    .sort((a, b) => b.count - a.count)
+  const conversionRows = buildLeadConversionBySource(leads, statuses)
 
   // ---------- Financeiro ----------
   const invoiceList = (invoices.data ?? []) as unknown as {
@@ -117,10 +198,21 @@ export default async function RelatoriosPage({
     total: number
     status: number
     date: string
+    company_id: string | null
+    project_id: string | null
     company: { name: string } | null
   }[]
   const billed = invoiceList.reduce((sum, i) => sum + Number(i.total), 0)
-  const received = ((payments.data ?? []) as { amount: number }[]).reduce(
+  const paymentRows = (payments.data ?? []) as unknown as {
+    amount: number
+    invoice: { company_id: string | null; project_id: string | null } | null
+  }[]
+  const filteredPayments = paymentRows.filter((payment) => {
+    if (company && payment.invoice?.company_id !== company) return false
+    if (project && payment.invoice?.project_id !== project) return false
+    return true
+  })
+  const received = filteredPayments.reduce(
     (sum, p) => sum + Number(p.amount),
     0,
   )
@@ -139,11 +231,6 @@ export default async function RelatoriosPage({
       total: 0,
     })
   }
-  const allInvoices = await supabase
-    .from("invoices")
-    .select("total, status, date")
-    .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
   for (const invoice of (allInvoices.data ?? []) as {
     total: number
     status: number
@@ -163,6 +250,24 @@ export default async function RelatoriosPage({
   const topClients = [...byClient.entries()]
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
+
+  // ---------- Rentabilidade ----------
+  const revenueByProject = new Map<string, number>()
+  const revenueByCompany = new Map<string, number>()
+  for (const invoice of invoiceList) {
+    if (invoice.project_id) {
+      revenueByProject.set(
+        invoice.project_id,
+        (revenueByProject.get(invoice.project_id) ?? 0) + Number(invoice.total),
+      )
+    }
+    if (invoice.company_id) {
+      revenueByCompany.set(
+        invoice.company_id,
+        (revenueByCompany.get(invoice.company_id) ?? 0) + Number(invoice.total),
+      )
+    }
+  }
 
   // ---------- Horas ----------
   const timeRows = (entries.data ?? []) as {
@@ -186,7 +291,7 @@ export default async function RelatoriosPage({
     }
   }
 
-  const projectNameById = new Map(projects.map((p) => [p.id, p.name]))
+  const projectNameById = new Map(projectRows.map((p) => [p.id, p.name]))
   const byProject = new Map<string, number>()
   for (const row of timeRows) {
     const name = projectNameById.get(row.project_id) ?? "—"
@@ -210,12 +315,25 @@ export default async function RelatoriosPage({
   }
   const topUsers = [...byUser.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
 
+  const productivity = buildProductivity(
+    members,
+    (tasks.data ?? []) as {
+      assignee_id: string | null
+      status: number
+      updated_at: string
+    }[],
+    timeRows,
+    since.getTime(),
+  )
+
   // ---------- Despesas ----------
   const expenseRows = (expenses.data ?? []) as unknown as {
     title: string
     category: string | null
     amount: number
     billable: boolean
+    company_id: string | null
+    project_id: string | null
     project: { name: string } | null
   }[]
   const expenseTotal = expenseRows.reduce(
@@ -225,6 +343,34 @@ export default async function RelatoriosPage({
   const expenseBillable = expenseRows
     .filter((row) => row.billable)
     .reduce((sum, row) => sum + Number(row.amount), 0)
+
+  const expenseByProject = new Map<string, number>()
+  const expenseByCompany = new Map<string, number>()
+  for (const row of expenseRows) {
+    if (row.project_id) {
+      expenseByProject.set(
+        row.project_id,
+        (expenseByProject.get(row.project_id) ?? 0) + Number(row.amount),
+      )
+    }
+    if (row.company_id) {
+      expenseByCompany.set(
+        row.company_id,
+        (expenseByCompany.get(row.company_id) ?? 0) + Number(row.amount),
+      )
+    }
+  }
+
+  const profitByProject = buildProfitability(
+    projectRows.map((p) => ({ id: p.id, label: p.name })),
+    revenueByProject,
+    expenseByProject,
+  ).slice(0, 8)
+  const profitByClient = buildProfitability(
+    companies.map((c) => ({ id: c.id, label: c.name })),
+    revenueByCompany,
+    expenseByCompany,
+  ).slice(0, 8)
 
   const byCategory = new Map<string, number>()
   for (const row of expenseRows) {
@@ -236,17 +382,16 @@ export default async function RelatoriosPage({
     .slice(0, 6)
   const maxCategory = Math.max(...topCategories.map((c) => c[1]), 1)
 
-  const byExpenseProject = new Map<string, number>()
-  for (const row of expenseRows) {
-    const key = row.project?.name ?? "—"
-    byExpenseProject.set(
-      key,
-      (byExpenseProject.get(key) ?? 0) + Number(row.amount),
-    )
+  const topExpenseProjects = topProjectsByExpense(expenseRows)
+
+  const rangeHref = (key: string) => {
+    const params = new URLSearchParams({ range: key })
+    if (company) params.set("company", company)
+    if (project) params.set("project", project)
+    return `/app/relatorios?${params.toString()}`
   }
-  const topExpenseProjects = [...byExpenseProject.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
+
+  const hasFilter = Boolean(company || project)
 
   return (
     <div className="space-y-6">
@@ -254,14 +399,15 @@ export default async function RelatoriosPage({
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Relatórios</h1>
           <p className="text-muted-foreground text-sm">
-            Funil de leads, financeiro, despesas e horas.
+            Funil de leads, financeiro, rentabilidade, produtividade, despesas e
+            horas.
           </p>
         </div>
         <div className="bg-muted inline-flex items-center gap-1 rounded-full p-1">
           {RANGES.map((item) => (
             <Link
               key={item.key}
-              href={`/app/relatorios?range=${item.key}`}
+              href={rangeHref(item.key)}
               className={cn(
                 "rounded-full px-3 py-1 text-sm",
                 range === item.key && "bg-card font-medium shadow-sm",
@@ -272,6 +418,49 @@ export default async function RelatoriosPage({
           ))}
         </div>
       </div>
+
+      <form
+        method="get"
+        action="/app/relatorios"
+        className="flex flex-wrap items-end gap-2"
+      >
+        <input type="hidden" name="range" value={range} />
+        <select
+          name="company"
+          defaultValue={company ?? ""}
+          className={fieldClass}
+        >
+          <option value="">Todos os clientes</option>
+          {companies.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+        <select
+          name="project"
+          defaultValue={project ?? ""}
+          className={fieldClass}
+        >
+          <option value="">Todos os projetos</option>
+          {projectOptions.map((item) => (
+            <option key={item.id} value={item.id}>
+              {item.name}
+            </option>
+          ))}
+        </select>
+        <Button type="submit" variant="outline" size="sm">
+          Filtrar
+        </Button>
+        {hasFilter ? (
+          <Link
+            href={`/app/relatorios?range=${range}`}
+            className="text-muted-foreground text-sm hover:underline"
+          >
+            Limpar
+          </Link>
+        ) : null}
+      </form>
 
       {/* Funil de leads */}
       <Card>
@@ -327,13 +516,43 @@ export default async function RelatoriosPage({
             ))}
           </div>
 
-          {bySource.length > 0 ? (
-            <div className="text-muted-foreground flex flex-wrap gap-x-4 gap-y-1 text-xs">
-              {bySource.map((row) => (
-                <span key={row.source.id}>
-                  {row.source.name}: <strong>{row.count}</strong>
-                </span>
-              ))}
+          {conversionRows.length > 0 ? (
+            <div className="space-y-2">
+              <div className="text-muted-foreground text-xs">
+                Conversão por origem
+              </div>
+              <div className="overflow-hidden rounded-xl border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Origem</TableHead>
+                      <TableHead className="text-right">Leads</TableHead>
+                      <TableHead className="text-right">Ganhos</TableHead>
+                      <TableHead className="text-right">Conversão</TableHead>
+                      <TableHead className="text-right">Valor ganho</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {conversionRows.map((row) => (
+                      <TableRow key={row.sourceId ?? "none"}>
+                        <TableCell className="font-medium">
+                          {row.source}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {row.total}
+                        </TableCell>
+                        <TableCell className="text-right">{row.won}</TableCell>
+                        <TableCell className="text-right">
+                          {row.rate}%
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {formatMoney(row.wonValue)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           ) : null}
         </CardContent>
@@ -411,6 +630,66 @@ export default async function RelatoriosPage({
               ))}
             </div>
           ) : null}
+        </CardContent>
+      </Card>
+
+      {/* Rentabilidade */}
+      <Card>
+        <CardHeader className="flex-row items-center gap-2">
+          <TrendingUp className="text-primary size-4" />
+          <CardTitle className="text-base">Rentabilidade ({range}d)</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-2">
+          <ProfitTable title="Por projeto" rows={profitByProject} />
+          <ProfitTable title="Por cliente" rows={profitByClient} />
+        </CardContent>
+      </Card>
+
+      {/* Produtividade */}
+      <Card>
+        <CardHeader className="flex-row items-center gap-2">
+          <BarChart3 className="text-primary size-4" />
+          <CardTitle className="text-base">
+            Produtividade da equipe ({range}d)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {productivity.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Sem dados.</p>
+          ) : (
+            <div className="overflow-hidden rounded-xl border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Pessoa</TableHead>
+                    <TableHead className="text-right">
+                      Tarefas concluídas
+                    </TableHead>
+                    <TableHead className="text-right">Horas</TableHead>
+                    <TableHead className="text-right">
+                      Valor faturável
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {productivity.map((row) => (
+                    <TableRow key={row.userId}>
+                      <TableCell className="font-medium">{row.name}</TableCell>
+                      <TableCell className="text-right">
+                        {row.tasksDone}
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs">
+                        {formatDuration(row.seconds)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatMoney(row.billableAmount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -554,4 +833,74 @@ export default async function RelatoriosPage({
       </Card>
     </div>
   )
+}
+
+function ProfitTable({
+  title,
+  rows,
+}: {
+  title: string
+  rows: {
+    id: string
+    label: string
+    revenue: number
+    expense: number
+    margin: number
+  }[]
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="text-muted-foreground text-xs">{title}</div>
+      {rows.length === 0 ? (
+        <p className="text-muted-foreground text-sm">Sem dados.</p>
+      ) : (
+        <div className="overflow-hidden rounded-xl border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>
+                  {title === "Por cliente" ? "Cliente" : "Projeto"}
+                </TableHead>
+                <TableHead className="text-right">Faturado</TableHead>
+                <TableHead className="text-right">Despesas</TableHead>
+                <TableHead className="text-right">Margem</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row) => (
+                <TableRow key={row.id}>
+                  <TableCell className="font-medium">{row.label}</TableCell>
+                  <TableCell className="text-right">
+                    {formatMoney(row.revenue)}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {formatMoney(row.expense)}
+                  </TableCell>
+                  <TableCell
+                    className={cn(
+                      "text-right font-medium",
+                      row.margin >= 0 ? "text-emerald-600" : "text-red-600",
+                    )}
+                  >
+                    {formatMoney(row.margin)}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function topProjectsByExpense(
+  rows: { project: { name: string } | null; amount: number }[],
+) {
+  const byProject = new Map<string, number>()
+  for (const row of rows) {
+    const key = row.project?.name ?? "—"
+    byProject.set(key, (byProject.get(key) ?? 0) + Number(row.amount))
+  }
+  return [...byProject.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)
 }
