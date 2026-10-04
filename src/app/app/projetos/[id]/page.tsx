@@ -41,7 +41,7 @@ import {
   listMilestoneOptions,
   listMilestones,
 } from "@/server/queries/milestones"
-import { listTasks } from "@/server/queries/tasks"
+import { listTaskDependencies, listTasks } from "@/server/queries/tasks"
 import { listTags, tagsForEntity } from "@/server/queries/tags"
 import {
   customFieldValuesForEntity,
@@ -125,6 +125,11 @@ export default async function ProjectDetailPage({
     customFieldValuesForEntity(active.tenantId, "project", project.id),
     listCustomFieldDefinitions(active.tenantId, "task"),
   ])
+
+  const taskDependencies = await listTaskDependencies(
+    active.tenantId,
+    tasks.map((task) => task.id),
+  )
 
   const billable = summarizeBillable(billableEntries)
 
@@ -356,8 +361,10 @@ export default async function ProjectDetailPage({
         </CardHeader>
         <CardContent>
           <ProjectGantt
+            projectId={project.id}
             tasks={tasks}
             milestones={milestones}
+            dependencies={taskDependencies}
             projectStart={project.start_date}
             projectDeadline={project.deadline}
           />

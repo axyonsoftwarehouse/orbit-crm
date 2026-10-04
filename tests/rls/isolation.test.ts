@@ -1452,4 +1452,90 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
     expect(expense.error).not.toBeNull()
   })
+
+  it("A cria dependência entre tarefas do próprio projeto", async () => {
+    const second = await admin
+      .from("tasks")
+      .insert({
+        tenant_id: tenantA,
+        project_id: projectAId,
+        name: `Tarefa A2 ${suffix}`,
+      })
+      .select("id")
+      .single()
+    expect(second.error).toBeNull()
+
+    const inserted = await clientA.from("task_dependencies").insert({
+      tenant_id: tenantA,
+      task_id: taskAId,
+      depends_on_task_id: second.data!.id,
+    })
+    expect(inserted.error).toBeNull()
+
+    const { data } = await clientA
+      .from("task_dependencies")
+      .select("id")
+      .eq("task_id", taskAId)
+    expect((data ?? []).length).toBeGreaterThan(0)
+  })
+
+  it("A não pode criar dependência de uma tarefa consigo mesma", async () => {
+    const { error } = await clientA.from("task_dependencies").insert({
+      tenant_id: tenantA,
+      task_id: taskAId,
+      depends_on_task_id: taskAId,
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não vê dependências de B", async () => {
+    const t2 = await admin
+      .from("tasks")
+      .insert({
+        tenant_id: tenantB,
+        project_id: projectBId,
+        name: `Tarefa B2 ${suffix}`,
+      })
+      .select("id")
+      .single()
+    await admin.from("task_dependencies").insert({
+      tenant_id: tenantB,
+      task_id: taskBId,
+      depends_on_task_id: t2.data!.id,
+    })
+
+    const { data } = await clientA
+      .from("task_dependencies")
+      .select("id")
+      .eq("tenant_id", tenantB)
+    expect(data).toEqual([])
+  })
+
+  it("A não pode criar dependência em outro tenant", async () => {
+    const b1 = await admin
+      .from("tasks")
+      .insert({
+        tenant_id: tenantB,
+        project_id: projectBId,
+        name: `Tarefa B3 ${suffix}`,
+      })
+      .select("id")
+      .single()
+    const b2 = await admin
+      .from("tasks")
+      .insert({
+        tenant_id: tenantB,
+        project_id: projectBId,
+        name: `Tarefa B4 ${suffix}`,
+      })
+      .select("id")
+      .single()
+
+    const { error } = await clientA.from("task_dependencies").insert({
+      tenant_id: tenantB,
+      task_id: b1.data!.id,
+      depends_on_task_id: b2.data!.id,
+    })
+    expect(error).not.toBeNull()
+  })
 })

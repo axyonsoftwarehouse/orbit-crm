@@ -160,6 +160,27 @@ export async function listChecklist(
   return (data ?? []) as ChecklistItem[]
 }
 
+export type TaskDependency = {
+  id: string
+  task_id: string
+  depends_on_task_id: string
+}
+
+export async function listTaskDependencies(
+  tenantId: string,
+  taskIds: string[],
+): Promise<TaskDependency[]> {
+  if (taskIds.length === 0) return []
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("task_dependencies")
+    .select("id, task_id, depends_on_task_id")
+    .eq("tenant_id", tenantId)
+    .in("task_id", taskIds)
+
+  return (data ?? []) as TaskDependency[]
+}
+
 export async function taskCountsByProject(
   tenantId: string,
 ): Promise<Record<string, { done: number; total: number }>> {

@@ -128,6 +128,8 @@ tags/campos personalizados, portal do cliente.
 - **F18 — Relatórios adicionais** ✅ **concluída**
   - ✅ **F18.1 — Rentabilidade, produtividade, conversão e filtros** (`/app/relatorios`: margem por projeto/cliente (faturado − despesas), produtividade da equipe (tarefas concluídas + horas + valor faturável), conversão por origem de lead e filtros por cliente/projeto; agregações puras em `src/lib/reports.ts` com testes).
   - ✅ **F18.2 — Exportação CSV dos relatórios** (rota `/app/exportar/relatorios?report=leads|financeiro|rentabilidade|produtividade|despesas|horas`, respeitando período/cliente/projeto; dados via `getReportData`).
+- **F19 — Gantt interativo** ✅ **concluída**
+  - ✅ **F19.1 — Dependências + arrastar** (migration `0035`: `task_dependencies` com RLS por tenant; no cronograma do projeto é possível **arrastar/redimensionar** as barras (persistindo início/fim) e gerenciar **dependências** entre tarefas (criar/remover) com setas e **deslocamento automático** das sucessoras; ciclos bloqueados. Helpers puros em `src/lib/gantt.ts` com testes).
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura

@@ -2137,6 +2137,62 @@ export type Database = {
           },
         ]
       }
+      task_dependencies: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          depends_on_task_id: string
+          id: string
+          task_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          depends_on_task_id: string
+          id?: string
+          task_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          depends_on_task_id?: string
+          id?: string
+          task_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_dependencies_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_dep_fk"
+            columns: ["depends_on_task_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_task_fk"
+            columns: ["task_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "task_dependencies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           assignee_id: string | null

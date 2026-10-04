@@ -15,14 +15,15 @@ de **entrega** (clientes → projetos → tarefas → horas) e os módulos
 **financeiro, comercial, atendimento e portal do cliente**, além de itens de
 **plataforma SaaS** (planos/limites, notificações, relatórios, branding e equipe).
 
-- **Fases concluídas:** F0 a F18, além de melhorias transversais (tipagem do banco,
+- **Fases concluídas:** F0 a F19, além de melhorias transversais (tipagem do banco,
   paginação das listas, import/export CSV, confiabilidade e engajamento).
-- **Migrations:** 33 (`0001`–`0034`).
-- **Testes:** 48 unitários + 93 de isolamento RLS (todos verdes).
-- **Cobertura funcional:** clientes, projetos, tarefas, horas, financeiro (orçamento,
-  fatura, pagamento, despesa, contrato), comercial, captação web-to-lead, atendimento,
-  portal do cliente (incluindo contratos e despesas faturáveis), calendário, metas,
-  atividades (auditoria), modelos de e-mail, tags/campos, planos e branding.
+- **Migrations:** 34 (`0001`–`0035`).
+- **Testes:** 57 unitários + 97 de isolamento RLS (todos verdes).
+- **Cobertura funcional:** clientes, projetos (com **Gantt interativo** e dependências),
+  tarefas, horas, financeiro (orçamento, fatura, pagamento, despesa, contrato), comercial,
+  captação web-to-lead, atendimento, portal do cliente (incluindo contratos e despesas
+  faturáveis), calendário, metas, atividades (auditoria), modelos de e-mail, tags/campos,
+  planos e branding.
 - **Falta do plano original:** apenas **cobrança automática** (F6) — adiada por decisão.
 
 **Recomendação:** o produto é um MVP comercializável. Os próximos saltos são
@@ -58,7 +59,7 @@ por projeto/hora e precisam faturar horas e acompanhar a rentabilidade.
 | **Clientes**          | Cadastrar empresas e contatos, importar/exportar CSV, convidar contato para o portal.                                                                                                                                                  |
 | **Leads (CRM)**       | Pipeline Kanban, status/origens configuráveis, atividades, conversão em cliente, importar/exportar CSV.                                                                                                                                |
 | **Captação**          | Formulário público por empresa (`/f/slug`) que cria leads, com anti-bot e origem configurável.                                                                                                                                         |
-| **Projetos**          | Equipe, orçamento/valores, prazos, progresso, **marcos** e **cronograma (Gantt)**.                                                                                                                                                     |
+| **Projetos**          | Equipe, orçamento/valores, prazos, progresso, **marcos** e **cronograma (Gantt) interativo** (arrastar, redimensionar e dependências com auto-deslocamento).                                                                           |
 | **Tarefas**           | Lista/Kanban, checklist, responsável, prioridade, prazo, vínculo a marcos.                                                                                                                                                             |
 | **Timesheet**         | Timer e lançamento manual, faturável/valor-hora, totais e exportação.                                                                                                                                                                  |
 | **Orçamentos**        | Itens, desconto/imposto, numeração, conversão em fatura, aprovação pelo cliente no portal.                                                                                                                                             |
@@ -115,13 +116,14 @@ middleware (sessão + tenant por subdomínio)
 
 ---
 
-## 5. Modelo de dados (42 tabelas)
+## 5. Modelo de dados (43 tabelas)
 
 **Plataforma:** `profiles`, `tenants`, `memberships`, `invitations`, `plans`,
 `roadmap_items`, `notifications`.
 
 **Entrega:** `companies`, `contacts`, `projects`, `project_members`, `milestones`,
-`tasks`, `task_checklist_items`, `time_entries`, `comments`, `attachments`.
+`tasks`, `task_checklist_items`, `task_dependencies`, `time_entries`, `comments`,
+`attachments`.
 
 **Financeiro:** `estimates`, `invoices`, `payments`, `document_items`, `expenses`,
 `contracts`.
@@ -165,18 +167,19 @@ middleware (sessão + tenant por subdomínio)
 - **Super-admin:** bypass controlado por flag em `profiles`.
 
 > **Risco nº 1 do projeto:** RLS. Por isso há uma suíte dedicada de testes de
-> isolamento (88 casos) — ver seção 7/11 sobre rodá-los localmente.
+> isolamento (97 casos) — ver seção 7/11 sobre rodá-los localmente.
 
 ---
 
 ## 7. Qualidade, testes e CI
 
-- **Unit (Vitest):** 48 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
+- **Unit (Vitest):** 57 testes (schemas Zod: auth, tarefas, marcos, tags, campos,
   tenant, equipe, despesas, contratos, calendário, metas, templates, captação e CSV;
-  agregações de relatórios: rentabilidade, produtividade e conversão por origem).
-- **RLS (Vitest, ambiente node):** 93 testes de isolamento entre dois tenants,
-  cobrindo seleção/inserção/atualização/exclusão, Storage, auditoria, e-mail e a
-  leitura do portal (contratos e despesas faturáveis).
+  agregações de relatórios: rentabilidade, produtividade e conversão por origem; e
+  cronograma: datas, normalização e detecção de ciclos).
+- **RLS (Vitest, ambiente node):** 97 testes de isolamento entre dois tenants,
+  cobrindo seleção/inserção/atualização/exclusão, Storage, auditoria, e-mail,
+  dependências de tarefas e a leitura do portal (contratos e despesas faturáveis).
 - **E2E:** Playwright configurado (smoke), cobertura a ampliar.
 - **CI (GitHub Actions):** `ci.yml` roda `format:check`, `lint`, `typecheck`, `test` e
   `build` (com `concurrency`); `rls.yml` roda os testes de RLS **manualmente**
@@ -220,7 +223,7 @@ middleware (sessão + tenant por subdomínio)
 8. **API pública + webhooks**, **2FA**, **permissões granulares**.
 9. **Multi-moeda e impostos**, **self-signup/onboarding** e ativação do subdomínio.
 10. **Pesquisas (surveys)** e **anúncios** no portal.
-11. **Gantt interativo** (drag/dependências) e **visão de portfólio**.
+11. ~~**Gantt interativo** (drag/dependências)~~ ✅ **entregue na F19**; resta a **visão de portfólio**.
 
 ---
 
@@ -317,15 +320,15 @@ Tailwind 4, Zod, `lucide-react`, `sonner`, `next-themes`, `@vercel/analytics`,
 
 ## 15. Handoff — por onde continuar
 
-**Estado atual:** F0–F18 concluídas; migrations `0001`–`0034` aplicadas no projeto
-Supabase remoto; **48 testes unit + 93 de RLS** verdes; `typecheck`/`lint`/`format`/`build`
+**Estado atual:** F0–F19 concluídas; migrations `0001`–`0035` aplicadas no projeto
+Supabase remoto; **57 testes unit + 97 de RLS** verdes; `typecheck`/`lint`/`format`/`build`
 verdes; árvore Git limpa e sincronizada (`main`).
 
 **Fonte da verdade:** `PLANO.md` (fases), `RELATORIO.md` (este documento) e a tabela
 `roadmap_items` (backlog).
 
-**Próxima fase sugerida (sem cobrança):** **Gantt interativo** (drag e dependências)
-ou **exportação CSV/PDF dos relatórios**. Alternativas de mesmo porte: **API pública +
+**Próxima fase sugerida (sem cobrança):** **exportação CSV/PDF dos relatórios** ou
+**visão de portfólio** de projetos. Alternativas de mesmo porte: **API pública +
 webhooks**, **2FA** e **cobrança automática**.
 
 **Passo a passo para retomar:**
