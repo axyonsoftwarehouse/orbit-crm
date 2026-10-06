@@ -339,8 +339,9 @@ webhooks**, **2FA** e **cobrança automática**.
    `npm run db:types` → implementar (validations → queries → actions → UI) → somar testes.
 4. Rodar: `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm test`,
    `npm run test:rls`, `npm run build`.
-5. Commit no padrão `tipo: descrição` e push (a credencial Git está fixada na conta
-   `torinoorbit-dev`).
+5. Commit no padrão `tipo: descrição` e push para `axyonsoftwarehouse/orbit-crm`
+   (a credencial Git está fixada na conta `torinoorbit-dev`, que é admin da org;
+   o remote antigo segue como `old-origin`).
 
 **Atenção:** `.env.local` aponta para o **Supabase remoto** e os testes de RLS rodam
 contra ele; o login do `gh`/Supabase já está configurado nesta máquina.
