@@ -105,6 +105,9 @@ export async function inviteContactToPortalAction(
 ): Promise<InviteContactState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
+  if (!["owner", "admin"].includes(active.role)) {
+    return { error: "Você não tem permissão para liberar acesso ao portal." }
+  }
 
   const contactId = String(formData.get("contact_id") ?? "")
   const companyId = String(formData.get("company_id") ?? "")
@@ -131,7 +134,6 @@ export async function inviteContactToPortalAction(
   }
 
   const admin = createAdminClient()
-  let userId: string | null = null
 
   const { data: created, error: createError } =
     await admin.auth.admin.createUser({
@@ -144,21 +146,15 @@ export async function inviteContactToPortalAction(
     })
 
   if (createError || !created.user) {
-    const { data: list } = await admin.auth.admin.listUsers({ perPage: 200 })
-    const existing = list?.users.find(
-      (u) => u.email?.toLowerCase() === contact.email?.toLowerCase(),
-    )
-    if (!existing) {
-      return { error: createError?.message ?? "Falha ao criar o acesso." }
+    return {
+      error:
+        "Não foi possível criar o acesso. Este e-mail pode já possuir uma conta.",
     }
-    userId = existing.id
-  } else {
-    userId = created.user.id
   }
 
   const { error } = await supabase
     .from("contacts")
-    .update({ user_id: userId })
+    .update({ user_id: created.user.id })
     .eq("id", contactId)
     .eq("tenant_id", active.tenantId)
 

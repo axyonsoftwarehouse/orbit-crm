@@ -1,9 +1,32 @@
 "use server"
 
+import { headers } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { publicLeadSchema } from "@/lib/validations/public-lead"
+import { logger } from "@/lib/logger"
 
 export type PublicLeadState = { error?: string; success?: string } | undefined
+
+const RATE_LIMIT = 5
+const RATE_WINDOW_MS = 60_000
+const rateBuckets = new Map<string, { count: number; resetAt: number }>()
+
+// Limite best-effort por IP (por instância). Reduz spam no formulário público.
+async function isRateLimited() {
+  const headerList = await headers()
+  const ip =
+    (headerList.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ||
+    headerList.get("x-real-ip") ||
+    "unknown"
+  const now = Date.now()
+  const bucket = rateBuckets.get(ip)
+  if (!bucket || bucket.resetAt < now) {
+    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS })
+    return false
+  }
+  bucket.count += 1
+  return bucket.count > RATE_LIMIT
+}
 
 export async function submitPublicLeadAction(
   _prevState: PublicLeadState,
@@ -11,6 +34,10 @@ export async function submitPublicLeadAction(
 ): Promise<PublicLeadState> {
   const slug = String(formData.get("slug") ?? "").trim()
   if (!slug) return { error: "Formulário inválido." }
+
+  if (await isRateLimited()) {
+    return { error: "Muitas tentativas. Tente novamente em instantes." }
+  }
 
   // Honeypot: se preenchido, é bot — finge sucesso.
   const honeypot = String(formData.get("company_website") ?? "")
@@ -48,7 +75,10 @@ export async function submitPublicLeadAction(
     source_id: tenant.web_to_lead_source_id ?? null,
   })
 
-  if (error) return { error: error.message }
+  if (error) {
+    logger.error("public-lead.insert_failed", { error: error.message })
+    return { error: "Não foi possível enviar sua mensagem. Tente novamente." }
+  }
 
   return { success: "Recebemos sua mensagem. Em breve entraremos em contato!" }
 }

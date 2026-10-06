@@ -135,6 +135,15 @@ export async function addProjectMemberAction(formData: FormData) {
   if (!projectId || !userId) return
 
   const supabase = await createClient()
+  const { data: membership } = await supabase
+    .from("memberships")
+    .select("user_id")
+    .eq("tenant_id", active.tenantId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .maybeSingle()
+  if (!membership) return
+
   await supabase.from("project_members").insert({
     tenant_id: active.tenantId,
     project_id: projectId,

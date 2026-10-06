@@ -1,6 +1,10 @@
 function escapeCell(value: unknown): string {
   if (value === null || value === undefined) return ""
-  const text = String(value)
+  let text = String(value)
+  // Neutraliza injeção de fórmula em planilhas (= + - @ TAB CR).
+  if (/^[=+\-@\t\r]/.test(text)) {
+    text = `'${text}`
+  }
   if (/[";\n\r]/.test(text)) {
     return `"${text.replace(/"/g, '""')}"`
   }

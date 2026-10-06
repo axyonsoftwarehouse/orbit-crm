@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 }
 
 export default function PortalLoginPage() {
-  const showDemo = process.env.NEXT_PUBLIC_DEMO_LOGIN !== "false"
+  const showDemo = process.env.NEXT_PUBLIC_DEMO_LOGIN === "true"
   return (
     <div className="bg-background flex min-h-svh items-center justify-center p-4">
       <Card className="w-full max-w-sm">
