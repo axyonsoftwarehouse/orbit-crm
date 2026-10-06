@@ -131,6 +131,8 @@ export async function updateMemberRoleAction(input: {
   if (!MANAGER_ROLES.includes(active.role)) return
   if (!["owner", "admin", "member"].includes(input.role)) return
 
+  const isOwner = active.role === "owner"
+
   const supabase = await createClient()
   const { data: current } = await supabase
     .from("memberships")
@@ -139,6 +141,9 @@ export async function updateMemberRoleAction(input: {
     .eq("user_id", input.userId)
     .maybeSingle()
   if (!current) return
+
+  // Apenas um owner concede ou revoga o papel de owner.
+  if ((current.role === "owner" || input.role === "owner") && !isOwner) return
 
   if (current.role === "owner" && input.role !== "owner") {
     if ((await countOwners(active.tenantId)) <= 1) return
@@ -158,6 +163,7 @@ export async function removeMemberAction(formData: FormData) {
   if (!active) return
   if (!MANAGER_ROLES.includes(active.role)) return
 
+  const isOwner = active.role === "owner"
   const userId = String(formData.get("user_id") ?? "")
   if (!userId) return
 
@@ -169,6 +175,9 @@ export async function removeMemberAction(formData: FormData) {
     .eq("user_id", userId)
     .maybeSingle()
   if (!current) return
+
+  // Apenas um owner remove outro owner.
+  if (current.role === "owner" && !isOwner) return
 
   if (current.role === "owner" && (await countOwners(active.tenantId)) <= 1) {
     return
