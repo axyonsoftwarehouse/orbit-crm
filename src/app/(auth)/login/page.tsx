@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 }
 
 export default function LoginPage() {
-  const showDemo = process.env.NEXT_PUBLIC_DEMO_LOGIN !== "false"
+  const showDemo = process.env.NEXT_PUBLIC_DEMO_LOGIN === "true"
   return (
     <Card className="w-full max-w-sm">
       <CardHeader>
