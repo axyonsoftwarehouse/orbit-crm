@@ -17,7 +17,7 @@ export async function sendEmail({
   const from = process.env.EMAIL_FROM ?? "Orbit CRM <nao-responda@orbitcrm.app>"
 
   if (!key) {
-    console.log(`[email] (sem RESEND_API_KEY) para=${to} assunto=${subject}`)
+    console.log("[email] RESEND_API_KEY ausente; envio ignorado")
     return { sent: false, skipped: true }
   }
 

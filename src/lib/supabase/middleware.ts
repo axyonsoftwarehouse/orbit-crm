@@ -6,6 +6,9 @@ const PROTECTED_PREFIXES = ["/app", "/plataforma", "/portal"]
 const AUTH_PREFIXES = ["/login", "/portal/login"]
 
 export async function updateSession(request: NextRequest) {
+  // Nunca confia em x-tenant-slug vindo do cliente: remove e recalcula.
+  request.headers.delete("x-tenant-slug")
+
   // Resolução de tenant por subdomínio (inativo até definir NEXT_PUBLIC_ROOT_DOMAIN)
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN
   if (rootDomain) {

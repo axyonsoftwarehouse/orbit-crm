@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { checklistItemSchema, taskSchema } from "@/lib/validations/tasks"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { dbError } from "@/lib/db-error"
 
 export type TaskFormState = { error?: string; success?: string } | undefined
 
@@ -55,7 +56,7 @@ export async function createTaskAction(
     .select("id")
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return dbError("tasks", error)
 
   await saveCustomFieldValues(
     supabase,
@@ -96,7 +97,7 @@ export async function updateTaskAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("tasks", error)
 
   await saveCustomFieldValues(supabase, active.tenantId, "task", id, formData)
 

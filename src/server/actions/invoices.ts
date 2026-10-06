@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { listUnbilledBillableEntries } from "@/server/queries/time"
+import { dbError } from "@/lib/db-error"
 import {
   buildDocumentValues,
   formatDocumentNumber,
@@ -135,7 +136,7 @@ export async function updateInvoiceAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("invoices", error)
 
   await replaceDocumentItems(
     supabase,
@@ -222,7 +223,7 @@ export async function recordPaymentAction(
     created_by: user?.id ?? null,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("invoices", error)
 
   await recomputeInvoiceStatus(supabase, active.tenantId, invoiceId)
 

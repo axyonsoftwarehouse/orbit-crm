@@ -33,3 +33,12 @@ export function renderTemplate(
 ): string {
   return text.replace(/\{\{(\w+)\}\}/g, (_, key: string) => vars[key] ?? "")
 }
+
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;")
+}

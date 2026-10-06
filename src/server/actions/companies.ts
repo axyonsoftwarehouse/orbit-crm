@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { companySchema } from "@/lib/validations/clients"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { dbError } from "@/lib/db-error"
 
 export type CompanyFormState = { error?: string; success?: string } | undefined
 
@@ -53,7 +54,7 @@ export async function createCompanyAction(
     .select("id")
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return dbError("companies", error)
 
   await saveCustomFieldValues(
     supabase,
@@ -89,7 +90,7 @@ export async function updateCompanyAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("companies", error)
 
   await saveCustomFieldValues(
     supabase,
