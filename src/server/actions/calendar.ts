@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -54,7 +56,7 @@ export async function createCalendarEventAction(
     project_id: parsed.data.project_id ?? null,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("calendar", error)
 
   revalidatePath("/app/calendario")
   return { success: "Evento criado." }
@@ -92,7 +94,7 @@ export async function updateCalendarEventAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("calendar", error)
 
   revalidatePath("/app/calendario")
   return { success: "Evento atualizado." }

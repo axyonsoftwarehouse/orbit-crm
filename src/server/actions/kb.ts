@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -35,7 +37,7 @@ export async function createKbCategoryAction(
     name: parsed.data.name,
     description: parsed.data.description ?? null,
   })
-  if (error) return { error: error.message }
+  if (error) return dbError("kb", error)
 
   revalidatePath("/app/base-conhecimento")
   return { success: "Categoria criada." }
@@ -108,7 +110,7 @@ export async function createKbArticleAction(
     })
     .select("id")
     .single()
-  if (error) return { error: error.message }
+  if (error) return dbError("kb", error)
 
   revalidatePath("/app/base-conhecimento")
   redirect(`/app/base-conhecimento/${data.id}`)
@@ -150,7 +152,7 @@ export async function updateKbArticleAction(
     })
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
-  if (error) return { error: error.message }
+  if (error) return dbError("kb", error)
 
   revalidatePath("/app/base-conhecimento")
   revalidatePath(`/app/base-conhecimento/${id}`)
@@ -196,7 +198,7 @@ export async function createFaqAction(
     answer: parsed.data.answer ?? null,
     is_published: parsed.data.is_published,
   })
-  if (error) return { error: error.message }
+  if (error) return dbError("kb", error)
 
   revalidatePath("/app/base-conhecimento")
   return { success: "FAQ adicionada." }

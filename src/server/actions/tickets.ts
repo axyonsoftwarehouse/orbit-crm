@@ -7,6 +7,7 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { ticketReplySchema, ticketSchema } from "@/lib/validations/tickets"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { dbError } from "@/lib/db-error"
 
 export type TicketFormState = { error?: string; success?: string } | undefined
 
@@ -52,7 +53,7 @@ export async function createTicketAction(
     { p_tenant: active.tenantId, p_kind: "ticket" },
   )
   if (numberError || number === null) {
-    return { error: numberError?.message ?? "Falha ao gerar o número." }
+    return dbError("tickets.number", numberError, "Falha ao gerar o número.")
   }
 
   const { data: tenant } = await supabase
@@ -80,7 +81,7 @@ export async function createTicketAction(
     created_by: user?.id ?? null,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("tickets", error)
 
   revalidatePath("/app/tickets")
   return { success: "Ticket criado." }
@@ -123,7 +124,7 @@ export async function updateTicketAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("tickets", error)
 
   revalidatePath("/app/tickets")
   revalidatePath(`/app/tickets/${id}`)

@@ -6,6 +6,7 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { parseCsv } from "@/lib/csv"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { logger } from "@/lib/logger"
 
 export type ImportState =
   | {
@@ -146,7 +147,8 @@ export async function importCompaniesAction(
       country: record.country || null,
     })
     if (error) {
-      errors.push(`${name}: ${error.message}`)
+      logger.error("import.companies.row_failed", { error: error.message })
+      errors.push(`${name}: não foi possível importar`)
       continue
     }
     created++
@@ -224,7 +226,8 @@ export async function importLeadsAction(
       value: value !== null && Number.isFinite(value) ? value : null,
     })
     if (error) {
-      errors.push(`${record.name}: ${error.message}`)
+      logger.error("import.leads.row_failed", { error: error.message })
+      errors.push(`${record.name}: não foi possível importar`)
       continue
     }
     created++

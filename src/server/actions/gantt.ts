@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
@@ -125,7 +127,7 @@ export async function addTaskDependencyAction(
 
   if (error) {
     if (error.code === "23505") return { error: "Dependência já existe." }
-    return { error: error.message }
+    return dbError("gantt", error)
   }
 
   revalidatePath(`/app/projetos/${projectId}`)
@@ -149,7 +151,7 @@ export async function removeTaskDependencyAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("gantt", error)
 
   if (projectId) revalidatePath(`/app/projetos/${projectId}`)
   return { success: "Dependência removida." }

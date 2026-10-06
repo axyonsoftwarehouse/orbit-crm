@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
@@ -179,7 +181,7 @@ export async function addManualEntryAction(
     note: parsed.data.note ?? null,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("time", error)
 
   revalidatePath("/app/timesheet")
   return { success: "Lançamento adicionado." }

@@ -1,6 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { sendEmail } from "@/lib/email"
-import { EMAIL_TEMPLATES, renderTemplate } from "@/lib/email-templates"
+import {
+  EMAIL_TEMPLATES,
+  escapeHtml,
+  renderTemplate,
+} from "@/lib/email-templates"
 
 export async function sendTenantEmail(
   supabase: SupabaseClient,
@@ -25,7 +29,10 @@ export async function sendTenantEmail(
     custom?.subject ?? fallback?.subject ?? "",
     vars,
   )
-  const html = renderTemplate(custom?.body ?? fallback?.body ?? "", vars)
+  const htmlVars = Object.fromEntries(
+    Object.entries(vars).map(([key, value]) => [key, escapeHtml(value)]),
+  )
+  const html = renderTemplate(custom?.body ?? fallback?.body ?? "", htmlVars)
 
   const result = await sendEmail({ to, subject, html })
   const status = result.sent ? "sent" : result.skipped ? "skipped" : "error"

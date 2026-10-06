@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -52,7 +54,7 @@ export async function createMilestoneAction(
     date_finished: parsed.data.status === 3 ? new Date().toISOString() : null,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("milestones", error)
 
   revalidatePath(`/app/projetos/${parsed.data.project_id}`)
   return { success: "Marco criado." }
@@ -83,7 +85,7 @@ export async function updateMilestoneAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("milestones", error)
 
   revalidatePath(`/app/projetos/${parsed.data.project_id}`)
   return { success: "Marco atualizado." }

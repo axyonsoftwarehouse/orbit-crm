@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { projectSchema } from "@/lib/validations/projects"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { dbError } from "@/lib/db-error"
 
 export type ProjectFormState = { error?: string; success?: string } | undefined
 
@@ -56,7 +57,7 @@ export async function createProjectAction(
     .select("id")
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return dbError("projects", error)
 
   await saveCustomFieldValues(
     supabase,
@@ -95,7 +96,7 @@ export async function updateProjectAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("projects", error)
 
   await saveCustomFieldValues(
     supabase,
