@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getProfile, getUser } from "@/lib/auth"
@@ -50,7 +52,11 @@ export async function createTenantAction(
     .single()
 
   if (error || !tenant) {
-    return { error: error?.message ?? "Não foi possível criar a empresa." }
+    return dbError(
+      "platform.create_tenant",
+      error,
+      "Não foi possível criar a empresa.",
+    )
   }
 
   const user = await getUser()
@@ -63,9 +69,11 @@ export async function createTenantAction(
     })
 
     if (memberError) {
-      return {
-        error: `Empresa criada, mas falhou incluir você como proprietário: ${memberError.message}`,
-      }
+      return dbError(
+        "platform.create_tenant.membership",
+        memberError,
+        "Empresa criada, mas falhou incluir você como proprietário.",
+      )
     }
   }
 
@@ -142,7 +150,7 @@ export async function createPlanAction(
     most_popular: parsed.data.most_popular,
     limits: parsed.data.limits,
   })
-  if (error) return { error: error.message }
+  if (error) return dbError("platform", error)
 
   revalidatePath("/plataforma")
   return { success: "Plano criado." }
@@ -177,7 +185,7 @@ export async function updatePlanAction(
       limits: parsed.data.limits,
     })
     .eq("id", id)
-  if (error) return { error: error.message }
+  if (error) return dbError("platform", error)
 
   revalidatePath("/plataforma")
   return { success: "Plano atualizado." }

@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -42,7 +44,7 @@ export async function createExpenseAction(
     ...parsed.data,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("expenses", error)
 
   revalidatePath("/app/despesas")
   return { success: "Despesa criada." }
@@ -70,7 +72,7 @@ export async function updateExpenseAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("expenses", error)
 
   revalidatePath("/app/despesas")
   return { success: "Despesa atualizada." }

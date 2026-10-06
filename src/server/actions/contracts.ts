@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -43,7 +45,7 @@ export async function createContractAction(
     value: parsed.data.value ?? null,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("contracts", error)
 
   revalidatePath("/app/contratos")
   return { success: "Contrato criado." }
@@ -71,7 +73,7 @@ export async function updateContractAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("contracts", error)
 
   revalidatePath("/app/contratos")
   return { success: "Contrato atualizado." }

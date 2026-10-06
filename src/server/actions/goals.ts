@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -39,7 +41,7 @@ export async function createGoalAction(
     ...parsed.data,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("goals", error)
 
   revalidatePath("/app/metas")
   return { success: "Meta criada." }
@@ -67,7 +69,7 @@ export async function updateGoalAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("goals", error)
 
   revalidatePath("/app/metas")
   return { success: "Meta atualizada." }

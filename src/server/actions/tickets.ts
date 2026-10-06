@@ -53,7 +53,7 @@ export async function createTicketAction(
     { p_tenant: active.tenantId, p_kind: "ticket" },
   )
   if (numberError || number === null) {
-    return { error: numberError?.message ?? "Falha ao gerar o número." }
+    return dbError("tickets.number", numberError, "Falha ao gerar o número.")
   }
 
   const { data: tenant } = await supabase

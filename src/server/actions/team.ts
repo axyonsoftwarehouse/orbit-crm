@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -103,7 +105,7 @@ export async function inviteMemberAction(
     .select("token")
     .single()
 
-  if (error) return { error: error.message }
+  if (error) return dbError("team", error)
 
   const link = `${await getBaseUrl()}/convite/${invitation.token}`
   const result = await sendTenantEmail(supabase, {
@@ -263,9 +265,11 @@ export async function acceptInvitationAction(
         user_metadata: { full_name: parsed.data.full_name },
       })
     if (createError || !created.user) {
-      return {
-        error: createError?.message ?? "Não foi possível criar a conta.",
-      }
+      return dbError(
+        "team.accept.create_user",
+        createError,
+        "Não foi possível criar a conta.",
+      )
     }
     userId = created.user.id
 
@@ -273,7 +277,12 @@ export async function acceptInvitationAction(
       email,
       password: parsed.data.password,
     })
-    if (signInError) return { error: signInError.message }
+    if (signInError)
+      return dbError(
+        "team.accept.sign_in",
+        signInError,
+        "Não foi possível entrar.",
+      )
   }
 
   await admin.from("memberships").upsert(

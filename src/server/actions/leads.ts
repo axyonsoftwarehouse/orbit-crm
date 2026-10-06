@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -63,7 +65,7 @@ export async function createLeadAction(
     })
     .select("id")
     .single()
-  if (error) return { error: error.message }
+  if (error) return dbError("leads", error)
 
   await saveCustomFieldValues(
     supabase,
@@ -98,7 +100,7 @@ export async function updateLeadAction(
     .update({ ...parsed.data, value: parsed.data.value ?? null })
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
-  if (error) return { error: error.message }
+  if (error) return dbError("leads", error)
 
   await saveCustomFieldValues(supabase, active.tenantId, "lead", id, formData)
 
@@ -281,7 +283,7 @@ export async function createLeadStatusAction(
     is_won: parsed.data.is_won,
     is_lost: parsed.data.is_lost,
   })
-  if (error) return { error: error.message }
+  if (error) return dbError("leads", error)
 
   revalidatePath("/app/leads")
   return { success: "Status criado." }
@@ -317,7 +319,7 @@ export async function createLeadSourceAction(
     tenant_id: active.tenantId,
     name: parsed.data.name,
   })
-  if (error) return { error: error.message }
+  if (error) return dbError("leads", error)
 
   revalidatePath("/app/leads")
   return { success: "Origem criada." }

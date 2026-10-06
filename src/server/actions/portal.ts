@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -73,7 +75,7 @@ export async function createPortalTicketAction(
     { p_tenant: contact.tenant_id, p_kind: "ticket" },
   )
   if (numberError || number === null) {
-    return { error: numberError?.message ?? "Falha ao gerar o número." }
+    return dbError("portal.ticket.number", numberError, "Falha ao gerar o número.")
   }
 
   const { data: tenant } = await supabase
@@ -102,7 +104,7 @@ export async function createPortalTicketAction(
     .single()
 
   if (error || !ticket) {
-    return { error: error?.message ?? "Falha ao abrir o ticket." }
+    return dbError("portal.ticket.create", error, "Falha ao abrir o ticket.")
   }
 
   revalidatePath("/portal/tickets")

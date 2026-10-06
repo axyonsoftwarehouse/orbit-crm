@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -44,7 +46,7 @@ export async function createContactAction(
     ...parsed.data,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("contacts", error)
 
   revalidatePath(`/app/clientes/${companyId}`)
   return { success: "Contato adicionado." }
@@ -73,7 +75,7 @@ export async function updateContactAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("contacts", error)
 
   revalidatePath(`/app/clientes/${companyId}`)
   return { success: "Contato atualizado." }
@@ -162,7 +164,7 @@ export async function inviteContactToPortalAction(
     .eq("id", contactId)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("contacts", error)
 
   if (companyId) revalidatePath(`/app/clientes/${companyId}`)
   revalidatePath("/app/clientes")

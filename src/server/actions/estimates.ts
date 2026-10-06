@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import type { LineItemInput } from "@/lib/documents/totals"
@@ -38,7 +40,7 @@ export async function createEstimateAction(
     { p_tenant: active.tenantId, p_kind: "estimate" },
   )
   if (numberError || number === null) {
-    return { error: numberError?.message ?? "Falha ao gerar o número." }
+    return dbError("estimates.number", numberError, "Falha ao gerar o número.")
   }
 
   const values = buildDocumentValues(parsed.data)
@@ -58,7 +60,7 @@ export async function createEstimateAction(
     .single()
 
   if (error || !estimate) {
-    return { error: error?.message ?? "Falha ao criar o orçamento." }
+    return dbError("estimates.create", error, "Falha ao criar o orçamento.")
   }
 
   await replaceDocumentItems(
@@ -96,7 +98,7 @@ export async function updateEstimateAction(
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("estimates", error)
 
   await replaceDocumentItems(
     supabase,

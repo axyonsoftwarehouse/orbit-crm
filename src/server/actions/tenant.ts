@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
@@ -55,7 +57,7 @@ export async function updateWebToLeadAction(
     })
     .eq("id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("tenant", error)
 
   revalidatePath("/app/configuracoes")
   return { success: "Configuração salva." }
@@ -103,7 +105,12 @@ export async function updateTenantSettingsAction(
       .from("branding")
       .upload(path, logo, { upsert: true, contentType: logo.type })
 
-    if (uploadError) return { error: uploadError.message }
+    if (uploadError)
+      return dbError(
+        "tenant.branding.upload",
+        uploadError,
+        "Não foi possível enviar o logo.",
+      )
 
     const { data } = supabase.storage.from("branding").getPublicUrl(path)
     logoUrl = data.publicUrl
@@ -118,7 +125,7 @@ export async function updateTenantSettingsAction(
     })
     .eq("id", active.tenantId)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("tenant", error)
 
   revalidatePath("/app", "layout")
   return { success: "Empresa atualizada." }

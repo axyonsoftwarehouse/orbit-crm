@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
@@ -34,7 +36,7 @@ export async function saveEmailTemplateAction(
       { onConflict: "tenant_id,key" },
     )
 
-  if (error) return { error: error.message }
+  if (error) return dbError("email", error)
 
   revalidatePath("/app/configuracoes")
   return { success: "Modelo salvo." }

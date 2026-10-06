@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
@@ -42,7 +44,7 @@ export async function registerAttachmentAction(
     uploaded_by: user?.id ?? null,
   })
 
-  if (error) return { error: error.message }
+  if (error) return dbError("attachments", error)
 
   revalidateEntity(input.entityType, input.entityId)
   return {}

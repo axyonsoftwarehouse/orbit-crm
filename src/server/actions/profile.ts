@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
@@ -22,7 +24,7 @@ export async function updateNotificationPrefsAction(
     .update({ notify_email: notifyEmail })
     .eq("id", user.id)
 
-  if (error) return { error: error.message }
+  if (error) return dbError("profile", error)
 
   revalidatePath("/app/configuracoes")
   return { success: "Preferências atualizadas." }

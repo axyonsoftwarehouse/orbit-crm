@@ -78,7 +78,7 @@ export async function createInvoiceAction(
     { p_tenant: active.tenantId, p_kind: "invoice" },
   )
   if (numberError || number === null) {
-    return { error: numberError?.message ?? "Falha ao gerar o número." }
+    return dbError("invoices.number", numberError, "Falha ao gerar o número.")
   }
 
   const values = buildDocumentValues(parsed.data)
@@ -98,7 +98,7 @@ export async function createInvoiceAction(
     .single()
 
   if (error || !invoice) {
-    return { error: error?.message ?? "Falha ao criar a fatura." }
+    return dbError("invoices.create", error, "Falha ao criar a fatura.")
   }
 
   await replaceDocumentItems(

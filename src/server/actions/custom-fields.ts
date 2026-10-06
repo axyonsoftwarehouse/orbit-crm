@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
@@ -47,7 +49,7 @@ export async function createCustomFieldAction(
     if (error.code === "23505") {
       return { error: "Já existe um campo com essa chave nessa entidade." }
     }
-    return { error: error.message }
+    return dbError("custom-fields", error)
   }
 
   revalidatePath("/app/configuracoes")
@@ -80,7 +82,7 @@ export async function updateCustomFieldAction(
     if (error.code === "23505") {
       return { error: "Já existe um campo com essa chave nessa entidade." }
     }
-    return { error: error.message }
+    return dbError("custom-fields", error)
   }
 
   revalidatePath("/app/configuracoes")

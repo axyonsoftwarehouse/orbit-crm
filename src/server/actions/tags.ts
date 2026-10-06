@@ -1,5 +1,7 @@
 "use server"
 
+import { dbError } from "@/lib/db-error"
+
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
@@ -59,7 +61,7 @@ export async function createTagAction(
   if (error) {
     if (error.code === "23505")
       return { error: "Já existe uma tag com esse nome." }
-    return { error: error.message }
+    return dbError("tags", error)
   }
 
   revalidatePath("/app/configuracoes")
@@ -91,7 +93,7 @@ export async function updateTagAction(
   if (error) {
     if (error.code === "23505")
       return { error: "Já existe uma tag com esse nome." }
-    return { error: error.message }
+    return dbError("tags", error)
   }
 
   revalidateTagUsage()
@@ -178,7 +180,7 @@ export async function createTagForEntityAction(
   if (error) {
     if (error.code === "23505")
       return { error: "Já existe uma tag com esse nome." }
-    return { error: error.message }
+    return dbError("tags", error)
   }
 
   await supabase.from("taggables").insert({
