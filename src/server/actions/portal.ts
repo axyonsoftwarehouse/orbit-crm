@@ -75,7 +75,11 @@ export async function createPortalTicketAction(
     { p_tenant: contact.tenant_id, p_kind: "ticket" },
   )
   if (numberError || number === null) {
-    return dbError("portal.ticket.number", numberError, "Falha ao gerar o número.")
+    return dbError(
+      "portal.ticket.number",
+      numberError,
+      "Falha ao gerar o número.",
+    )
   }
 
   const { data: tenant } = await supabase
