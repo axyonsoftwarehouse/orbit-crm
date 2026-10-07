@@ -25,11 +25,15 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   const password = "Senha!teste123"
   const emailA = `rls-a-${suffix}@orbit.test`
   const emailB = `rls-b-${suffix}@orbit.test`
+  const emailAdmin = `rls-admin-${suffix}@orbit.test`
+  const emailMember = `rls-member-${suffix}@orbit.test`
 
   let tenantA = ""
   let tenantB = ""
   let userAId = ""
   let userBId = ""
+  let userAdminId = ""
+  let userMemberId = ""
   let companyAId = ""
   let companyBId = ""
   let projectAId = ""
@@ -50,6 +54,8 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   const brandingPaths: string[] = []
   let clientA: SupabaseClient
   let clientB: SupabaseClient
+  let clientAdmin: SupabaseClient
+  let clientMember: SupabaseClient
   let clientPortal: SupabaseClient
   let clientUserId = ""
   let portalCompanyId = ""
@@ -311,6 +317,48 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       password,
     })
     if (sClient.error) throw sClient.error
+
+    const uAdmin = await admin.auth.admin.createUser({
+      email: emailAdmin,
+      password,
+      email_confirm: true,
+    })
+    const uMember = await admin.auth.admin.createUser({
+      email: emailMember,
+      password,
+      email_confirm: true,
+    })
+    if (uAdmin.error || uMember.error) throw uAdmin.error ?? uMember.error
+    userAdminId = uAdmin.data.user!.id
+    userMemberId = uMember.data.user!.id
+
+    const roleMembers = await admin.from("memberships").insert([
+      {
+        tenant_id: tenantA,
+        user_id: userAdminId,
+        role: "admin",
+        status: "active",
+      },
+      {
+        tenant_id: tenantA,
+        user_id: userMemberId,
+        role: "member",
+        status: "active",
+      },
+    ])
+    if (roleMembers.error) throw roleMembers.error
+
+    clientAdmin = createClient(url!, anonKey!)
+    clientMember = createClient(url!, anonKey!)
+    const sAdmin = await clientAdmin.auth.signInWithPassword({
+      email: emailAdmin,
+      password,
+    })
+    const sMember = await clientMember.auth.signInWithPassword({
+      email: emailMember,
+      password,
+    })
+    if (sAdmin.error || sMember.error) throw sAdmin.error ?? sMember.error
   })
 
   afterAll(async () => {
@@ -326,6 +374,8 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     if (userAId) await admin.auth.admin.deleteUser(userAId)
     if (userBId) await admin.auth.admin.deleteUser(userBId)
     if (clientUserId) await admin.auth.admin.deleteUser(clientUserId)
+    if (userAdminId) await admin.auth.admin.deleteUser(userAdminId)
+    if (userMemberId) await admin.auth.admin.deleteUser(userMemberId)
   })
 
   it("A vê apenas o próprio tenant", async () => {
@@ -1537,5 +1587,203 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       depends_on_task_id: b2.data!.id,
     })
     expect(error).not.toBeNull()
+  })
+
+  // ============================================================
+  // Regressões de segurança (hardening)
+  // ============================================================
+
+  it("Usuário não consegue se promover a super-admin", async () => {
+    const { error } = await clientA
+      .from("profiles")
+      .update({ is_super_admin: true })
+      .eq("id", userAId)
+    expect(error).not.toBeNull()
+
+    const { data } = await admin
+      .from("profiles")
+      .select("is_super_admin")
+      .eq("id", userAId)
+      .single()
+    expect(data?.is_super_admin).toBe(false)
+  })
+
+  it("Usuário ainda atualiza o próprio notify_email", async () => {
+    const { error } = await clientA
+      .from("profiles")
+      .update({ notify_email: false })
+      .eq("id", userAId)
+    expect(error).toBeNull()
+  })
+
+  it("Admin não consegue se promover a owner", async () => {
+    await clientAdmin
+      .from("memberships")
+      .update({ role: "owner" })
+      .eq("tenant_id", tenantA)
+      .eq("user_id", userAdminId)
+
+    const { data } = await admin
+      .from("memberships")
+      .select("role")
+      .eq("tenant_id", tenantA)
+      .eq("user_id", userAdminId)
+      .maybeSingle()
+    expect(data?.role).toBe("admin")
+  })
+
+  it("Admin não consegue remover o owner", async () => {
+    await clientAdmin
+      .from("memberships")
+      .delete()
+      .eq("tenant_id", tenantA)
+      .eq("user_id", userAId)
+
+    const { data } = await admin
+      .from("memberships")
+      .select("role")
+      .eq("tenant_id", tenantA)
+      .eq("user_id", userAId)
+      .maybeSingle()
+    expect(data?.role).toBe("owner")
+  })
+
+  it("Owner do tenant não altera status/plano da plataforma", async () => {
+    const { error } = await clientA
+      .from("tenants")
+      .update({ status: "suspended", plan_status: "suspended" })
+      .eq("id", tenantA)
+    expect(error).not.toBeNull()
+
+    const { data } = await admin
+      .from("tenants")
+      .select("status, plan_status")
+      .eq("id", tenantA)
+      .single()
+    expect(data?.status).toBe("active")
+    expect(data?.plan_status).toBe("active")
+  })
+
+  it("Owner do tenant altera o próprio branding", async () => {
+    const { error } = await clientA
+      .from("tenants")
+      .update({ name: `Empresa A ${suffix}` })
+      .eq("id", tenantA)
+    expect(error).toBeNull()
+  })
+
+  it("Membro não apaga lançamento de horas de outro", async () => {
+    const entry = await admin
+      .from("time_entries")
+      .insert({
+        tenant_id: tenantA,
+        project_id: projectAId,
+        user_id: userAId,
+        started_at: new Date().toISOString(),
+        ended_at: new Date().toISOString(),
+        duration_seconds: 60,
+      })
+      .select("id")
+      .single()
+    if (entry.error) throw entry.error
+    const id = entry.data!.id
+
+    const deleted = await clientMember
+      .from("time_entries")
+      .delete()
+      .eq("id", id)
+      .select("id")
+    expect(deleted.data ?? []).toEqual([])
+
+    const stillThere = await admin
+      .from("time_entries")
+      .select("id")
+      .eq("id", id)
+      .maybeSingle()
+    expect(stillThere.data?.id).toBe(id)
+  })
+
+  it("Membro cria notificação apenas para si", async () => {
+    const own = await clientMember.from("notifications").insert({
+      tenant_id: tenantA,
+      user_id: userMemberId,
+      title: "Olá",
+    })
+    expect(own.error).toBeNull()
+
+    const forOther = await clientMember.from("notifications").insert({
+      tenant_id: tenantA,
+      user_id: userAId,
+      title: "Phishing",
+    })
+    expect(forOther.error).not.toBeNull()
+  })
+
+  it("Cliente do portal não lê anexo de entidade que não vê", async () => {
+    const path = `${tenantA}/task/${taskAId}/${randomUUID()}-secret.txt`
+    const uploaded = await admin.storage
+      .from("attachments")
+      .upload(path, new Blob(["secret"], { type: "text/plain" }), {
+        contentType: "text/plain",
+      })
+    if (!uploaded.error) storagePaths.push(path)
+
+    await admin.from("attachments").insert({
+      tenant_id: tenantA,
+      entity_type: "task",
+      entity_id: taskAId,
+      storage_path: path,
+      file_name: "secret.txt",
+    })
+
+    const signed = await clientPortal.storage
+      .from("attachments")
+      .createSignedUrl(path, 60)
+    expect(signed.error).not.toBeNull()
+  })
+
+  it("Cliente do portal lê anexo de projeto da própria empresa", async () => {
+    const proj = await admin
+      .from("projects")
+      .insert({
+        tenant_id: tenantA,
+        company_id: portalCompanyId,
+        name: `Portal Projeto ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (proj.error) throw proj.error
+
+    const task = await admin
+      .from("tasks")
+      .insert({
+        tenant_id: tenantA,
+        project_id: proj.data!.id,
+        name: `Portal Tarefa ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (task.error) throw task.error
+
+    const path = `${tenantA}/task/${task.data!.id}/${randomUUID()}-ok.txt`
+    const uploaded = await admin.storage
+      .from("attachments")
+      .upload(path, new Blob(["ok"], { type: "text/plain" }), {
+        contentType: "text/plain",
+      })
+    if (!uploaded.error) storagePaths.push(path)
+
+    await admin.from("attachments").insert({
+      tenant_id: tenantA,
+      entity_type: "task",
+      entity_id: task.data!.id,
+      storage_path: path,
+      file_name: "ok.txt",
+    })
+
+    const signed = await clientPortal.storage
+      .from("attachments")
+      .createSignedUrl(path, 60)
+    expect(signed.error).toBeNull()
   })
 })
