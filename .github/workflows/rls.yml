@@ -1,34 +1,49 @@
-name: RLS (manual)
+name: RLS
 
-# Roda os testes de isolamento RLS contra um projeto Supabase.
-# Disparo manual para evitar rodar contra o banco de produção a cada push.
-# Requer os secrets: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY,
-# SUPABASE_SERVICE_ROLE_KEY (idealmente de um projeto dedicado a testes).
+# Testes de isolamento entre tenants (tests/rls) contra um projeto Supabase
+# DEDICADO a testes. Configure os secrets TEST_* (ver AGENTS.md > CI/CD).
+# Enquanto os secrets não existirem, o job é apenas ignorado (não bloqueia).
 
 on:
+  pull_request:
+  push:
+    branches: [main]
   workflow_dispatch:
+
+concurrency:
+  group: rls-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   rls:
     name: Isolamento RLS
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SERVICE_ROLE_KEY }}
     steps:
-      - uses: actions/checkout@v4
+      - id: guard
+        name: Verificar credenciais de teste
+        run: |
+          if [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && [ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::RLS desabilitado: configure os secrets TEST_SUPABASE_* do projeto de testes."
+          fi
 
-      - uses: actions/setup-node@v4
+      - if: steps.guard.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.guard.outputs.enabled == 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - run: npm ci
+      - if: steps.guard.outputs.enabled == 'true'
+        run: npm ci
 
-      - name: Verificar credenciais
-        run: |
-          test -n "$NEXT_PUBLIC_SUPABASE_URL" || { echo "Secrets ausentes"; exit 1; }
-          test -n "$SUPABASE_SERVICE_ROLE_KEY" || { echo "Secrets ausentes"; exit 1; }
-
-      - run: npm run test:rls
+      - if: steps.guard.outputs.enabled == 'true'
+        run: npm run test:rls

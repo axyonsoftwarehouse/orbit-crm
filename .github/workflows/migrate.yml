@@ -1,0 +1,52 @@
+name: Migrations
+
+# Aplica as migrations pendentes no projeto Supabase de produção após o merge
+# no main. Configure SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD e
+# SUPABASE_PROJECT_ID (ver AGENTS.md > CI/CD). Sem eles, o job é ignorado.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/migrations/**"
+  workflow_dispatch:
+
+concurrency:
+  group: migrations-production
+  cancel-in-progress: false
+
+jobs:
+  push:
+    name: Aplicar migrations (produção)
+    runs-on: ubuntu-latest
+    environment: Production
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+    steps:
+      - id: guard
+        name: Verificar credenciais
+        run: |
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [ -n "$SUPABASE_DB_PASSWORD" ] && [ -n "$SUPABASE_PROJECT_ID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Migrations desabilitadas: configure SUPABASE_ACCESS_TOKEN, SUPABASE_DB_PASSWORD e SUPABASE_PROJECT_ID."
+          fi
+
+      - if: steps.guard.outputs.enabled == 'true'
+        uses: actions/checkout@v4
+
+      - if: steps.guard.outputs.enabled == 'true'
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - if: steps.guard.outputs.enabled == 'true'
+        name: Linkar projeto
+        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+
+      - if: steps.guard.outputs.enabled == 'true'
+        name: Aplicar migrations
+        run: supabase db push --yes
