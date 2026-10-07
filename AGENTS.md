@@ -67,4 +67,39 @@ Definidas em `.env.local` (não versionado) e na Vercel:
 - `tests/rls/isolation.test.ts` cria tenants/usuários descartáveis no projeto
   **remoto** e limpa no `afterAll`. Rode com cuidado e prefira um projeto
   Supabase dedicado a testes.
-- O CI (`ci.yml`) roda format/lint/typecheck/unit/build. O RLS (`rls.yml`) é manual.
+- O CI (`ci.yml`) roda format/lint/typecheck/unit/build.
+
+## CI/CD
+
+- **CI** (`.github/workflows/ci.yml`): em PR e `main` roda format, lint,
+  typecheck, unit e build.
+- **RLS** (`.github/workflows/rls.yml`): em PR e `main` roda `test:rls` contra
+  o projeto Supabase **de testes**. Sem os secrets `TEST_SUPABASE_*`, o job é
+  ignorado (não bloqueia).
+- **Migrations** (`.github/workflows/migrate.yml`): no push para `main` que
+  altere `supabase/migrations/**`, aplica `supabase db push` na **produção**.
+- **Deploy**: a Vercel faz Preview por PR e Produção no `main` (integração Git).
+
+### Secrets (Settings → Secrets and variables → Actions)
+
+| Secret                   | Uso                                            |
+| ------------------------ | ---------------------------------------------- |
+| `TEST_SUPABASE_URL`      | URL do projeto Supabase de testes              |
+| `TEST_SUPABASE_ANON_KEY` | anon key do projeto de testes                  |
+| `TEST_SERVICE_ROLE_KEY`  | service role do projeto de testes              |
+| `SUPABASE_ACCESS_TOKEN`  | token pessoal (supabase.com/dashboard/account) |
+| `SUPABASE_DB_PASSWORD`   | senha do banco de produção                     |
+| `SUPABASE_PROJECT_ID`    | ref do projeto de produção                     |
+
+### Setup inicial (uma vez)
+
+1. Criar um projeto Supabase dedicado a testes, aplicar as migrations nele
+   (`supabase link --project-ref <ref-test> && supabase db push`) e preencher
+   os secrets `TEST_*`.
+2. Gerar um Personal Access Token e preencher `SUPABASE_ACCESS_TOKEN`,
+   `SUPABASE_DB_PASSWORD` e `SUPABASE_PROJECT_ID`.
+3. Criar um projeto Supabase de **staging** e, na Vercel, definir as variáveis
+   Supabase com escopo **Preview** apontando para staging (o escopo
+   **Production** permanece na produção).
+4. Proteção de branch em `main`: exigir PR e os checks
+   `Format, lint, types, testes e build` e `Isolamento RLS`.
