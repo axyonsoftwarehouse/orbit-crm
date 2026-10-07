@@ -74,32 +74,44 @@ Definidas em `.env.local` (não versionado) e na Vercel:
 - **CI** (`.github/workflows/ci.yml`): em PR e `main` roda format, lint,
   typecheck, unit e build.
 - **RLS** (`.github/workflows/rls.yml`): em PR e `main` roda `test:rls` contra
-  o projeto Supabase **de testes**. Sem os secrets `TEST_SUPABASE_*`, o job é
-  ignorado (não bloqueia).
+  um projeto Supabase **de testes**, se os secrets `TEST_SUPABASE_*` existirem.
+  Sem eles o job é ignorado (não bloqueia) — ver "Ambientes".
 - **Migrations** (`.github/workflows/migrate.yml`): no push para `main` que
   altere `supabase/migrations/**`, aplica `supabase db push` na **produção**.
 - **Deploy**: a Vercel faz Preview por PR e Produção no `main` (integração Git).
 
 ### Secrets (Settings → Secrets and variables → Actions)
 
-| Secret                   | Uso                                            |
-| ------------------------ | ---------------------------------------------- |
-| `TEST_SUPABASE_URL`      | URL do projeto Supabase de testes              |
-| `TEST_SUPABASE_ANON_KEY` | anon key do projeto de testes                  |
-| `TEST_SERVICE_ROLE_KEY`  | service role do projeto de testes              |
-| `SUPABASE_ACCESS_TOKEN`  | token pessoal (supabase.com/dashboard/account) |
-| `SUPABASE_DB_PASSWORD`   | senha do banco de produção                     |
-| `SUPABASE_PROJECT_ID`    | ref do projeto de produção                     |
+| Secret                   | Obrigatório | Uso                                            |
+| ------------------------ | ----------- | ---------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN`  | sim         | token pessoal (supabase.com/dashboard/account) |
+| `SUPABASE_DB_PASSWORD`   | sim         | senha do banco de produção                     |
+| `SUPABASE_PROJECT_ID`    | sim         | ref do projeto de produção                     |
+| `TEST_SUPABASE_URL`      | opcional    | URL do projeto Supabase de testes              |
+| `TEST_SUPABASE_ANON_KEY` | opcional    | anon key do projeto de testes                  |
+| `TEST_SERVICE_ROLE_KEY`  | opcional    | service role do projeto de testes              |
+
+### Ambientes (plano Hobby: 2 projetos)
+
+O plano Hobby permite 2 projetos e ambos já estão em uso, então **não há projeto
+de testes nem de staging**. Decisões:
+
+- **RLS no CI**: o job fica **desligado** até existir um projeto de testes
+  (secrets `TEST_*`). Enquanto isso, rode `npm run test:rls` localmente. A
+  alternativa sem custo (quando quiser ligar no CI) é subir o Supabase **local**
+  no próprio runner (`supabase start`) — sem projeto na nuvem.
+- **Previews da Vercel**: usam o banco de **produção**. Mitigação:
+  - testar apenas através de um **tenant de preview** dedicado (e usuários
+    próprios deste tenant), aproveitando o isolamento por `tenant_id`/RLS;
+  - **não** rodar operações destrutivas (importações em massa, exclusões amplas)
+    a partir de um Preview;
+  - manter `NEXT_PUBLIC_DEMO_LOGIN` desligado.
 
 ### Setup inicial (uma vez)
 
-1. Criar um projeto Supabase dedicado a testes, aplicar as migrations nele
-   (`supabase link --project-ref <ref-test> && supabase db push`) e preencher
-   os secrets `TEST_*`.
-2. Gerar um Personal Access Token e preencher `SUPABASE_ACCESS_TOKEN`,
-   `SUPABASE_DB_PASSWORD` e `SUPABASE_PROJECT_ID`.
-3. Criar um projeto Supabase de **staging** e, na Vercel, definir as variáveis
-   Supabase com escopo **Preview** apontando para staging (o escopo
-   **Production** permanece na produção).
-4. Proteção de branch em `main`: exigir PR e os checks
+1. Gerar um Personal Access Token e configurar `SUPABASE_ACCESS_TOKEN`,
+   `SUPABASE_DB_PASSWORD` e `SUPABASE_PROJECT_ID` (habilita as migrations
+   automáticas no `main`).
+2. (Opcional) Configurar os secrets `TEST_*` para ligar o RLS no CI.
+3. Proteção de branch em `main`: exigir PR e os checks
    `Format, lint, types, testes e build` e `Isolamento RLS`.
