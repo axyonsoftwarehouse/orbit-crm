@@ -130,6 +130,11 @@ tags/campos personalizados, portal do cliente.
   - ✅ **F18.2 — Exportação CSV dos relatórios** (rota `/app/exportar/relatorios?report=leads|financeiro|rentabilidade|produtividade|despesas|horas`, respeitando período/cliente/projeto; dados via `getReportData`).
 - **F19 — Gantt interativo** ✅ **concluída**
   - ✅ **F19.1 — Dependências + arrastar** (migration `0035`: `task_dependencies` com RLS por tenant; no cronograma do projeto é possível **arrastar/redimensionar** as barras (persistindo início/fim) e gerenciar **dependências** entre tarefas (criar/remover) com setas e **deslocamento automático** das sucessoras; ciclos bloqueados. Helpers puros em `src/lib/gantt.ts` com testes).
+- **Hardening de segurança** ✅ **concluída** (migrations `0041`–`0044`; PRs #8–#10)
+  - **Portal via RPC:** leitura de `projects`, `tasks`, `companies`, `profiles`, `contracts` e `expenses` por funções `security definer` (sem colunas internas como custo/hora e `notes`); removidas as policies de leitura direta do cliente.
+  - **RLS:** `storage_path` de anexo preso ao tenant; só owner concede `owner` em memberships/invitations; `contacts.user_id` só por owner/admin; rascunhos (`estimates.status=1`, `invoices.status=6`) fora do portal.
+  - **P1:** rate limit distribuído (`rate_limit_hits`/`check_rate_limit`); `profiles.email` (elimina `listUsers`); limites de plano em conversão de lead, ticket do portal, formulário público e importação.
+  - **Dependências/CI:** Next `15.5.27` + `overrides` (produção com 0 vulnerabilidades); job de e2e (Playwright) e `npm audit` no CI.
 
 > **Backlog / roadmap:** itens adiados do MVP e módulos futuros ficam registrados na
 > tabela `roadmap_items` (migration `0017`), acesso restrito ao super-admin e futura
@@ -148,6 +153,8 @@ tags/campos personalizados, portal do cliente.
 ## 8. Riscos e atenção
 
 - **RLS é o risco nº 1** — testes de isolamento obrigatórios desde a F0.
+- **Migrations em produção** — o `migrate.yml` fica desabilitado sem os secrets
+  `SUPABASE_*`; enquanto isso, aplicar com `supabase db push --linked`.
 - **Escopo de um CRM completo é enorme** — disciplina no MVP evita nunca lançar.
 - **Limites dos planos gratuitos** — Vercel Hobby sem domínio curinga (ok, usamos
   path); Supabase Free limita storage/egress/Edge invocations.

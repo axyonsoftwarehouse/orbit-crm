@@ -17,8 +17,8 @@ de **entrega** (clientes → projetos → tarefas → horas) e os módulos
 
 - **Fases concluídas:** F0 a F19, além de melhorias transversais (tipagem do banco,
   paginação das listas, import/export CSV, confiabilidade e engajamento).
-- **Migrations:** 34 (`0001`–`0035`).
-- **Testes:** 57 unitários + 97 de isolamento RLS (todos verdes).
+- **Migrations:** 44 (`0001`–`0044`), aplicadas no projeto remoto.
+- **Testes:** 57 unitários + 118 de isolamento RLS (o RLS roda contra um projeto dedicado).
 - **Cobertura funcional:** clientes, projetos (com **Gantt interativo** e dependências),
   tarefas, horas, financeiro (orçamento, fatura, pagamento, despesa, contrato), comercial,
   captação web-to-lead, atendimento, portal do cliente (incluindo contratos e despesas
@@ -116,10 +116,11 @@ middleware (sessão + tenant por subdomínio)
 
 ---
 
-## 5. Modelo de dados (43 tabelas)
+## 5. Modelo de dados (44 tabelas)
 
-**Plataforma:** `profiles`, `tenants`, `memberships`, `invitations`, `plans`,
-`roadmap_items`, `notifications`.
+**Plataforma:** `profiles` (com `email` sincronizado de `auth.users`), `tenants`,
+`memberships`, `invitations`, `plans`, `roadmap_items`, `notifications`,
+`rate_limit_hits` (rate limit distribuído das rotas públicas).
 
 **Entrega:** `companies`, `contacts`, `projects`, `project_members`, `milestones`,
 `tasks`, `task_checklist_items`, `task_dependencies`, `time_entries`, `comments`,
@@ -161,13 +162,21 @@ middleware (sessão + tenant por subdomínio)
 - **Portal do cliente** isolado por empresa/contato (`is_client_of_company`,
   `client_can_view_entity`), com RPC segura para aprovação de orçamento
   (`client_respond_estimate`).
-- **Storage:** anexos privados com URL assinada (1h); escrita restrita ao tenant.
-- **Convites:** token UUID por e-mail; aceite cria/reaproveita usuário e associa
-  membership.
+- **Leitura do portal via RPC** (`0042`/`0043`): `projects`, `tasks`, `companies`,
+  `profiles`, `contracts` e `expenses` são lidas por funções `security definer` que
+  projetam apenas colunas seguras — não há leitura direta do cliente (evita expor
+  custo/hora, `notes`, `is_super_admin` etc.).
+- **Storage:** anexos privados com URL assinada (1h); escrita restrita ao tenant e o
+  `storage_path` precisa pertencer ao tenant da linha (`0041`).
+- **Convites/membros:** token UUID por e-mail; só owner concede o papel de `owner`
+  (`0041`); `contacts.user_id` (acesso ao portal) só é alterável por owner/admin.
+- **Rascunhos** não aparecem no portal (`estimates.status=1`, `invoices.status=6`).
+- **Rate limit distribuído** (`rate_limit_hits` + `check_rate_limit`) nas rotas
+  públicas; e-mail em `profiles.email` (trigger) evita `listUsers`.
 - **Super-admin:** bypass controlado por flag em `profiles`.
 
 > **Risco nº 1 do projeto:** RLS. Por isso há uma suíte dedicada de testes de
-> isolamento (97 casos) — ver seção 7/11 sobre rodá-los localmente.
+> isolamento (118 casos) — ver seção 7/11 sobre rodá-los.
 
 ---
 
@@ -177,13 +186,15 @@ middleware (sessão + tenant por subdomínio)
   tenant, equipe, despesas, contratos, calendário, metas, templates, captação e CSV;
   agregações de relatórios: rentabilidade, produtividade e conversão por origem; e
   cronograma: datas, normalização e detecção de ciclos).
-- **RLS (Vitest, ambiente node):** 97 testes de isolamento entre dois tenants,
+- **RLS (Vitest, ambiente node):** 118 testes de isolamento entre dois tenants,
   cobrindo seleção/inserção/atualização/exclusão, Storage, auditoria, e-mail,
   dependências de tarefas e a leitura do portal (contratos e despesas faturáveis).
-- **E2E:** Playwright configurado (smoke), cobertura a ampliar.
-- **CI (GitHub Actions):** `ci.yml` roda `format:check`, `lint`, `typecheck`, `test` e
-  `build` (com `concurrency`); `rls.yml` roda os testes de RLS **manualmente**
-  (`workflow_dispatch`) contra um projeto dedicado. **Falta** job de e2e e `npm audit`.
+- **E2E:** Playwright (smoke) rodando no CI (job `E2E (Playwright)`), cobertura a ampliar.
+- **CI (GitHub Actions):** `ci.yml` roda `format:check`, `lint`, `typecheck`, `test`,
+  `build` e `npm audit --omit=dev` (produção), além do job de e2e; `rls.yml` roda os
+  testes de RLS contra um projeto dedicado quando os secrets `TEST_*` existem (senão é
+  ignorado). Observação: o `migrate.yml` só aplica migrations se `SUPABASE_*` estiver
+  configurado — enquanto não estiver, aplicar via `supabase db push --linked`.
 - **Resiliência:** error boundaries (`error.tsx`, `global-error.tsx`, `not-found.tsx`).
 - **Verificações locais padrão:** `lint`, `typecheck`, `format:check`, `test`,
   `test:rls`, `build`.
@@ -229,19 +240,21 @@ middleware (sessão + tenant por subdomínio)
 
 ## 10. Backlog técnico e dívida (técnico)
 
-| Item                                                   | Tipo     | Impacto | Observação                                                                 |
-| ------------------------------------------------------ | -------- | ------- | -------------------------------------------------------------------------- |
-| **Sentry** (erros)                                     | melhoria | médio   | Analytics/Speed Insights e logger já ativos; falta o rastreio de exceções. |
-| **CI com e2e e `npm audit`**                           | melhoria | médio   | CI cobre format/lint/types/test/build; RLS é manual.                       |
-| **RLS em banco local**                                 | dívida   | alto    | Hoje os testes de RLS rodam contra um projeto remoto dedicado.             |
-| **`listTeamMembers` usa `admin.listUsers(200)`**       | dívida   | médio   | Escalabilidade/segurança: guardar e-mail em `profiles` ou RPC.             |
-| **N+1 em projetos/tarefas**                            | dívida   | médio   | Revisar contagens/embeds em listas grandes.                                |
-| **Enforcement de plano** p/ tags/campos/marcos/storage | melhoria | médio   | Hoje só clientes/projetos/tarefas/tickets/leads.                           |
-| **Anexos**: preview, upload múltiplo, validação        | melhoria | médio   | Só upload simples hoje.                                                    |
-| **`db:types` requer login** (`--linked`)               | dívida   | baixo   | Alternativa: gerar em CI/script com `--project-id`.                        |
-| **Aprovação de horas (timesheet)**                     | feature  | médio   | Fluxo de aprovação antes de faturar.                                       |
-| **Command palette (Cmd/Ctrl+K)**                       | melhoria | baixo   | Unificar a busca global.                                                   |
-| **Rate limiting** em rotas públicas (convite/aceite)   | dívida   | médio   | Proteção contra abuso.                                                     |
+| Item                                                   | Tipo     | Impacto | Observação                                                                             |
+| ------------------------------------------------------ | -------- | ------- | -------------------------------------------------------------------------------------- |
+| **Sentry** (erros)                                     | melhoria | médio   | Analytics/Speed Insights e logger já ativos; falta o rastreio de exceções.             |
+| ~~**CI com e2e e `npm audit`**~~ ✅                    | melhoria | médio   | `ci.yml` agora roda e2e (Playwright) e `npm audit --omit=dev`.                         |
+| ~~**`listTeamMembers` usa `listUsers(200)`**~~ ✅      | dívida   | médio   | Resolvido com `profiles.email` (migration `0044`).                                     |
+| ~~**Rate limiting** em rotas públicas**~~ ✅           | dívida   | médio   | `rate_limit_hits` + `check_rate_limit` (migration `0044`).                             |
+| **Avisos npm em tooling de dev**                       | dívida   | baixo   | Cadeia `eslint-config-next`/`shadcn`/`ts-morph`/`braces` sem fix; produção está com 0. |
+| **`migrate.yml` sem secrets**                          | dívida   | alto    | Enquanto `SUPABASE_*` não existir, aplicar migrations via `db push`.                   |
+| **RLS em banco local**                                 | dívida   | alto    | Hoje os testes de RLS rodam contra um projeto remoto dedicado.                         |
+| **N+1 em projetos/tarefas**                            | dívida   | médio   | Revisar contagens/embeds em listas grandes.                                            |
+| **Enforcement de plano** p/ tags/campos/marcos/storage | melhoria | médio   | Hoje só clientes/projetos/tarefas/tickets/leads.                                       |
+| **Anexos**: preview, upload múltiplo, validação        | melhoria | médio   | Só upload simples hoje.                                                                |
+| **`db:types` requer login** (`--linked`)               | dívida   | baixo   | Alternativa: gerar em CI/script com `--project-id`.                                    |
+| **Aprovação de horas (timesheet)**                     | feature  | médio   | Fluxo de aprovação antes de faturar.                                                   |
+| **Command palette (Cmd/Ctrl+K)**                       | melhoria | baixo   | Unificar a busca global.                                                               |
 
 > Os itens entregues foram refletidos no `roadmap_items` via migration `0026`
 > (paginação, tipagem, importação CSV, despesas, contratos, etc.). Sugere-se, no
@@ -254,10 +267,13 @@ middleware (sessão + tenant por subdomínio)
 
 - **RLS** continua sendo o risco principal → manter e ampliar a suíte de isolamento
   e rodá-la em base dedicada.
+- **Migrations em produção** dependem de `supabase db push` manual enquanto os secrets
+  `SUPABASE_*` não estiverem no CI (o `migrate.yml` fica desabilitado em silêncio).
 - **Email** sem `RESEND_API_KEY` é no-op (não falha, mas não envia).
 - **Cobrança manual** do plano não escala — automatizar antes de crescer.
 - **LGPD/localização de dados** a definir quando houver clientes reais.
 - **Limites de free tier** (Vercel/Supabase) e ausência de domínio curinga.
+- **Avisos npm** restantes são só de tooling de dev (não vão para produção).
 
 ---
 
@@ -278,8 +294,8 @@ middleware (sessão + tenant por subdomínio)
 ## 13. Próximos passos sugeridos (fatiamento para o time)
 
 1. **Confiabilidade (feito):** Vercel Analytics/Speed Insights + logger + error
-   boundaries + CI (`format:check`/`concurrency`) + `rls.yml` manual + `.gitattributes`.
-   Pendente: Sentry e job de e2e.
+   boundaries + CI (`format:check`, `test`, `build`, e2e e `npm audit`) + `rls.yml`
+   opcional + `.gitattributes`. Pendente: Sentry.
 2. **Engajamento (feito):** notificações em tempo real + preferências, calendário e
    log de auditoria.
 3. **Monetização (próxima):** cobrança automática + pagamento online no portal +
@@ -320,9 +336,11 @@ Tailwind 4, Zod, `lucide-react`, `sonner`, `next-themes`, `@vercel/analytics`,
 
 ## 15. Handoff — por onde continuar
 
-**Estado atual:** F0–F19 concluídas; migrations `0001`–`0035` aplicadas no projeto
-Supabase remoto; **57 testes unit + 97 de RLS** verdes; `typecheck`/`lint`/`format`/`build`
-verdes; árvore Git limpa e sincronizada (`main`).
+**Estado atual:** F0–F19 concluídas; hardening de segurança aplicado (PRs #8–#10:
+portal via RPC, owner-only em papéis, rate limit distribuído, `profiles.email`,
+limites de plano); migrations `0001`–`0044` aplicadas no Supabase remoto;
+**57 testes unit + 118 de RLS**; `typecheck`/`lint`/`format`/`build` verdes; árvore Git
+sincronizada (`main`).
 
 **Fonte da verdade:** `PLANO.md` (fases), `RELATORIO.md` (este documento) e a tabela
 `roadmap_items` (backlog).
@@ -335,7 +353,7 @@ webhooks**, **2FA** e **cobrança automática**.
 
 1. `git pull` na `main`; conferir `git status` limpo.
 2. Ler `PLANO.md` (última fase) e `roadmap_items` (itens com status `backlog`).
-3. Para uma nova feature: criar migration (`0035_...`) → `npx supabase db push` →
+3. Para uma nova feature: criar migration (`0045_...`) → `npx supabase db push --linked` →
    `npm run db:types` → implementar (validations → queries → actions → UI) → somar testes.
 4. Rodar: `npm run lint`, `npm run typecheck`, `npm run format:check`, `npm test`,
    `npm run test:rls`, `npm run build`.
