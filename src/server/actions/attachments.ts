@@ -5,6 +5,7 @@ import { dbError } from "@/lib/db-error"
 import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
+import { isManager } from "@/server/permissions"
 import { revalidateEntity } from "@/lib/revalidate"
 
 const ENTITY_TYPES = ["task", "project", "ticket"]
@@ -61,6 +62,17 @@ export async function deleteAttachmentAction(formData: FormData) {
   if (!id) return
 
   const supabase = await createClient()
+  const user = await getUser()
+
+  const { data: attachment } = await supabase
+    .from("attachments")
+    .select("uploaded_by")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .maybeSingle()
+
+  if (!isManager(active.role) && attachment?.uploaded_by !== user?.id) return
+
   if (path) {
     await supabase.storage.from("attachments").remove([path])
   }

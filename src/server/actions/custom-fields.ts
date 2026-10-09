@@ -5,6 +5,7 @@ import { dbError } from "@/lib/db-error"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
+import { isManager } from "@/server/permissions"
 import { customFieldDefinitionSchema } from "@/lib/validations/custom-fields"
 
 export type CustomFieldFormState =
@@ -92,6 +93,7 @@ export async function updateCustomFieldAction(
 export async function deleteCustomFieldAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
+  if (!isManager(active.role)) return
 
   const id = String(formData.get("id") ?? "")
   if (!id) return

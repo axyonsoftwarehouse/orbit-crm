@@ -5,6 +5,7 @@ import { dbError } from "@/lib/db-error"
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
+import { isManager } from "@/server/permissions"
 import { tagSchema } from "@/lib/validations/tags"
 import type { TaggedEntityType } from "@/server/queries/tags"
 
@@ -103,6 +104,7 @@ export async function updateTagAction(
 export async function deleteTagAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
+  if (!isManager(active.role)) return
 
   const id = String(formData.get("id") ?? "")
   if (!id) return

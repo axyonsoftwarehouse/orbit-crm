@@ -6,9 +6,12 @@ import { ProgressBar, ProjectStatusBadge } from "@/components/app/project-bits"
 import { MilestoneStatusBadge } from "@/components/app/milestone-bits"
 import { TaskStatusBadge } from "@/components/app/task-bits"
 import { formatDate } from "@/lib/format"
-import { getPortalContact, getPortalProject } from "@/server/queries/portal"
-import { listTasks } from "@/server/queries/tasks"
-import { listMilestones } from "@/server/queries/milestones"
+import {
+  getPortalContact,
+  getPortalProject,
+  listPortalMilestones,
+  listPortalTasks,
+} from "@/server/queries/portal"
 import { listAttachments } from "@/server/queries/attachments"
 
 export default async function PortalProjectDetailPage({
@@ -24,8 +27,8 @@ export default async function PortalProjectDetailPage({
   if (!project) notFound()
 
   const [tasks, milestones, attachments] = await Promise.all([
-    listTasks(contact.tenant_id, { projectId: project.id }),
-    listMilestones(contact.tenant_id, project.id),
+    listPortalTasks(project.id),
+    listPortalMilestones(project.id),
     listAttachments(contact.tenant_id, "project", project.id),
   ])
 

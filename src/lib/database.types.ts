@@ -1819,6 +1819,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          email: string | null
           full_name: string | null
           id: string
           is_super_admin: boolean
@@ -1828,6 +1829,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id: string
           is_super_admin?: boolean
@@ -1837,6 +1839,7 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          email?: string | null
           full_name?: string | null
           id?: string
           is_super_admin?: boolean
@@ -2641,6 +2644,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_rate_limit: {
+        Args: {
+          p_bucket: string
+          p_limit: number
+          p_window_seconds: number
+        }
+        Returns: boolean
+      }
       client_can_view_document: {
         Args: { p_rel_id: string; p_rel_type: string }
         Returns: boolean
@@ -2669,6 +2680,96 @@ export type Database = {
       next_document_number: {
         Args: { p_kind: string; p_tenant: string }
         Returns: number
+      }
+      portal_contact: {
+        Args: never
+        Returns: {
+          id: string
+          first_name: string
+          last_name: string | null
+          email: string | null
+          company_id: string
+          company_name: string
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
+      portal_get_project: {
+        Args: { p_company: string; p_id: string }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          status: number
+          deadline: string | null
+          progress: number
+          progress_from_tasks: boolean
+        }[]
+      }
+      portal_list_contracts: {
+        Args: { p_company: string }
+        Returns: {
+          id: string
+          title: string
+          description: string | null
+          value: number | null
+          start_date: string | null
+          end_date: string | null
+          status: number
+        }[]
+      }
+      portal_list_expenses: {
+        Args: { p_company: string }
+        Returns: {
+          id: string
+          title: string
+          category: string | null
+          amount: number
+          date: string
+          project_id: string | null
+          project_name: string | null
+        }[]
+      }
+      portal_list_milestones: {
+        Args: { p_project: string }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          status: number
+          color: string
+          start_date: string | null
+          due_date: string | null
+          position: number
+          task_count: number
+          done_count: number
+          progress: number
+        }[]
+      }
+      portal_list_projects: {
+        Args: { p_company: string }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          status: number
+          deadline: string | null
+          progress: number
+          progress_from_tasks: boolean
+        }[]
+      }
+      portal_list_tasks: {
+        Args: { p_project: string }
+        Returns: {
+          id: string
+          name: string
+          description: string | null
+          status: number
+          priority: number
+          start_date: string | null
+          due_date: string | null
+          milestone_id: string | null
+        }[]
       }
       shares_tenant: { Args: { target: string }; Returns: boolean }
       storage_path_tenant: { Args: { p_name: string }; Returns: string }

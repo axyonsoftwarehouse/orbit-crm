@@ -100,6 +100,7 @@ export async function importCompaniesAction(
 
   const limit = await checkPlanLimit(active.tenantId, "clients")
   if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
+  const remaining = limit.remaining
 
   const { error: readError, rows } = await readCsv(formData)
   if (readError || !rows)
@@ -129,6 +130,10 @@ export async function importCompaniesAction(
   const seen = new Set<string>()
 
   for (const record of records) {
+    if (remaining !== undefined && created >= remaining) {
+      errors.push("Limite do plano atingido; importação interrompida.")
+      break
+    }
     const name = record.name
     const key = name.toLowerCase()
     if (existingNames.has(key) || seen.has(key)) {
@@ -179,6 +184,7 @@ export async function importLeadsAction(
 
   const limit = await checkPlanLimit(active.tenantId, "leads")
   if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
+  const remaining = limit.remaining
 
   const { error: readError, rows } = await readCsv(formData)
   if (readError || !rows)
@@ -208,6 +214,10 @@ export async function importLeadsAction(
   const seen = new Set<string>()
 
   for (const record of records) {
+    if (remaining !== undefined && created >= remaining) {
+      errors.push("Limite do plano atingido; importação interrompida.")
+      break
+    }
     const key = (record.email || record.name).toLowerCase()
     if (existingKeys.has(key) || seen.has(key)) {
       skipped++
