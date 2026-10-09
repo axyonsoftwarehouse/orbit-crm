@@ -137,7 +137,7 @@ returns table (
   color text,
   start_date date,
   due_date date,
-  position integer,
+  "position" integer,
   task_count integer,
   done_count integer,
   progress integer

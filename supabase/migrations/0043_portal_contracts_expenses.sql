@@ -42,7 +42,7 @@ returns table (
   title text,
   category text,
   amount numeric,
-  date date,
+  "date" date,
   project_id uuid,
   project_name text
 )
