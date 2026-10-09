@@ -62,16 +62,12 @@ export async function inviteMemberAction(
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  let existingUserId: string | null = null
-  try {
-    const { data } = await admin.auth.admin.listUsers({ perPage: 200 })
-    existingUserId =
-      data?.users.find(
-        (user) => (user.email ?? "").toLowerCase() === parsed.data.email,
-      )?.id ?? null
-  } catch {
-    existingUserId = null
-  }
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", parsed.data.email)
+    .maybeSingle()
+  const existingUserId = existingProfile?.id ?? null
 
   if (existingUserId) {
     const { data: membership } = await supabase
@@ -247,15 +243,12 @@ export async function acceptInvitationAction(
   const email = invitation.email.toLowerCase()
   const supabase = await createClient()
 
-  let userId: string | null = null
-  try {
-    const { data } = await admin.auth.admin.listUsers({ perPage: 200 })
-    userId =
-      data?.users.find((user) => (user.email ?? "").toLowerCase() === email)
-        ?.id ?? null
-  } catch {
-    userId = null
-  }
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("id")
+    .eq("email", email)
+    .maybeSingle()
+  let userId: string | null = existingProfile?.id ?? null
 
   if (userId) {
     const { error: signInError } = await supabase.auth.signInWithPassword({

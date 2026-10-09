@@ -18,25 +18,9 @@ export async function getPortalContact(): Promise<PortalContact | null> {
   } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data } = await supabase
-    .from("contacts")
-    .select(
-      "id, first_name, last_name, email, company_id, tenant_id, company:companies(name), tenant:tenants(name)",
-    )
-    .eq("user_id", user.id)
-    .maybeSingle()
-
-  if (!data) return null
-  const row = data as unknown as {
-    id: string
-    first_name: string
-    last_name: string | null
-    email: string | null
-    company_id: string
-    tenant_id: string
-    company: { name: string } | null
-    tenant: { name: string } | null
-  }
+  const { data } = await supabase.rpc("portal_contact")
+  const row = (data ?? [])[0]
+  if (!row) return null
 
   return {
     id: row.id,
@@ -44,9 +28,9 @@ export async function getPortalContact(): Promise<PortalContact | null> {
     last_name: row.last_name,
     email: row.email,
     company_id: row.company_id,
-    company_name: row.company?.name ?? "Empresa",
+    company_name: row.company_name,
     tenant_id: row.tenant_id,
-    tenant_name: row.tenant?.name ?? "Portal",
+    tenant_name: row.tenant_name,
   }
 }
 
@@ -64,14 +48,9 @@ export async function listPortalProjects(
   companyId: string,
 ): Promise<PortalProject[]> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from("projects")
-    .select(
-      "id, name, description, status, deadline, progress, progress_from_tasks",
-    )
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
+  const { data } = await supabase.rpc("portal_list_projects", {
+    p_company: companyId,
+  })
 
   return (data ?? []) as PortalProject[]
 }
@@ -81,17 +60,59 @@ export async function getPortalProject(
   id: string,
 ): Promise<PortalProject | null> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from("projects")
-    .select(
-      "id, name, description, status, deadline, progress, progress_from_tasks",
-    )
-    .eq("id", id)
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .maybeSingle()
+  const { data } = await supabase.rpc("portal_get_project", {
+    p_company: companyId,
+    p_id: id,
+  })
 
-  return (data as PortalProject | null) ?? null
+  return ((data ?? [])[0] as PortalProject | undefined) ?? null
+}
+
+export type PortalTask = {
+  id: string
+  name: string
+  description: string | null
+  status: number
+  priority: number
+  start_date: string | null
+  due_date: string | null
+  milestone_id: string | null
+}
+
+export async function listPortalTasks(
+  projectId: string,
+): Promise<PortalTask[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.rpc("portal_list_tasks", {
+    p_project: projectId,
+  })
+
+  return (data ?? []) as PortalTask[]
+}
+
+export type PortalMilestone = {
+  id: string
+  name: string
+  description: string | null
+  status: number
+  color: string
+  start_date: string | null
+  due_date: string | null
+  position: number
+  task_count: number
+  done_count: number
+  progress: number
+}
+
+export async function listPortalMilestones(
+  projectId: string,
+): Promise<PortalMilestone[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.rpc("portal_list_milestones", {
+    p_project: projectId,
+  })
+
+  return (data ?? []) as PortalMilestone[]
 }
 
 export type PortalDocumentRow = {
@@ -140,19 +161,15 @@ export type PortalContractRow = {
   start_date: string | null
   end_date: string | null
   status: number
-  note: string | null
 }
 
 export async function listPortalContracts(
   companyId: string,
 ): Promise<PortalContractRow[]> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from("contracts")
-    .select("id, title, description, value, start_date, end_date, status, note")
-    .eq("company_id", companyId)
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false })
+  const { data } = await supabase.rpc("portal_list_contracts", {
+    p_company: companyId,
+  })
 
   return (data ?? []) as PortalContractRow[]
 }
@@ -163,7 +180,7 @@ export type PortalExpenseRow = {
   category: string | null
   amount: number
   date: string
-  note: string | null
+  project_id: string | null
   project: { id: string; name: string } | null
 }
 
@@ -171,17 +188,21 @@ export async function listPortalExpenses(
   companyId: string,
 ): Promise<PortalExpenseRow[]> {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from("expenses")
-    .select(
-      "id, title, category, amount, date, note, project:projects(id, name)",
-    )
-    .eq("company_id", companyId)
-    .eq("billable", true)
-    .is("deleted_at", null)
-    .order("date", { ascending: false })
+  const { data } = await supabase.rpc("portal_list_expenses", {
+    p_company: companyId,
+  })
 
-  return (data ?? []) as unknown as PortalExpenseRow[]
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    title: row.title,
+    category: row.category,
+    amount: Number(row.amount),
+    date: row.date,
+    project_id: row.project_id,
+    project: row.project_id
+      ? { id: row.project_id, name: row.project_name ?? "Projeto" }
+      : null,
+  }))
 }
 
 export type PortalTicketRow = {

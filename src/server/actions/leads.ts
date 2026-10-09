@@ -16,6 +16,7 @@ import {
 import { getLead, listLeadStatuses } from "@/server/queries/leads"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { isManager } from "@/server/permissions"
 
 export type LeadFormState = { error?: string; success?: string } | undefined
 
@@ -195,6 +196,11 @@ export async function convertLeadToCustomerAction(formData: FormData) {
     redirect(`/app/clientes/${lead.converted_company_id}`)
   }
 
+  const limit = await checkPlanLimit(active.tenantId, "clients")
+  if (!limit.ok) {
+    redirect(`/app/leads/${id}`)
+  }
+
   const user = await getUser()
   const supabase = await createClient()
 
@@ -292,6 +298,7 @@ export async function createLeadStatusAction(
 export async function deleteLeadStatusAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
+  if (!isManager(active.role)) return
   const id = String(formData.get("id") ?? "")
   const supabase = await createClient()
   await supabase
@@ -328,6 +335,7 @@ export async function createLeadSourceAction(
 export async function deleteLeadSourceAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
+  if (!isManager(active.role)) return
   const id = String(formData.get("id") ?? "")
   const supabase = await createClient()
   await supabase

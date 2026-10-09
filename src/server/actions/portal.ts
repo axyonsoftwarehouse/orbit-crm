@@ -5,7 +5,9 @@ import { dbError } from "@/lib/db-error"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { getPortalContact } from "@/server/queries/portal"
+import { checkPlanLimitWith } from "@/server/plan-limits"
 import { signInSchema } from "@/lib/validations/auth"
 
 export type PortalAuthState = { error?: string } | undefined
@@ -68,6 +70,10 @@ export async function createPortalTicketAction(
   const type = Number(formData.get("type") ?? 3)
 
   if (subject.length < 3) return { error: "Informe o assunto." }
+
+  const admin = createAdminClient()
+  const limit = await checkPlanLimitWith(admin, contact.tenant_id, "tickets")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const supabase = await createClient()
   const { data: number, error: numberError } = await supabase.rpc(

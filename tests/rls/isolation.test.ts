@@ -1402,11 +1402,12 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       .single()
     expect(created.error).toBeNull()
 
-    const { data } = await clientPortal
-      .from("contracts")
-      .select("id")
-      .eq("company_id", portalCompanyId)
-    expect(data?.map((row) => row.id)).toContain(created.data!.id)
+    const { data } = await clientPortal.rpc("portal_list_contracts", {
+      p_company: portalCompanyId,
+    })
+    expect((data ?? []).map((row: { id: string }) => row.id)).toContain(
+      created.data!.id,
+    )
   })
 
   it("Cliente do portal não vê contratos de outra empresa", async () => {
@@ -1454,14 +1455,15 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     expect(billable.error).toBeNull()
     expect(internal.error).toBeNull()
 
-    const { data } = await clientPortal
-      .from("expenses")
-      .select("id, billable")
-      .eq("company_id", portalCompanyId)
-    const ids = (data ?? []).map((row) => row.id)
+    const direct = await clientPortal.from("expenses").select("id")
+    expect(direct.data ?? []).toEqual([])
+
+    const { data } = await clientPortal.rpc("portal_list_expenses", {
+      p_company: portalCompanyId,
+    })
+    const ids = (data ?? []).map((row: { id: string }) => row.id)
     expect(ids).toContain(billable.data!.id)
     expect(ids).not.toContain(internal.data!.id)
-    expect((data ?? []).every((row) => row.billable)).toBe(true)
   })
 
   it("Cliente do portal não vê despesas de outra empresa", async () => {
@@ -1478,11 +1480,18 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       .single()
     expect(created.error).toBeNull()
 
-    const { data } = await clientPortal
+    const direct = await clientPortal
       .from("expenses")
       .select("id")
       .eq("id", created.data!.id)
-    expect(data).toEqual([])
+    expect(direct.data ?? []).toEqual([])
+
+    const { data } = await clientPortal.rpc("portal_list_expenses", {
+      p_company: portalCompanyId,
+    })
+    expect((data ?? []).map((row: { id: string }) => row.id)).not.toContain(
+      created.data!.id,
+    )
   })
 
   it("Cliente do portal não cria contrato nem despesa", async () => {
@@ -1785,5 +1794,220 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       .from("attachments")
       .createSignedUrl(path, 60)
     expect(signed.error).toBeNull()
+  })
+
+  it("A não insere anexo com storage_path de outro tenant", async () => {
+    const { error } = await clientA.from("attachments").insert({
+      tenant_id: tenantA,
+      entity_type: "task",
+      entity_id: taskAId,
+      storage_path: `${tenantB}/task/${taskAId}/forged.txt`,
+      file_name: "forged.txt",
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("Cliente do portal não assina anexo com caminho forjado de outro tenant", async () => {
+    const portalProject = await admin
+      .from("projects")
+      .insert({
+        tenant_id: tenantA,
+        company_id: portalCompanyId,
+        name: `Portal Forged ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (portalProject.error) throw portalProject.error
+
+    const portalTask = await admin
+      .from("tasks")
+      .insert({
+        tenant_id: tenantA,
+        project_id: portalProject.data!.id,
+        name: `Portal Forged Tarefa ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (portalTask.error) throw portalTask.error
+
+    const forgedPath = `${tenantB}/task/${portalTask.data!.id}/${randomUUID()}-forged.txt`
+    const uploaded = await admin.storage
+      .from("attachments")
+      .upload(forgedPath, new Blob(["secret"], { type: "text/plain" }), {
+        contentType: "text/plain",
+      })
+    if (!uploaded.error) storagePaths.push(forgedPath)
+
+    await admin.from("attachments").insert({
+      tenant_id: tenantA,
+      entity_type: "task",
+      entity_id: portalTask.data!.id,
+      storage_path: forgedPath,
+      file_name: "forged.txt",
+    })
+
+    const signed = await clientPortal.storage
+      .from("attachments")
+      .createSignedUrl(forgedPath, 60)
+    expect(signed.error).not.toBeNull()
+  })
+
+  it("Admin não insere membership com papel owner", async () => {
+    const { error } = await clientAdmin.from("memberships").insert({
+      tenant_id: tenantA,
+      user_id: userBId,
+      role: "owner",
+      status: "active",
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("Admin não cria convite com papel owner", async () => {
+    const { error } = await clientAdmin.from("invitations").insert({
+      tenant_id: tenantA,
+      email: `owner-invite-${suffix}@orbit.test`,
+      role: "owner",
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("Membro não vincula user_id em contato do portal", async () => {
+    const { error } = await clientMember
+      .from("contacts")
+      .update({ user_id: userBId })
+      .eq("company_id", portalCompanyId)
+      .select("id")
+    expect(error).not.toBeNull()
+  })
+
+  it("Cliente do portal não lê orçamento em rascunho", async () => {
+    const draft = await admin
+      .from("estimates")
+      .insert({
+        tenant_id: tenantA,
+        company_id: portalCompanyId,
+        number: 999,
+        prefix: "EST-",
+        formatted_number: `EST-${suffix}`,
+        status: 1,
+        date: new Date().toISOString().slice(0, 10),
+        total: 100,
+      })
+      .select("id")
+      .single()
+    if (draft.error) throw draft.error
+
+    const { data } = await clientPortal
+      .from("estimates")
+      .select("id")
+      .eq("id", draft.data!.id)
+    expect(data ?? []).toEqual([])
+  })
+
+  it("Portal lê projetos da empresa via RPC e não direto na tabela", async () => {
+    const direct = await clientPortal.from("projects").select("id")
+    expect(direct.data ?? []).toEqual([])
+
+    const rpcRes = await clientPortal.rpc("portal_list_projects", {
+      p_company: portalCompanyId,
+    })
+    expect(rpcRes.error).toBeNull()
+    expect((rpcRes.data ?? []).length).toBeGreaterThan(0)
+  })
+
+  it("Portal não lê tasks/companies/profiles diretamente", async () => {
+    const tasks = await clientPortal.from("tasks").select("id")
+    expect(tasks.data ?? []).toEqual([])
+
+    const companies = await clientPortal.from("companies").select("id")
+    expect(companies.data ?? []).toEqual([])
+
+    const profiles = await clientPortal.from("profiles").select("id")
+    expect(profiles.data ?? []).toEqual([])
+  })
+
+  it("Portal lê tarefas e marcos do projeto via RPC", async () => {
+    const project = await admin
+      .from("projects")
+      .insert({
+        tenant_id: tenantA,
+        company_id: portalCompanyId,
+        name: `Portal RPC ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (project.error) throw project.error
+
+    const milestone = await admin
+      .from("milestones")
+      .insert({
+        tenant_id: tenantA,
+        project_id: project.data!.id,
+        name: `Marco RPC ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (milestone.error) throw milestone.error
+
+    const task = await admin
+      .from("tasks")
+      .insert({
+        tenant_id: tenantA,
+        project_id: project.data!.id,
+        milestone_id: milestone.data!.id,
+        name: `Tarefa RPC ${suffix}`,
+      })
+      .select("id")
+      .single()
+    if (task.error) throw task.error
+
+    const taskRes = await clientPortal.rpc("portal_list_tasks", {
+      p_project: project.data!.id,
+    })
+    expect(taskRes.error).toBeNull()
+    expect((taskRes.data ?? []).map((row: { id: string }) => row.id)).toContain(
+      task.data!.id,
+    )
+
+    const msRes = await clientPortal.rpc("portal_list_milestones", {
+      p_project: project.data!.id,
+    })
+    expect(msRes.error).toBeNull()
+    const milestoneRow = (msRes.data ?? []).find(
+      (row: { id: string; task_count: number }) =>
+        row.id === milestone.data!.id,
+    )
+    expect(milestoneRow?.task_count).toBe(1)
+  })
+
+  it("Rate limit distribuído bloqueia após o limite", async () => {
+    const bucket = `test-rate-${suffix}`
+    const first = await admin.rpc("check_rate_limit", {
+      p_bucket: bucket,
+      p_limit: 2,
+      p_window_seconds: 60,
+    })
+    const second = await admin.rpc("check_rate_limit", {
+      p_bucket: bucket,
+      p_limit: 2,
+      p_window_seconds: 60,
+    })
+    const third = await admin.rpc("check_rate_limit", {
+      p_bucket: bucket,
+      p_limit: 2,
+      p_window_seconds: 60,
+    })
+    expect(first.data).toBe(true)
+    expect(second.data).toBe(true)
+    expect(third.data).toBe(false)
+  })
+
+  it("profiles.email é preenchido ao criar usuário", async () => {
+    const { data } = await admin
+      .from("profiles")
+      .select("email")
+      .eq("id", userAId)
+      .maybeSingle()
+    expect(data?.email).toBe(emailA)
   })
 })

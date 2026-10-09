@@ -3,29 +3,41 @@
 import { headers } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { publicLeadSchema } from "@/lib/validations/public-lead"
+import { checkPlanLimitWith } from "@/server/plan-limits"
 import { logger } from "@/lib/logger"
 
 export type PublicLeadState = { error?: string; success?: string } | undefined
 
 const RATE_LIMIT = 5
-const RATE_WINDOW_MS = 60_000
-const rateBuckets = new Map<string, { count: number; resetAt: number }>()
+const RATE_WINDOW_SECONDS = 60
 
-// Limite best-effort por IP (por instância). Reduz spam no formulário público.
-async function isRateLimited() {
+// Rate limit distribuído (tabela + função SECURITY DEFINER). Funciona entre
+// instâncias serverless, ao contrário de um contador em memória.
+async function isRateLimited(): Promise<boolean> {
   const headerList = await headers()
   const ip =
     (headerList.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ||
     headerList.get("x-real-ip") ||
     "unknown"
-  const now = Date.now()
-  const bucket = rateBuckets.get(ip)
-  if (!bucket || bucket.resetAt < now) {
-    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS })
+
+  try {
+    const admin = createAdminClient()
+    const { data, error } = await admin.rpc("check_rate_limit", {
+      p_bucket: `web-lead:${ip}`,
+      p_limit: RATE_LIMIT,
+      p_window_seconds: RATE_WINDOW_SECONDS,
+    })
+    if (error) {
+      logger.error("public-lead.rate_limit_failed", { error: error.message })
+      return false
+    }
+    return data === false
+  } catch (error) {
+    logger.error("public-lead.rate_limit_exception", {
+      error: error instanceof Error ? error.message : String(error),
+    })
     return false
   }
-  bucket.count += 1
-  return bucket.count > RATE_LIMIT
 }
 
 export async function submitPublicLeadAction(
@@ -64,6 +76,12 @@ export async function submitPublicLeadAction(
 
   if (!tenant || !tenant.web_to_lead_enabled) {
     return { error: "Formulário indisponível." }
+  }
+
+  const limit = await checkPlanLimitWith(admin, tenant.id, "leads")
+  if (!limit.ok) {
+    logger.warn("public-lead.plan_limit", { tenantId: tenant.id })
+    return { error: "Formulário indisponível no momento." }
   }
 
   const { error } = await admin.from("leads").insert({

@@ -7,6 +7,7 @@ import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
+import { isManager } from "@/server/permissions"
 import { slugify } from "@/lib/slug"
 import {
   faqSchema,
@@ -46,6 +47,7 @@ export async function createKbCategoryAction(
 export async function deleteKbCategoryAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
+  if (!isManager(active.role)) return
   const id = String(formData.get("id") ?? "")
   const supabase = await createClient()
   await supabase
@@ -162,6 +164,7 @@ export async function updateKbArticleAction(
 export async function deleteKbArticleAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) redirect("/app")
+  if (!isManager(active.role)) redirect("/app")
 
   const id = String(formData.get("id") ?? "")
   const supabase = await createClient()
@@ -207,6 +210,7 @@ export async function createFaqAction(
 export async function deleteFaqAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
+  if (!isManager(active.role)) return
   const id = String(formData.get("id") ?? "")
   const supabase = await createClient()
   await supabase
