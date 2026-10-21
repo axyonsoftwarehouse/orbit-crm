@@ -2799,6 +2799,22 @@ export type Database = {
           progress_from_tasks: boolean
         }[]
       }
+      portal_get_seo_audit: {
+        Args: { p_company: string; p_site: string }
+        Returns: {
+          site_id: string
+          label: string
+          url: string
+          score: number | null
+          checks_total: number
+          issues_total: number
+          major_issues: number
+          moderate_issues: number
+          minor_issues: number
+          result: Json | null
+          created_at: string | null
+        }[]
+      }
       portal_list_contracts: {
         Args: { p_company: string }
         Returns: {
@@ -2814,13 +2830,25 @@ export type Database = {
       portal_list_expenses: {
         Args: { p_company: string }
         Returns: {
-          id: string
-          title: string
-          category: string | null
           amount: number
+          category: string | null
           date: string
+          id: string
           project_id: string | null
           project_name: string | null
+          title: string
+        }[]
+      }
+      portal_list_seo_sites: {
+        Args: { p_company: string }
+        Returns: {
+          id: string
+          label: string
+          url: string
+          score: number | null
+          checks_total: number
+          issues_total: number
+          last_audit_at: string | null
         }[]
       }
       portal_list_milestones: {

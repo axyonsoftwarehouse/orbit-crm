@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/portal/faturas", label: "Faturas" },
   { href: "/portal/contratos", label: "Contratos" },
   { href: "/portal/despesas", label: "Despesas" },
+  { href: "/portal/seo", label: "SEO" },
   { href: "/portal/tickets", label: "Tickets" },
   { href: "/portal/ajuda", label: "Ajuda" },
 ]
