@@ -18,6 +18,7 @@ import {
   listTenantMembers,
 } from "@/server/queries/projects"
 import { getTask, listChecklist } from "@/server/queries/tasks"
+import { isManager } from "@/server/permissions"
 import { listMilestoneOptions } from "@/server/queries/milestones"
 import { listTags, tagsForEntity } from "@/server/queries/tags"
 import {
@@ -121,7 +122,9 @@ export default async function TaskDetailPage({
             task={task}
             label="Editar"
           />
-          <DeleteTaskButton id={task.id} projectId={task.project_id} />
+          {isManager(active.role) && (
+            <DeleteTaskButton id={task.id} projectId={task.project_id} />
+          )}
         </div>
       </div>
 

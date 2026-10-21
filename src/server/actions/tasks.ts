@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { checklistItemSchema, taskSchema } from "@/lib/validations/tasks"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { isManager } from "@/server/permissions"
 import { dbError } from "@/lib/db-error"
 
 export type TaskFormState = { error?: string; success?: string } | undefined
@@ -115,6 +116,7 @@ export async function deleteTaskAction(formData: FormData) {
   const id = String(formData.get("id") ?? "")
   const projectId = String(formData.get("project_id") ?? "")
   const redirectTo = String(formData.get("redirect_to") ?? "/app/tarefas")
+  if (!isManager(active.role)) redirect(redirectTo)
 
   const supabase = await createClient()
   await supabase

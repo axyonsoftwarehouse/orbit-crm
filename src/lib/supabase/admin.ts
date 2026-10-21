@@ -1,13 +1,16 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
+import { env } from "@/lib/env"
 
 /**
  * Cliente com service role: IGNORA RLS. Use apenas no servidor, em fluxos
  * administrativos controlados (criação de tenants/convites, jobs).
  */
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  const {
+    NEXT_PUBLIC_SUPABASE_URL: url,
+    SUPABASE_SERVICE_ROLE_KEY: serviceRoleKey,
+  } = env()
 
   if (!url || !serviceRoleKey) {
     throw new Error(
