@@ -290,6 +290,57 @@ export async function scheduleSocialPostAction(formData: FormData) {
   redirect(`/app/social/${id}`)
 }
 
+export async function markSocialPostPublishedAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) redirect("/app/social")
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) redirect("/app/social")
+
+  const supabase = await createClient()
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("id, status")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (!post || !["approved", "scheduled"].includes(post.status)) {
+    redirect(`/app/social/${id}`)
+  }
+
+  const user = await getUser()
+  const now = new Date().toISOString()
+  await supabase
+    .from("social_posts")
+    .update({
+      status: "published",
+      published_at: now,
+      failure_reason: null,
+    })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+
+  await supabase
+    .from("social_post_targets")
+    .update({
+      status: "published",
+      published_at: now,
+      error: null,
+    })
+    .eq("post_id", id)
+    .eq("tenant_id", active.tenantId)
+
+  await recordEvent(active.tenantId, id, "published", user?.id ?? null, {
+    mode: "manual",
+  })
+
+  revalidatePath("/app/social")
+  revalidatePath(`/app/social/${id}`)
+  redirect(`/app/social/${id}`)
+}
+
 export async function cancelSocialPostAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) redirect("/app/social")

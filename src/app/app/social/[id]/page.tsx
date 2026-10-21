@@ -13,6 +13,7 @@ import { getActiveTenant } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
 import { getSocialPost } from "@/server/queries/social"
 import { SocialPostActions } from "./social-post-actions"
+import { ManualPublishPanel } from "./manual-publish-panel"
 
 function formatDateTime(value: string | null) {
   if (!value) return "—"
@@ -73,6 +74,10 @@ export default async function SocialPostDetailPage({
           <p className="text-sm whitespace-pre-wrap">{post.content}</p>
         </CardContent>
       </Card>
+
+      {["approved", "scheduled"].includes(post.status) ? (
+        <ManualPublishPanel postId={post.id} content={post.content} />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Card>

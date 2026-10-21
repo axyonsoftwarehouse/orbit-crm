@@ -2358,6 +2358,7 @@ export type Database = {
           deleted_at: string | null
           failure_reason: string | null
           id: string
+          manual_reminder_sent_at: string | null
           published_at: string | null
           rejection_note: string | null
           rejected_at: string | null
@@ -2378,6 +2379,7 @@ export type Database = {
           deleted_at?: string | null
           failure_reason?: string | null
           id?: string
+          manual_reminder_sent_at?: string | null
           published_at?: string | null
           rejection_note?: string | null
           rejected_at?: string | null
@@ -2398,6 +2400,7 @@ export type Database = {
           deleted_at?: string | null
           failure_reason?: string | null
           id?: string
+          manual_reminder_sent_at?: string | null
           published_at?: string | null
           rejection_note?: string | null
           rejected_at?: string | null
@@ -2417,6 +2420,7 @@ export type Database = {
           created_at: string
           default_timezone: string
           max_retries: number
+          publish_mode: string
           tenant_id: string
           updated_at: string
         }
@@ -2426,6 +2430,7 @@ export type Database = {
           created_at?: string
           default_timezone?: string
           max_retries?: number
+          publish_mode?: string
           tenant_id: string
           updated_at?: string
         }
@@ -2435,6 +2440,7 @@ export type Database = {
           created_at?: string
           default_timezone?: string
           max_retries?: number
+          publish_mode?: string
           tenant_id?: string
           updated_at?: string
         }

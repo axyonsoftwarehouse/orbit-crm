@@ -23,7 +23,14 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDefault> = {
     label: "Convite de equipe",
     description: "Enviado ao convidado com o link de aceite.",
     subject: "Convite para {{tenant}}",
-    body: '<p>Você foi convidado para a empresa <strong>{{tenant}}</strong> no Orbit CRM.</p><p><a href="{{link}}">Aceitar convite</a></p><p>Ou copie e cole no navegador:<br />{{link}}</p>',
+    body: '<p>VocǦ foi convidado para a empresa <strong>{{tenant}}</strong> no Orbit CRM.</p><p><a href="{{link}}">Aceitar convite</a></p><p>Ou copie e cole no navegador:<br />{{link}}</p>',
+  },
+  social_publish_due: {
+    label: "Post agendado (manual)",
+    description:
+      "Lembrete enviado ao autor quando um post agendado precisa ser publicado manualmente.",
+    subject: "[Orbit CRM] Post para publicar: {{post}}",
+    body: '<p>O post <strong>{{post}}</strong> está agendado para {{scheduled_at}}.</p><p>Abra o Orbit para copiar o conteúdo e publicar.</p><p><a href="{{url}}">Abrir post</a></p>',
   },
 }
 
