@@ -2063,6 +2063,99 @@ export type Database = {
           },
         ]
       }
+      seo_audits: {
+        Row: {
+          checks_total: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          issues_total: number
+          major_issues: number
+          minor_issues: number
+          moderate_issues: number
+          result: Json | null
+          score: number | null
+          site_id: string
+          status: number
+          tenant_id: string
+          url: string
+        }
+        Insert: {
+          checks_total?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          issues_total?: number
+          major_issues?: number
+          minor_issues?: number
+          moderate_issues?: number
+          result?: Json | null
+          score?: number | null
+          site_id: string
+          status?: number
+          tenant_id: string
+          url: string
+        }
+        Update: {
+          checks_total?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          issues_total?: number
+          major_issues?: number
+          minor_issues?: number
+          moderate_issues?: number
+          result?: Json | null
+          score?: number | null
+          site_id?: string
+          status?: number
+          tenant_id?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      seo_sites: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          label: string
+          tenant_id: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          label: string
+          tenant_id: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          label?: string
+          tenant_id?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string

@@ -10,3 +10,7 @@ supabase/.temp
 package-lock.json
 next-env.d.ts
 src/lib/database.types.ts
+
+# mapa do projeto (gerado)
+docs/MAPA_DO_PROJETO.md
+docs/mapa

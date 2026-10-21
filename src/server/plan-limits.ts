@@ -1,7 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 
-type ResourceTable = "companies" | "projects" | "tasks" | "tickets" | "leads"
+type ResourceTable =
+  "companies" | "projects" | "tasks" | "tickets" | "leads" | "seo_sites"
 
 const RESOURCE_TABLES: Record<string, ResourceTable> = {
   clients: "companies",
@@ -9,6 +10,7 @@ const RESOURCE_TABLES: Record<string, ResourceTable> = {
   tasks: "tasks",
   tickets: "tickets",
   leads: "leads",
+  seo_sites: "seo_sites",
 }
 
 export type PlanLimitResult = {
