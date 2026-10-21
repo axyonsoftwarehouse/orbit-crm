@@ -2039,48 +2039,6 @@ export type Database = {
         }
         Relationships: []
       }
-      taggables: {
-        Row: {
-          created_at: string
-          entity_id: string
-          entity_type: string
-          id: string
-          tag_id: string
-          tenant_id: string
-        }
-        Insert: {
-          created_at?: string
-          entity_id: string
-          entity_type: string
-          id?: string
-          tag_id: string
-          tenant_id: string
-        }
-        Update: {
-          created_at?: string
-          entity_id?: string
-          entity_type?: string
-          id?: string
-          tag_id?: string
-          tenant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "taggables_tag_fk"
-            columns: ["tag_id", "tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tags"
-            referencedColumns: ["id", "tenant_id"]
-          },
-          {
-            foreignKeyName: "taggables_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       seo_audits: {
         Row: {
           ai_summary: string | null
@@ -2139,7 +2097,29 @@ export type Database = {
           tenant_id?: string
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "seo_audits_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_audits_site_fk"
+            columns: ["site_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "seo_sites"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "seo_audits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       seo_sites: {
         Row: {
@@ -2181,7 +2161,71 @@ export type Database = {
           updated_at?: string
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "seo_sites_company_fk"
+            columns: ["company_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "seo_sites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "seo_sites_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      taggables: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          tag_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          tag_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          tag_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taggables_tag_fk"
+            columns: ["tag_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "taggables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tags: {
         Row: {
@@ -2830,18 +2874,18 @@ export type Database = {
       portal_get_seo_audit: {
         Args: { p_company: string; p_site: string }
         Returns: {
-          site_id: string
-          label: string
-          url: string
-          score: number | null
+          ai_summary: string
           checks_total: number
+          created_at: string
           issues_total: number
+          label: string
           major_issues: number
-          moderate_issues: number
           minor_issues: number
-          result: Json | null
-          ai_summary: string | null
-          created_at: string | null
+          moderate_issues: number
+          result: Json
+          score: number
+          site_id: string
+          url: string
         }[]
       }
       portal_list_contracts: {
@@ -2866,18 +2910,6 @@ export type Database = {
           project_id: string
           project_name: string
           title: string
-        }[]
-      }
-      portal_list_seo_sites: {
-        Args: { p_company: string }
-        Returns: {
-          id: string
-          label: string
-          url: string
-          score: number | null
-          checks_total: number
-          issues_total: number
-          last_audit_at: string | null
         }[]
       }
       portal_list_milestones: {
@@ -2906,6 +2938,18 @@ export type Database = {
           progress: number
           progress_from_tasks: boolean
           status: number
+        }[]
+      }
+      portal_list_seo_sites: {
+        Args: { p_company: string }
+        Returns: {
+          checks_total: number
+          id: string
+          issues_total: number
+          label: string
+          last_audit_at: string
+          score: number
+          url: string
         }[]
       }
       portal_list_tasks: {
