@@ -7,6 +7,8 @@ export type SeoSite = {
   company_id: string | null
   label: string
   url: string
+  check_interval_days: number
+  next_audit_at: string | null
   created_at: string
   updated_at: string
 }
@@ -48,9 +50,10 @@ export async function listSeoSitesPage(
   const from = (options.page - 1) * options.pageSize
   const { data, count } = await supabase
     .from("seo_sites")
-    .select("id, tenant_id, company_id, label, url, created_at, updated_at", {
-      count: "exact",
-    })
+    .select(
+      "id, tenant_id, company_id, label, url, check_interval_days, next_audit_at, created_at, updated_at",
+      { count: "exact" },
+    )
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -117,7 +120,9 @@ export async function getSeoSite(
   const supabase = await createClient()
   const { data } = await supabase
     .from("seo_sites")
-    .select("id, tenant_id, company_id, label, url, created_at, updated_at")
+    .select(
+      "id, tenant_id, company_id, label, url, check_interval_days, next_audit_at, created_at, updated_at",
+    )
     .eq("id", id)
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)

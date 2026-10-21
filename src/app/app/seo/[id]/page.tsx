@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft, ExternalLink, Globe, ShieldCheck } from "lucide-react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Table,
@@ -17,8 +18,10 @@ import {
   SeoSeverityBadge,
 } from "@/components/app/seo-bits"
 import { formatDate } from "@/lib/format"
+import { SEO_CHECK_INTERVAL_LABELS } from "@/lib/constants"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
+import { updateSeoMonitoringAction } from "@/server/actions/seo"
 import { isManager } from "@/server/permissions"
 import {
   getLatestSeoAudit,
@@ -244,6 +247,50 @@ export default async function SeoDetailPage({
           )}
         </>
       )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Monitoramento automático</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form
+            action={updateSeoMonitoringAction}
+            className="flex flex-wrap items-end gap-3"
+          >
+            <input type="hidden" name="id" value={site.id} />
+            <div className="space-y-1">
+              <label
+                htmlFor="seo-monitoring"
+                className="text-muted-foreground text-xs"
+              >
+                Frequência
+              </label>
+              <select
+                id="seo-monitoring"
+                name="check_interval_days"
+                defaultValue={String(site.check_interval_days)}
+                className="border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
+              >
+                {Object.entries(SEO_CHECK_INTERVAL_LABELS).map(
+                  ([value, optionLabel]) => (
+                    <option key={value} value={value}>
+                      {optionLabel}
+                    </option>
+                  ),
+                )}
+              </select>
+            </div>
+            <Button type="submit" variant="outline" size="sm">
+              Salvar
+            </Button>
+            <span className="text-muted-foreground text-xs">
+              {site.next_audit_at
+                ? `Próxima execução: ${formatDateTime(site.next_audit_at)}`
+                : "Sem próxima execução agendada."}
+            </span>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

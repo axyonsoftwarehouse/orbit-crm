@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SEO_CHECK_INTERVAL_LABELS } from "@/lib/constants"
 import {
   createSeoSiteAction,
   type SeoSiteFormState,
@@ -90,6 +91,26 @@ export function SeoSiteFormDialog({
                 ))}
               </select>
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="seo-site-monitoring">
+              Monitoramento automático
+            </Label>
+            <select
+              id="seo-site-monitoring"
+              name="check_interval_days"
+              defaultValue="0"
+              className={fieldClass}
+            >
+              {Object.entries(SEO_CHECK_INTERVAL_LABELS).map(
+                ([value, optionLabel]) => (
+                  <option key={value} value={value}>
+                    {optionLabel}
+                  </option>
+                ),
+              )}
+            </select>
           </div>
 
           <p className="text-muted-foreground text-xs">

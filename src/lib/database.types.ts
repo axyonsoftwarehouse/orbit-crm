@@ -2122,34 +2122,40 @@ export type Database = {
       }
       seo_sites: {
         Row: {
+          check_interval_days: number
           company_id: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
           id: string
           label: string
+          next_audit_at: string | null
           tenant_id: string
           updated_at: string
           url: string
         }
         Insert: {
+          check_interval_days?: number
           company_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           id?: string
           label: string
+          next_audit_at?: string | null
           tenant_id: string
           updated_at?: string
           url: string
         }
         Update: {
+          check_interval_days?: number
           company_id?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           id?: string
           label?: string
+          next_audit_at?: string | null
           tenant_id?: string
           updated_at?: string
           url?: string

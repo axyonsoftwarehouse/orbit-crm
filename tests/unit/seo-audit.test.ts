@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { buildChecks, summarize, type SeoCheck } from "@/server/seo/audit"
 import { isPrivateAddress, type FetchedPage } from "@/server/seo/fetch-page"
+import { nextAuditAt } from "@/server/seo/scheduling"
 
 function page(overrides: Partial<FetchedPage> = {}): FetchedPage {
   const body = Array.from(
@@ -111,6 +112,15 @@ describe("SEO audit checks", () => {
     ]
 
     expect(summarize(checks).score).toBe(80)
+  })
+})
+
+describe("scheduling", () => {
+  it("calcula a proxima auditoria", () => {
+    expect(nextAuditAt(0)).toBeNull()
+    expect(nextAuditAt(7, new Date("2026-01-01T00:00:00.000Z"))).toBe(
+      "2026-01-08T00:00:00.000Z",
+    )
   })
 })
 

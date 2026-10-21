@@ -8,10 +8,11 @@ import { getActiveMembership } from "@/lib/tenant"
 import { dbError } from "@/lib/db-error"
 import { logger } from "@/lib/logger"
 import type { Json } from "@/lib/database.types"
-import { seoSiteSchema } from "@/lib/validations/seo"
+import { seoMonitoringSchema, seoSiteSchema } from "@/lib/validations/seo"
 import { checkPlanLimit } from "@/server/plan-limits"
 import { isManager } from "@/server/permissions"
 import { runSeoAudit } from "@/server/seo/audit"
+import { nextAuditAt } from "@/server/seo/scheduling"
 
 export type SeoSiteFormState = { error?: string; success?: string } | undefined
 
@@ -29,6 +30,7 @@ export async function createSeoSiteAction(
     label: formData.get("label") || undefined,
     url: formData.get("url"),
     company_id: formData.get("company_id") || undefined,
+    check_interval_days: formData.get("check_interval_days") ?? 0,
   })
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
@@ -42,6 +44,7 @@ export async function createSeoSiteAction(
     company_id: parsed.data.company_id ?? null,
     label,
     url: parsed.data.url,
+    check_interval_days: parsed.data.check_interval_days,
     created_by: user?.id ?? null,
   })
 
@@ -61,7 +64,7 @@ export async function runSeoAuditAction(formData: FormData) {
   const supabase = await createClient()
   const { data: site } = await supabase
     .from("seo_sites")
-    .select("id, url")
+    .select("id, url, check_interval_days")
     .eq("id", siteId)
     .eq("tenant_id", active.tenantId)
     .is("deleted_at", null)
@@ -121,9 +124,42 @@ export async function runSeoAuditAction(formData: FormData) {
       .eq("tenant_id", active.tenantId)
   }
 
+  await supabase
+    .from("seo_sites")
+    .update({ next_audit_at: nextAuditAt(site.check_interval_days) })
+    .eq("id", site.id)
+    .eq("tenant_id", active.tenantId)
+
   revalidatePath("/app/seo")
   revalidatePath(`/app/seo/${site.id}`)
   redirect(`/app/seo/${site.id}`)
+}
+
+export async function updateSeoMonitoringAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) redirect("/app/seo")
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) redirect("/app/seo")
+
+  const parsed = seoMonitoringSchema.safeParse({
+    check_interval_days: formData.get("check_interval_days"),
+  })
+  if (!parsed.success) redirect(`/app/seo/${id}`)
+
+  const supabase = await createClient()
+  await supabase
+    .from("seo_sites")
+    .update({
+      check_interval_days: parsed.data.check_interval_days,
+      next_audit_at: nextAuditAt(parsed.data.check_interval_days),
+    })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+
+  revalidatePath("/app/seo")
+  revalidatePath(`/app/seo/${id}`)
+  redirect(`/app/seo/${id}`)
 }
 
 export async function deleteSeoSiteAction(formData: FormData) {

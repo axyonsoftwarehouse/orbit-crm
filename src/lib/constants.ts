@@ -2,6 +2,15 @@ export const APP_NAME = "Orbit CRM"
 
 export const TENANT_COOKIE = "orbit.tenant"
 
+export const SEO_CHECK_INTERVALS = [0, 1, 7, 30] as const
+
+export const SEO_CHECK_INTERVAL_LABELS: Record<number, string> = {
+  0: "Manual",
+  1: "Diário",
+  7: "Semanal",
+  30: "Mensal",
+}
+
 export const ROLES = ["owner", "admin", "member"] as const
 export type Role = (typeof ROLES)[number]
 
