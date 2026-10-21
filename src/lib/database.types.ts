@@ -2081,6 +2081,108 @@ export type Database = {
           },
         ]
       }
+      seo_audits: {
+        Row: {
+          ai_summary: string | null
+          checks_total: number
+          created_at: string
+          created_by: string | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          issues_total: number
+          major_issues: number
+          minor_issues: number
+          moderate_issues: number
+          result: Json | null
+          score: number | null
+          site_id: string
+          status: number
+          tenant_id: string
+          url: string
+        }
+        Insert: {
+          ai_summary?: string | null
+          checks_total?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          issues_total?: number
+          major_issues?: number
+          minor_issues?: number
+          moderate_issues?: number
+          result?: Json | null
+          score?: number | null
+          site_id: string
+          status?: number
+          tenant_id: string
+          url: string
+        }
+        Update: {
+          ai_summary?: string | null
+          checks_total?: number
+          created_at?: string
+          created_by?: string | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          issues_total?: number
+          major_issues?: number
+          minor_issues?: number
+          moderate_issues?: number
+          result?: Json | null
+          score?: number | null
+          site_id?: string
+          status?: number
+          tenant_id?: string
+          url?: string
+        }
+        Relationships: []
+      }
+      seo_sites: {
+        Row: {
+          check_interval_days: number
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          id: string
+          label: string
+          next_audit_at: string | null
+          tenant_id: string
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          check_interval_days?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          label: string
+          next_audit_at?: string | null
+          tenant_id: string
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          check_interval_days?: number
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          id?: string
+          label?: string
+          next_audit_at?: string | null
+          tenant_id?: string
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string
@@ -2725,6 +2827,23 @@ export type Database = {
           status: number
         }[]
       }
+      portal_get_seo_audit: {
+        Args: { p_company: string; p_site: string }
+        Returns: {
+          site_id: string
+          label: string
+          url: string
+          score: number | null
+          checks_total: number
+          issues_total: number
+          major_issues: number
+          moderate_issues: number
+          minor_issues: number
+          result: Json | null
+          ai_summary: string | null
+          created_at: string | null
+        }[]
+      }
       portal_list_contracts: {
         Args: { p_company: string }
         Returns: {
@@ -2747,6 +2866,18 @@ export type Database = {
           project_id: string
           project_name: string
           title: string
+        }[]
+      }
+      portal_list_seo_sites: {
+        Args: { p_company: string }
+        Returns: {
+          id: string
+          label: string
+          url: string
+          score: number | null
+          checks_total: number
+          issues_total: number
+          last_audit_at: string | null
         }[]
       }
       portal_list_milestones: {

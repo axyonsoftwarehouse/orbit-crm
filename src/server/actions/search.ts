@@ -8,7 +8,7 @@ export type SearchResult = {
   title: string
   subtitle: string | null
   href: string
-  type: "cliente" | "projeto" | "tarefa"
+  type: "cliente" | "projeto" | "tarefa" | "seo"
 }
 
 export async function searchAction(query: string): Promise<SearchResult[]> {
@@ -20,7 +20,7 @@ export async function searchAction(query: string): Promise<SearchResult[]> {
   const like = `%${term}%`
 
   const supabase = await createClient()
-  const [companies, projects, tasks] = await Promise.all([
+  const [companies, projects, tasks, seoSites] = await Promise.all([
     supabase
       .from("companies")
       .select("id, name, city")
@@ -41,6 +41,13 @@ export async function searchAction(query: string): Promise<SearchResult[]> {
       .eq("tenant_id", active.tenantId)
       .is("deleted_at", null)
       .ilike("name", like)
+      .limit(5),
+    supabase
+      .from("seo_sites")
+      .select("id, label, url")
+      .eq("tenant_id", active.tenantId)
+      .is("deleted_at", null)
+      .ilike("label", like)
       .limit(5),
   ])
 
@@ -74,6 +81,19 @@ export async function searchAction(query: string): Promise<SearchResult[]> {
       subtitle: null,
       href: `/app/tarefas/${t.id}`,
       type: "tarefa",
+    })
+  }
+  for (const s of (seoSites.data ?? []) as {
+    id: string
+    label: string
+    url: string
+  }[]) {
+    results.push({
+      id: s.id,
+      title: s.label,
+      subtitle: s.url,
+      href: `/app/seo/${s.id}`,
+      type: "seo",
     })
   }
 

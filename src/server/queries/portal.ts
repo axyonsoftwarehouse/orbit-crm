@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import type { SeoAuditResult } from "@/server/seo/audit"
 
 export type PortalContact = {
   id: string
@@ -203,6 +204,70 @@ export async function listPortalExpenses(
       ? { id: row.project_id, name: row.project_name ?? "Projeto" }
       : null,
   }))
+}
+
+export type PortalSeoSite = {
+  id: string
+  label: string
+  url: string
+  score: number | null
+  checks_total: number
+  issues_total: number
+  last_audit_at: string | null
+}
+
+export async function listPortalSeoSites(
+  companyId: string,
+): Promise<PortalSeoSite[]> {
+  const supabase = await createClient()
+  const { data } = await supabase.rpc("portal_list_seo_sites", {
+    p_company: companyId,
+  })
+
+  return (data ?? []) as PortalSeoSite[]
+}
+
+export type PortalSeoAudit = {
+  site_id: string
+  label: string
+  url: string
+  score: number | null
+  checks_total: number
+  issues_total: number
+  major_issues: number
+  moderate_issues: number
+  minor_issues: number
+  result: SeoAuditResult | null
+  ai_summary: string | null
+  created_at: string | null
+}
+
+export async function getPortalSeoAudit(
+  companyId: string,
+  siteId: string,
+): Promise<PortalSeoAudit | null> {
+  const supabase = await createClient()
+  const { data } = await supabase.rpc("portal_get_seo_audit", {
+    p_company: companyId,
+    p_site: siteId,
+  })
+  const row = (data ?? [])[0]
+  if (!row) return null
+
+  return {
+    site_id: row.site_id,
+    label: row.label,
+    url: row.url,
+    score: row.score,
+    checks_total: row.checks_total,
+    issues_total: row.issues_total,
+    major_issues: row.major_issues,
+    moderate_issues: row.moderate_issues,
+    minor_issues: row.minor_issues,
+    result: row.result as SeoAuditResult | null,
+    ai_summary: row.ai_summary,
+    created_at: row.created_at,
+  }
 }
 
 export type PortalTicketRow = {

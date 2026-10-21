@@ -13,6 +13,8 @@ const serverEnvSchema = z.object({
   RESEND_API_KEY: z.string().min(1).optional(),
   EMAIL_FROM: z.string().optional(),
   SUPER_ADMIN_EMAILS: z.string().optional(),
+  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_MODEL: z.string().default("gpt-4o-mini"),
 })
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>

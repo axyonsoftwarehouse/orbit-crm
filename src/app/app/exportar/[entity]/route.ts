@@ -9,6 +9,7 @@ import { listEstimates, listInvoices } from "@/server/queries/documents"
 import { listExpenses } from "@/server/queries/expenses"
 import { listTimeEntries, formatDuration } from "@/server/queries/time"
 import { getReportData } from "@/server/queries/reports"
+import { listSeoAuditsForExport } from "@/server/queries/seo"
 
 function csvResponse(filename: string, csv: string) {
   return new Response(`\uFEFF${csv}`, {
@@ -128,6 +129,42 @@ export async function GET(
         ]),
       )
       return csvResponse(`despesas-${stamp}.csv`, csv)
+    }
+
+    case "seo": {
+      const rows = await listSeoAuditsForExport(tenantId)
+      const statusLabels: Record<number, string> = {
+        1: "Executando",
+        2: "Concluída",
+        3: "Erro",
+      }
+      const csv = toCsv(
+        [
+          "Site",
+          "URL",
+          "Data",
+          "Status",
+          "Score",
+          "Verificações",
+          "Problemas",
+          "Críticos",
+          "Moderados",
+          "Leves",
+        ],
+        rows.map((row) => [
+          row.site_label,
+          row.url,
+          new Date(row.created_at).toLocaleString("pt-BR"),
+          statusLabels[row.status] ?? String(row.status),
+          row.score,
+          row.checks_total,
+          row.issues_total,
+          row.major_issues,
+          row.moderate_issues,
+          row.minor_issues,
+        ]),
+      )
+      return csvResponse(`seo-${stamp}.csv`, csv)
     }
 
     case "timesheet": {
