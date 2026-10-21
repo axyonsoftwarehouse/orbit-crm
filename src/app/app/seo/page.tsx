@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { ExportButton } from "@/components/app/export-button"
 import { Pagination } from "@/components/app/pagination"
 import { SeoAuditStatusBadge, SeoScoreBadge } from "@/components/app/seo-bits"
 import { formatDate } from "@/lib/format"
@@ -49,7 +50,10 @@ export default async function SeoPage({
             {total} site(s) monitorado(s) com auditorias técnicas e de conteúdo.
           </p>
         </div>
-        <SeoSiteFormDialog companies={companyOptions} />
+        <div className="flex items-center gap-2">
+          <ExportButton href="/app/exportar/seo" />
+          <SeoSiteFormDialog companies={companyOptions} />
+        </div>
       </div>
 
       {sites.length === 0 ? (

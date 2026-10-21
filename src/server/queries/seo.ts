@@ -182,3 +182,45 @@ export async function listSeoAuditHistory(
 
   return (data ?? []) as SeoAuditSummaryRow[]
 }
+
+export type SeoAuditExportRow = SeoAuditSummaryRow & {
+  url: string
+  major_issues: number
+  moderate_issues: number
+  minor_issues: number
+  site_label: string
+}
+
+export async function listSeoAuditsForExport(
+  tenantId: string,
+): Promise<SeoAuditExportRow[]> {
+  const supabase = await createClient()
+  const [{ data: audits }, { data: sites }] = await Promise.all([
+    supabase
+      .from("seo_audits")
+      .select(
+        "id, site_id, url, status, score, checks_total, issues_total, major_issues, moderate_issues, minor_issues, created_at, finished_at",
+      )
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("seo_sites")
+      .select("id, label")
+      .eq("tenant_id", tenantId)
+      .is("deleted_at", null),
+  ])
+
+  const labels = new Map(
+    ((sites ?? []) as { id: string; label: string }[]).map((site) => [
+      site.id,
+      site.label,
+    ]),
+  )
+
+  return ((audits ?? []) as Omit<SeoAuditExportRow, "site_label">[]).map(
+    (audit) => ({
+      ...audit,
+      site_label: labels.get(audit.site_id) ?? audit.url,
+    }),
+  )
+}
