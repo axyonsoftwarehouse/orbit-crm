@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getPortalContact } from "@/server/queries/portal"
 import { checkPlanLimitWith } from "@/server/plan-limits"
+import { isLoginRateLimited } from "@/server/rate-limit"
 import { signInSchema } from "@/lib/validations/auth"
 
 export type PortalAuthState = { error?: string } | undefined
@@ -23,6 +24,10 @@ export async function portalSignInAction(
 
   if (!parsed.success) {
     return { error: "Informe um e-mail e senha válidos." }
+  }
+
+  if (await isLoginRateLimited(parsed.data.email)) {
+    return { error: "Muitas tentativas. Tente novamente em instantes." }
   }
 
   const supabase = await createClient()

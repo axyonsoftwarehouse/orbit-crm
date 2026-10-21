@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { signInSchema } from "@/lib/validations/auth"
+import { isLoginRateLimited } from "@/server/rate-limit"
 
 export type AuthState = { error?: string } | undefined
 
@@ -17,6 +18,10 @@ export async function signInAction(
 
   if (!parsed.success) {
     return { error: "Informe um e-mail e senha válidos." }
+  }
+
+  if (await isLoginRateLimited(parsed.data.email)) {
+    return { error: "Muitas tentativas. Tente novamente em instantes." }
   }
 
   const supabase = await createClient()

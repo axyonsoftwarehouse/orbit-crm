@@ -37,6 +37,7 @@ import {
   listProjects,
   listTenantMembers,
 } from "@/server/queries/projects"
+import { isManager } from "@/server/permissions"
 import {
   listMilestoneOptions,
   listMilestones,
@@ -181,7 +182,7 @@ export default async function ProjectDetailPage({
             customValues={projectCustomValues}
             label="Editar"
           />
-          <DeleteProjectButton id={project.id} />
+          {isManager(active.role) && <DeleteProjectButton id={project.id} />}
         </div>
       </div>
 

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   graphql_public: {
     Tables: {
@@ -1982,6 +1982,24 @@ export type Database = {
           },
         ]
       }
+      rate_limit_hits: {
+        Row: {
+          bucket: string
+          created_at: string
+          id: number
+        }
+        Insert: {
+          bucket: string
+          created_at?: string
+          id?: never
+        }
+        Update: {
+          bucket?: string
+          created_at?: string
+          id?: never
+        }
+        Relationships: []
+      }
       roadmap_items: {
         Row: {
           category: string
@@ -2744,11 +2762,11 @@ export type Database = {
     }
     Functions: {
       check_rate_limit: {
-        Args: {
-          p_bucket: string
-          p_limit: number
-          p_window_seconds: number
-        }
+        Args: { p_bucket: string; p_limit: number; p_window_seconds: number }
+        Returns: boolean
+      }
+      client_can_view_attachment_path: {
+        Args: { p_name: string }
         Returns: boolean
       }
       client_can_view_document: {
@@ -2773,6 +2791,7 @@ export type Database = {
         Args: { p_roles: string[]; p_tenant: string }
         Returns: boolean
       }
+      is_authenticated_staff: { Args: never; Returns: boolean }
       is_client_of_company: { Args: { p_company: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_tenant_member: { Args: { p_tenant: string }; Returns: boolean }
@@ -2783,12 +2802,12 @@ export type Database = {
       portal_contact: {
         Args: never
         Returns: {
-          id: string
-          first_name: string
-          last_name: string | null
-          email: string | null
           company_id: string
           company_name: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
           tenant_id: string
           tenant_name: string
         }[]
@@ -2796,13 +2815,13 @@ export type Database = {
       portal_get_project: {
         Args: { p_company: string; p_id: string }
         Returns: {
+          deadline: string
+          description: string
           id: string
           name: string
-          description: string | null
-          status: number
-          deadline: string | null
           progress: number
           progress_from_tasks: boolean
+          status: number
         }[]
       }
       portal_get_seo_audit: {
@@ -2824,24 +2843,24 @@ export type Database = {
       portal_list_contracts: {
         Args: { p_company: string }
         Returns: {
+          description: string
+          end_date: string
           id: string
-          title: string
-          description: string | null
-          value: number | null
-          start_date: string | null
-          end_date: string | null
+          start_date: string
           status: number
+          title: string
+          value: number
         }[]
       }
       portal_list_expenses: {
         Args: { p_company: string }
         Returns: {
           amount: number
-          category: string | null
+          category: string
           date: string
           id: string
-          project_id: string | null
-          project_name: string | null
+          project_id: string
+          project_name: string
           title: string
         }[]
       }
@@ -2860,42 +2879,42 @@ export type Database = {
       portal_list_milestones: {
         Args: { p_project: string }
         Returns: {
+          color: string
+          description: string
+          done_count: number
+          due_date: string
           id: string
           name: string
-          description: string | null
-          status: number
-          color: string
-          start_date: string | null
-          due_date: string | null
           position: number
-          task_count: number
-          done_count: number
           progress: number
+          start_date: string
+          status: number
+          task_count: number
         }[]
       }
       portal_list_projects: {
         Args: { p_company: string }
         Returns: {
+          deadline: string
+          description: string
           id: string
           name: string
-          description: string | null
-          status: number
-          deadline: string | null
           progress: number
           progress_from_tasks: boolean
+          status: number
         }[]
       }
       portal_list_tasks: {
         Args: { p_project: string }
         Returns: {
+          description: string
+          due_date: string
           id: string
+          milestone_id: string
           name: string
-          description: string | null
-          status: number
           priority: number
-          start_date: string | null
-          due_date: string | null
-          milestone_id: string | null
+          start_date: string
+          status: number
         }[]
       }
       shares_tenant: { Args: { target: string }; Returns: boolean }
