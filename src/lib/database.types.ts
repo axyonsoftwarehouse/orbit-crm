@@ -2227,6 +2227,219 @@ export type Database = {
           },
         ]
       }
+      social_accounts: {
+        Row: {
+          avatar_url: string | null
+          company_id: string | null
+          connected_by: string | null
+          created_at: string
+          deleted_at: string | null
+          display_name: string
+          id: string
+          metadata: Json
+          provider: string
+          provider_account_id: string
+          status: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          company_id?: string | null
+          connected_by?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          display_name: string
+          id?: string
+          metadata?: Json
+          provider: string
+          provider_account_id: string
+          status?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          company_id?: string | null
+          connected_by?: string | null
+          created_at?: string
+          deleted_at?: string | null
+          display_name?: string
+          id?: string
+          metadata?: Json
+          provider?: string
+          provider_account_id?: string
+          status?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_post_events: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          event: string
+          id: string
+          metadata: Json
+          post_id: string
+          tenant_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          event: string
+          id?: string
+          metadata?: Json
+          post_id: string
+          tenant_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          event?: string
+          id?: string
+          metadata?: Json
+          post_id?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      social_post_targets: {
+        Row: {
+          account_id: string
+          attempts: number
+          created_at: string
+          error: string | null
+          external_post_id: string | null
+          id: string
+          post_id: string
+          published_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          external_post_id?: string | null
+          id?: string
+          post_id: string
+          published_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          external_post_id?: string | null
+          id?: string
+          post_id?: string
+          published_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_posts: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          company_id: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          failure_reason: string | null
+          id: string
+          published_at: string | null
+          rejection_note: string | null
+          rejected_at: string | null
+          rejected_by: string | null
+          requires_approval: boolean
+          scheduled_at: string | null
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          published_at?: string | null
+          rejection_note?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          requires_approval?: boolean
+          scheduled_at?: string | null
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          company_id?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          failure_reason?: string | null
+          id?: string
+          published_at?: string | null
+          rejection_note?: string | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          requires_approval?: boolean
+          scheduled_at?: string | null
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      social_settings: {
+        Row: {
+          ai_enabled: boolean
+          approval_required: boolean
+          created_at: string
+          default_timezone: string
+          max_retries: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_enabled?: boolean
+          approval_required?: boolean
+          created_at?: string
+          default_timezone?: string
+          max_retries?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_enabled?: boolean
+          approval_required?: boolean
+          created_at?: string
+          default_timezone?: string
+          max_retries?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tags: {
         Row: {
           color: string
@@ -2951,6 +3164,43 @@ export type Database = {
           score: number
           url: string
         }[]
+      }
+      portal_get_social_post: {
+        Args: { p_company: string; p_post: string }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          published_at: string | null
+          rejection_note: string | null
+          requires_approval: boolean
+          scheduled_at: string | null
+          status: string
+          targets: Json
+        }[]
+      }
+      portal_list_social_posts: {
+        Args: { p_company: string }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          published_at: string | null
+          rejection_note: string | null
+          requires_approval: boolean
+          scheduled_at: string | null
+          status: string
+          target_count: number
+        }[]
+      }
+      portal_respond_social_post: {
+        Args: {
+          p_approve: boolean
+          p_company: string
+          p_note?: string
+          p_post: string
+        }
+        Returns: boolean
       }
       portal_list_tasks: {
         Args: { p_project: string }

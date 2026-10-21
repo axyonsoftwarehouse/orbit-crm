@@ -11,6 +11,47 @@ export const SEO_CHECK_INTERVAL_LABELS: Record<number, string> = {
   30: "Mensal",
 }
 
+export const SOCIAL_PROVIDERS = {
+  linkedin: { label: "LinkedIn" },
+  instagram: { label: "Instagram" },
+  facebook: { label: "Facebook" },
+  x: { label: "X" },
+  tiktok: { label: "TikTok" },
+  threads: { label: "Threads" },
+  youtube: { label: "YouTube" },
+  pinterest: { label: "Pinterest" },
+} as const
+
+export type SocialProvider = keyof typeof SOCIAL_PROVIDERS
+
+export const SOCIAL_POST_STATUSES = {
+  draft: { label: "Rascunho", color: "#64748b" },
+  pending_approval: { label: "Aguardando aprovação", color: "#f59e0b" },
+  approved: { label: "Aprovado", color: "#2563eb" },
+  scheduled: { label: "Agendado", color: "#0ea5e9" },
+  publishing: { label: "Publicando", color: "#8b5cf6" },
+  published: { label: "Publicado", color: "#16a34a" },
+  partially_published: { label: "Parcialmente publicado", color: "#f97316" },
+  failed: { label: "Falhou", color: "#dc2626" },
+  cancelled: { label: "Cancelado", color: "#94a3b8" },
+  rejected: { label: "Rejeitado", color: "#dc2626" },
+} as const
+
+export type SocialPostStatus = keyof typeof SOCIAL_POST_STATUSES
+
+export const SOCIAL_EVENT_LABELS: Record<string, string> = {
+  created: "Post criado",
+  submitted: "Enviado para aprovação",
+  approved: "Aprovado",
+  rejected: "Rejeitado",
+  scheduled: "Agendado",
+  publishing: "Publicando",
+  published: "Publicado",
+  failed: "Falha na publicação",
+  retried: "Nova tentativa",
+  cancelled: "Cancelado",
+}
+
 export const ROLES = ["owner", "admin", "member"] as const
 export type Role = (typeof ROLES)[number]
 
