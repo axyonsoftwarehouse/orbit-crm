@@ -4,6 +4,9 @@ alter table public.seo_audits
   add column if not exists ai_summary text;
 
 -- Atualiza a leitura do portal para incluir o resumo, quando existir.
+-- A assinatura de retorno muda, então a função precisa ser recriada.
+drop function if exists public.portal_get_seo_audit(uuid, uuid);
+
 create or replace function public.portal_get_seo_audit(
   p_company uuid,
   p_site uuid
