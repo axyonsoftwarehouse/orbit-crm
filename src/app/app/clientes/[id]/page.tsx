@@ -16,6 +16,7 @@ import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { getCompany, listContacts } from "@/server/queries/companies"
+import { isManager } from "@/server/permissions"
 import { listTags, tagsForEntity } from "@/server/queries/tags"
 import {
   customFieldValuesForEntity,
@@ -91,7 +92,7 @@ export default async function CompanyDetailPage({
             customValues={customValues}
             label="Editar"
           />
-          <DeleteCompanyButton id={company.id} />
+          {isManager(active.role) && <DeleteCompanyButton id={company.id} />}
         </div>
       </div>
 

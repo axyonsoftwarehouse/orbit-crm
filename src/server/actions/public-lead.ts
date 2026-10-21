@@ -1,44 +1,15 @@
 "use server"
 
-import { headers } from "next/headers"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { publicLeadSchema } from "@/lib/validations/public-lead"
 import { checkPlanLimitWith } from "@/server/plan-limits"
+import { getClientIp, isRateLimited } from "@/server/rate-limit"
 import { logger } from "@/lib/logger"
 
 export type PublicLeadState = { error?: string; success?: string } | undefined
 
 const RATE_LIMIT = 5
 const RATE_WINDOW_SECONDS = 60
-
-// Rate limit distribuído (tabela + função SECURITY DEFINER). Funciona entre
-// instâncias serverless, ao contrário de um contador em memória.
-async function isRateLimited(): Promise<boolean> {
-  const headerList = await headers()
-  const ip =
-    (headerList.get("x-forwarded-for") ?? "").split(",")[0]?.trim() ||
-    headerList.get("x-real-ip") ||
-    "unknown"
-
-  try {
-    const admin = createAdminClient()
-    const { data, error } = await admin.rpc("check_rate_limit", {
-      p_bucket: `web-lead:${ip}`,
-      p_limit: RATE_LIMIT,
-      p_window_seconds: RATE_WINDOW_SECONDS,
-    })
-    if (error) {
-      logger.error("public-lead.rate_limit_failed", { error: error.message })
-      return false
-    }
-    return data === false
-  } catch (error) {
-    logger.error("public-lead.rate_limit_exception", {
-      error: error instanceof Error ? error.message : String(error),
-    })
-    return false
-  }
-}
 
 export async function submitPublicLeadAction(
   _prevState: PublicLeadState,
@@ -47,7 +18,8 @@ export async function submitPublicLeadAction(
   const slug = String(formData.get("slug") ?? "").trim()
   if (!slug) return { error: "Formulário inválido." }
 
-  if (await isRateLimited()) {
+  const ip = await getClientIp()
+  if (await isRateLimited(`web-lead:${ip}`, RATE_LIMIT, RATE_WINDOW_SECONDS)) {
     return { error: "Muitas tentativas. Tente novamente em instantes." }
   }
 

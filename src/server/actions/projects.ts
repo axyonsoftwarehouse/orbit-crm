@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { projectSchema } from "@/lib/validations/projects"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { isManager } from "@/server/permissions"
 import { dbError } from "@/lib/db-error"
 
 export type ProjectFormState = { error?: string; success?: string } | undefined
@@ -114,6 +115,7 @@ export async function updateProjectAction(
 export async function deleteProjectAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) redirect("/app")
+  if (!isManager(active.role)) redirect("/app/projetos")
 
   const id = String(formData.get("id") ?? "")
   const supabase = await createClient()

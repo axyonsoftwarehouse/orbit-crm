@@ -1,3 +1,5 @@
+import { env } from "@/lib/env"
+
 type SendEmailInput = {
   to: string
   subject: string
@@ -13,8 +15,8 @@ export async function sendEmail({
   skipped?: boolean
   error?: string
 }> {
-  const key = process.env.RESEND_API_KEY
-  const from = process.env.EMAIL_FROM ?? "Orbit CRM <nao-responda@orbitcrm.app>"
+  const { RESEND_API_KEY: key, EMAIL_FROM } = env()
+  const from = EMAIL_FROM ?? "Orbit CRM <nao-responda@orbitcrm.app>"
 
   if (!key) {
     console.log("[email] RESEND_API_KEY ausente; envio ignorado")

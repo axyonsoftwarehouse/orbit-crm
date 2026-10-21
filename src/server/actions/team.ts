@@ -14,11 +14,10 @@ import {
   inviteMemberSchema,
 } from "@/lib/validations/team"
 import { sendTenantEmail } from "@/server/email"
+import { isManager } from "@/server/permissions"
 
 export type TeamFormState =
   { error?: string; success?: string; inviteLink?: string } | undefined
-
-const MANAGER_ROLES = ["owner", "admin"]
 
 async function getBaseUrl() {
   const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")
@@ -47,7 +46,7 @@ export async function inviteMemberAction(
 ): Promise<TeamFormState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
-  if (!MANAGER_ROLES.includes(active.role)) {
+  if (!isManager(active.role)) {
     return { error: "Você não tem permissão para convidar membros." }
   }
 
@@ -128,7 +127,7 @@ export async function updateMemberRoleAction(input: {
 }) {
   const active = await getActiveMembership()
   if (!active) return
-  if (!MANAGER_ROLES.includes(active.role)) return
+  if (!isManager(active.role)) return
   if (!["owner", "admin", "member"].includes(input.role)) return
 
   const isOwner = active.role === "owner"
@@ -161,7 +160,7 @@ export async function updateMemberRoleAction(input: {
 export async function removeMemberAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
-  if (!MANAGER_ROLES.includes(active.role)) return
+  if (!isManager(active.role)) return
 
   const isOwner = active.role === "owner"
   const userId = String(formData.get("user_id") ?? "")
@@ -195,7 +194,7 @@ export async function removeMemberAction(formData: FormData) {
 export async function revokeInvitationAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) return
-  if (!MANAGER_ROLES.includes(active.role)) return
+  if (!isManager(active.role)) return
 
   const id = String(formData.get("id") ?? "")
   if (!id) return

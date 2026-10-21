@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { companySchema } from "@/lib/validations/clients"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { isManager } from "@/server/permissions"
 import { dbError } from "@/lib/db-error"
 
 export type CompanyFormState = { error?: string; success?: string } | undefined
@@ -108,6 +109,7 @@ export async function updateCompanyAction(
 export async function deleteCompanyAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) redirect("/app")
+  if (!isManager(active.role)) redirect("/app/clientes")
 
   const id = String(formData.get("id") ?? "")
   const supabase = await createClient()
