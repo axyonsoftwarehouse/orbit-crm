@@ -2083,6 +2083,7 @@ export type Database = {
       }
       seo_audits: {
         Row: {
+          ai_summary: string | null
           checks_total: number
           created_at: string
           created_by: string | null
@@ -2101,6 +2102,7 @@ export type Database = {
           url: string
         }
         Insert: {
+          ai_summary?: string | null
           checks_total?: number
           created_at?: string
           created_by?: string | null
@@ -2119,6 +2121,7 @@ export type Database = {
           url: string
         }
         Update: {
+          ai_summary?: string | null
           checks_total?: number
           created_at?: string
           created_by?: string | null
@@ -2837,6 +2840,7 @@ export type Database = {
           moderate_issues: number
           minor_issues: number
           result: Json | null
+          ai_summary: string | null
           created_at: string | null
         }[]
       }

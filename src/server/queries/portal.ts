@@ -238,6 +238,7 @@ export type PortalSeoAudit = {
   moderate_issues: number
   minor_issues: number
   result: SeoAuditResult | null
+  ai_summary: string | null
   created_at: string | null
 }
 
@@ -264,6 +265,7 @@ export async function getPortalSeoAudit(
     moderate_issues: row.moderate_issues,
     minor_issues: row.minor_issues,
     result: row.result as SeoAuditResult | null,
+    ai_summary: row.ai_summary,
     created_at: row.created_at,
   }
 }

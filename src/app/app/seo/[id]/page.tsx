@@ -1,6 +1,12 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, ExternalLink, Globe, ShieldCheck } from "lucide-react"
+import {
+  ArrowLeft,
+  Download,
+  ExternalLink,
+  Globe,
+  ShieldCheck,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -30,6 +36,7 @@ import {
 } from "@/server/queries/seo"
 import { DeleteSeoSiteButton } from "../delete-seo-site-button"
 import { RunAuditButton } from "../run-audit-button"
+import { GenerateAiSummaryButton } from "./generate-ai-summary-button"
 
 const CATEGORIES = [
   "Conteúdo",
@@ -104,7 +111,21 @@ export default async function SeoDetailPage({
             {site.company?.name ?? "Sem cliente vinculado"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {result && audit ? (
+            <>
+              <GenerateAiSummaryButton siteId={site.id} auditId={audit.id} />
+              <Button
+                variant="outline"
+                size="sm"
+                nativeButton={false}
+                render={<a href={`/app/seo/${site.id}/relatorio`} download />}
+              >
+                <Download className="size-3.5" />
+                PDF
+              </Button>
+            </>
+          ) : null}
           <RunAuditButton siteId={site.id} />
           {isManager(active.role) ? <DeleteSeoSiteButton id={site.id} /> : null}
         </div>
@@ -199,6 +220,19 @@ export default async function SeoDetailPage({
               </span>
             ) : null}
           </div>
+
+          {audit.ai_summary ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Resumo com IA</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap">
+                  {audit.ai_summary}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
 
           {checksByCategory.length === 0 ? (
             <Card>

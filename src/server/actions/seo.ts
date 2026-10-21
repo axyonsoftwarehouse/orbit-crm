@@ -11,10 +11,12 @@ import type { Json } from "@/lib/database.types"
 import { seoMonitoringSchema, seoSiteSchema } from "@/lib/validations/seo"
 import { checkPlanLimit } from "@/server/plan-limits"
 import { isManager } from "@/server/permissions"
-import { runSeoAudit } from "@/server/seo/audit"
+import { runSeoAudit, type SeoAuditResult } from "@/server/seo/audit"
+import { generateSeoAiSummary } from "@/server/seo/ai-summary"
 import { nextAuditAt } from "@/server/seo/scheduling"
 
 export type SeoSiteFormState = { error?: string; success?: string } | undefined
+export type SeoAiSummaryState = { error?: string; success?: string } | undefined
 
 export async function createSeoSiteAction(
   _prevState: SeoSiteFormState,
@@ -160,6 +162,53 @@ export async function updateSeoMonitoringAction(formData: FormData) {
   revalidatePath("/app/seo")
   revalidatePath(`/app/seo/${id}`)
   redirect(`/app/seo/${id}`)
+}
+
+export async function generateSeoAiSummaryAction(
+  _prevState: SeoAiSummaryState,
+  formData: FormData,
+): Promise<SeoAiSummaryState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const auditId = String(formData.get("audit_id") ?? "")
+  const siteId = String(formData.get("site_id") ?? "")
+  if (!auditId || !siteId) return { error: "Auditoria inválida." }
+
+  const supabase = await createClient()
+  const { data: audit } = await supabase
+    .from("seo_audits")
+    .select("id, result")
+    .eq("id", auditId)
+    .eq("site_id", siteId)
+    .eq("tenant_id", active.tenantId)
+    .eq("status", 2)
+    .maybeSingle()
+
+  if (!audit?.result) {
+    return { error: "Auditoria concluída não encontrada." }
+  }
+
+  try {
+    const summary = await generateSeoAiSummary(
+      audit.result as unknown as SeoAuditResult,
+    )
+    const { error } = await supabase
+      .from("seo_audits")
+      .update({ ai_summary: summary })
+      .eq("id", auditId)
+      .eq("tenant_id", active.tenantId)
+
+    if (error) return dbError("seo_audits.ai_summary", error)
+
+    revalidatePath(`/app/seo/${siteId}`)
+    return { success: "Resumo com IA gerado." }
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Falha ao gerar o resumo."
+    logger.error("seo.ai_summary_failed", { auditId, error: message })
+    return { error: message }
+  }
 }
 
 export async function deleteSeoSiteAction(formData: FormData) {

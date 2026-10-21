@@ -35,6 +35,7 @@ export type SeoAudit = SeoAuditSummaryRow & {
   moderate_issues: number
   minor_issues: number
   result: SeoAuditResult | null
+  ai_summary: string | null
   error: string | null
 }
 
@@ -153,7 +154,7 @@ export async function getLatestSeoAudit(
   const { data } = await supabase
     .from("seo_audits")
     .select(
-      "id, tenant_id, site_id, url, status, score, checks_total, issues_total, major_issues, moderate_issues, minor_issues, result, error, created_at, finished_at",
+      "id, tenant_id, site_id, url, status, score, checks_total, issues_total, major_issues, moderate_issues, minor_issues, result, ai_summary, error, created_at, finished_at",
     )
     .eq("tenant_id", tenantId)
     .eq("site_id", siteId)

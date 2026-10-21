@@ -123,6 +123,19 @@ export default async function PortalSeoDetailPage({
             Auditoria concluída em {formatDateTime(audit.created_at)}.
           </p>
 
+          {audit.ai_summary ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Resumo com IA</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm whitespace-pre-wrap">
+                  {audit.ai_summary}
+                </p>
+              </CardContent>
+            </Card>
+          ) : null}
+
           <div className="space-y-4">
             {checksByCategory.map((group) => (
               <Card key={group.category}>
