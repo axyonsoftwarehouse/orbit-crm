@@ -53,7 +53,25 @@ jobs:
 
       - run: npm ci
 
-      - run: npx playwright install --with-deps chromium
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: |
+          for attempt in 1 2 3; do
+            if npx playwright install --with-deps chromium; then
+              exit 0
+            fi
+            echo "Playwright install failed (attempt $attempt). Retrying in $((attempt * 15))s..."
+            sleep $((attempt * 15))
+          done
+          echo "Playwright install failed after 3 attempts."
+          exit 1
 
       - run: npm run test:e2e
         env:
