@@ -9,6 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { ExportButton } from "@/components/app/export-button"
 import { Pagination } from "@/components/app/pagination"
 import {
   SocialProviderBadge,
@@ -66,6 +67,15 @@ export default async function SocialPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <ExportButton href="/app/exportar/social" />
+          <Button
+            variant="outline"
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/app/social/calendario" />}
+          >
+            Calendário
+          </Button>
           <Button
             variant="outline"
             size="sm"
