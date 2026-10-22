@@ -1,42 +1,42 @@
-﻿# Spec â€” MÃ³dulo de Social Media do Orbit CRM
+# Spec — Módulo de Social Media do Orbit CRM
 
-> Status: rascunho para implementaÃ§Ã£o
-> VersÃ£o: 0.1
+> Status: rascunho para implementação
+> Versão: 0.1
 > Data: outubro/2026
 > Produto: Orbit CRM
-> ReferÃªncias analisadas: Stackposts v10.0, SocialVibe v2.1.0, Mingle SAAS v5.5.8, BeePost v2.2 e QuickPost v1.0
+> Referências analisadas: Stackposts v10.0, SocialVibe v2.1.0, Mingle SAAS v5.5.8, BeePost v2.2 e QuickPost v1.0
 
 ## 1. Objetivo
 
-Adicionar ao Orbit um mÃ³dulo de **gestÃ£o de redes sociais** para agÃªncias e prestadores de serviÃ§o, integrado ao cliente, ao projeto e ao portal do cliente.
+Adicionar ao Orbit um módulo de **gestão de redes sociais** para agências e prestadores de serviço, integrado ao cliente, ao projeto e ao portal do cliente.
 
-O mÃ³dulo deve permitir:
+O módulo deve permitir:
 
 - conectar contas sociais por cliente;
-- criar posts com texto, mÃ­dia e mÃºltiplas redes;
+- criar posts com texto, mídia e múltiplas redes;
 - agendar, publicar e reagendar;
-- enviar posts para aprovaÃ§Ã£o do cliente no portal;
-- acompanhar status, falhas e histÃ³rico;
-- gerar conteÃºdo com IA;
-- consultar mÃ©tricas bÃ¡sicas por post/rede.
+- enviar posts para aprovação do cliente no portal;
+- acompanhar status, falhas e histórico;
+- gerar conteúdo com IA;
+- consultar métricas básicas por post/rede.
 
-A implementaÃ§Ã£o serÃ¡ **nativa em Next.js + Supabase**. Os projetos de referÃªncia servem apenas como mapa de features e UX; nenhum cÃ³digo, SQL, asset ou layout serÃ¡ copiado.
+A implementação será **nativa em Next.js + Supabase**. Os projetos de referência servem apenas como mapa de features e UX; nenhum código, SQL, asset ou layout será copiado.
 
-## 2. DecisÃµes de produto
+## 2. Decisões de produto
 
-| Tema            | DecisÃ£o                                                                   |
-| --------------- | -------------------------------------------------------------------------- |
-| Posicionamento  | MÃ³dulo **Social** dentro do Orbit, opcional por plano                     |
-| IntegraÃ§Ãµes   | Agregador de redes sociais no MVP; OAuth nativo sÃ³ depois                 |
-| PublicaÃ§Ã£o    | Staff cria/agenda; cliente aprova no portal                                |
-| AprovaÃ§Ã£o     | ObrigatÃ³ria por padrÃ£o para posts de cliente; owner/admin pode desativar |
-| Redes iniciais  | LinkedIn (perfil/pÃ¡gina), Instagram (business), Facebook Pages e X        |
-| Redes seguintes | TikTok, Threads, YouTube, Pinterest, Google Business                       |
-| Fuso horÃ¡rio   | Armazenar UTC; UI converte para o fuso do navegador no MVP                 |
-| MÃ­dia          | Supabase Storage privado + URLs assinadas/upload para o agregador          |
-| Analytics       | Fase 2; snapshots diÃ¡rios, sem prometer tempo real                        |
-| IA              | Fase 2; OpenAI via chave do servidor, com limite por plano                 |
-| Multi-tenant    | `tenant_id` em todas as tabelas + RLS                                      |
+| Tema            | Decisão                                                                  |
+| --------------- | ------------------------------------------------------------------------ |
+| Posicionamento  | Módulo **Social** dentro do Orbit, opcional por plano                    |
+| Integrações     | Agregador de redes sociais no MVP; OAuth nativo só depois                |
+| Publicação      | Staff cria/agenda; cliente aprova no portal                              |
+| Aprovação       | Obrigatória por padrão para posts de cliente; owner/admin pode desativar |
+| Redes iniciais  | LinkedIn (perfil/página), Instagram (business), Facebook Pages e X       |
+| Redes seguintes | TikTok, Threads, YouTube, Pinterest, Google Business                     |
+| Fuso horário    | Armazenar UTC; UI converte para o fuso do navegador no MVP               |
+| Mídia           | Supabase Storage privado + URLs assinadas/upload para o agregador        |
+| Analytics       | Fase 2; snapshots diários, sem prometer tempo real                       |
+| IA              | Fase 2; OpenAI via chave do servidor, com limite por plano               |
+| Multi-tenant    | `tenant_id` em todas as tabelas + RLS                                    |
 
 ### 2.1 Matriz de referências → Orbit
 
@@ -55,57 +55,69 @@ A implementaÃ§Ã£o serÃ¡ **nativa em Next.js + Supabase**. Os projetos de r
 | Inbox/comentários        | Stackposts, Mingle                | Fase 3        |
 | Social listening         | Stackposts                        | Fase 3        |
 
+### 2.2 Modo manual (MVP de custo zero)
+
+Antes de contratar um agregador, o Orbit opera em **modo manual** (`publish_mode = manual`):
+
+- staff cria, agenda e o cliente aprova no portal;
+- no horário, o sistema notifica o autor (in-app + e-mail);
+- o autor copia o conteúdo ou usa links/intents de compartilhamento;
+- publica manualmente na rede e marca o post como publicado;
+- `social_post_events` registra a publicação manual.
+
+O modo `provider` fica preparado para a integração futura com Ayrshare/Upload-Post.
+
 ## 3. Escopo do MVP
 
-### 3.1 IncluÃ­do
+### 3.1 Incluído
 
 - Contas sociais por cliente/tenant.
 - Compositor de post com preview por rede.
-- MÃºltiplas redes e mÃºltiplas contas por post.
-- Rascunho, envio para aprovaÃ§Ã£o, aprovaÃ§Ã£o, agendamento, publicaÃ§Ã£o e falha.
-- CalendÃ¡rio mensal e lista de posts.
-- Fila de publicaÃ§Ã£o com retry e idempotÃªncia.
+- Múltiplas redes e múltiplas contas por post.
+- Rascunho, envio para aprovação, aprovação, agendamento, publicação e falha.
+- Calendário mensal e lista de posts.
+- Fila de publicação com retry e idempotência.
 - Portal do cliente para aprovar/rejeitar posts.
-- NotificaÃ§Ãµes internas e por e-mail.
-- Auditoria de criaÃ§Ã£o/aprovaÃ§Ã£o/publicaÃ§Ã£o.
-- Limites de plano: contas, posts/mÃªs e armazenamento.
-- ExportaÃ§Ã£o CSV do histÃ³rico.
+- Notificações internas e por e-mail.
+- Auditoria de criação/aprovação/publicação.
+- Limites de plano: contas, posts/mês e armazenamento.
+- Exportação CSV do histórico.
 
 ### 3.2 Fora do MVP
 
-- Caixa de entrada/DMs/comentÃ¡rios.
+- Caixa de entrada/DMs/comentários.
 - Social listening.
-- GestÃ£o de anÃºncios.
+- Gestão de anúncios.
 - OAuth nativo de todas as redes.
-- Analytics avanÃ§ado e relatÃ³rios white-label.
-- AprovaÃ§Ã£o em mÃºltiplas etapas.
-- Fluxo de agÃªncia com subclientes.
-- PublicaÃ§Ã£o de stories/reels com recursos especÃ­ficos de cada rede.
+- Analytics avançado e relatórios white-label.
+- Aprovação em múltiplas etapas.
+- Fluxo de agência com subclientes.
+- Publicação de stories/reels com recursos específicos de cada rede.
 - Agendamento recorrente e RSS (fase 2).
 
-## 4. Personas e papÃ©is
+## 4. Personas e papéis
 
-| Papel             | Pode                                                                     |
-| ----------------- | ------------------------------------------------------------------------ |
-| `owner`           | tudo no tenant, incluindo conectar contas e configurar aprovaÃ§Ã£o       |
-| `admin`           | tudo do owner, exceto transferir propriedade                             |
-| `member`          | criar/editar rascunhos, enviar para aprovaÃ§Ã£o, ver posts e calendÃ¡rio |
-| Cliente do portal | ver posts do prÃ³prio cliente, aprovar/rejeitar, acompanhar status       |
+| Papel             | Pode                                                                  |
+| ----------------- | --------------------------------------------------------------------- |
+| `owner`           | tudo no tenant, incluindo conectar contas e configurar aprovação      |
+| `admin`           | tudo do owner, exceto transferir propriedade                          |
+| `member`          | criar/editar rascunhos, enviar para aprovação, ver posts e calendário |
+| Cliente do portal | ver posts do próprio cliente, aprovar/rejeitar, acompanhar status     |
 
-### 4.1 Matriz de permissÃµes
+### 4.1 Matriz de permissões
 
-| AÃ§Ã£o                            | Owner | Admin | Member | Cliente                   |
-| --------------------------------- | ----- | ----- | ------ | ------------------------- |
-| Conectar/desconectar conta social | Sim   | Sim   | NÃ£o   | NÃ£o                      |
-| Criar/editar rascunho             | Sim   | Sim   | Sim    | NÃ£o                      |
-| Excluir rascunho de outro autor   | Sim   | Sim   | NÃ£o   | NÃ£o                      |
-| Enviar para aprovaÃ§Ã£o           | Sim   | Sim   | Sim    | NÃ£o                      |
-| Aprovar/rejeitar internamente     | Sim   | Sim   | NÃ£o   | NÃ£o                      |
-| Aprovar/rejeitar no portal        | â€”   | â€”   | â€”    | Sim                       |
-| Agendar/publicar                  | Sim   | Sim   | NÃ£o   | NÃ£o                      |
-| Reagendar/cancelar                | Sim   | Sim   | NÃ£o   | NÃ£o                      |
-| Ver mÃ©tricas                     | Sim   | Sim   | Sim    | Sim (do prÃ³prio cliente) |
-| Configurar IA e aprovaÃ§Ã£o       | Sim   | Sim   | NÃ£o   | NÃ£o                      |
+| Ação                              | Owner | Admin | Member | Cliente                  |
+| --------------------------------- | ----- | ----- | ------ | ------------------------ |
+| Conectar/desconectar conta social | Sim   | Sim   | Não    | Não                      |
+| Criar/editar rascunho             | Sim   | Sim   | Sim    | Não                      |
+| Excluir rascunho de outro autor   | Sim   | Sim   | Não    | Não                      |
+| Enviar para aprovação             | Sim   | Sim   | Sim    | Não                      |
+| Aprovar/rejeitar internamente     | Sim   | Sim   | Não    | Não                      |
+| Aprovar/rejeitar no portal        | —     | —     | —      | Sim                      |
+| Agendar/publicar                  | Sim   | Sim   | Não    | Não                      |
+| Reagendar/cancelar                | Sim   | Sim   | Não    | Não                      |
+| Ver métricas                      | Sim   | Sim   | Sim    | Sim (do próprio cliente) |
+| Configurar IA e aprovação         | Sim   | Sim   | Não    | Não                      |
 
 ## 5. Jornadas principais
 
@@ -113,148 +125,148 @@ A implementaÃ§Ã£o serÃ¡ **nativa em Next.js + Supabase**. Os projetos de r
 
 1. Staff abre `/app/social/contas`.
 2. Escolhe o cliente e a rede.
-3. Ã‰ redirecionado ao agregador para autorizar.
+3. É redirecionado ao agregador para autorizar.
 4. Volta ao Orbit com a conta conectada.
 5. Conta aparece com status `connected`, nome, avatar e rede.
 
 ### 5.2 Criar e agendar post
 
 1. Staff abre o compositor.
-2. Escreve o texto, adiciona mÃ­dia e seleciona redes/contas.
-3. VÃª preview por rede e valida limites de caracteres/mÃ­dia.
-4. Escolhe â€œSalvar rascunhoâ€, â€œEnviar para aprovaÃ§Ã£oâ€ ou â€œAgendarâ€.
-5. Se aprovaÃ§Ã£o estiver ativa, o post vai para `pending_approval`.
-6. ApÃ³s aprovaÃ§Ã£o, o post vai para `scheduled` e entra na fila.
+2. Escreve o texto, adiciona mídia e seleciona redes/contas.
+3. Vê preview por rede e valida limites de caracteres/mídia.
+4. Escolhe “Salvar rascunho”, “Enviar para aprovação” ou “Agendar”.
+5. Se aprovação estiver ativa, o post vai para `pending_approval`.
+6. Após aprovação, o post vai para `scheduled` e entra na fila.
 
-### 5.3 AprovaÃ§Ã£o no portal
+### 5.3 Aprovação no portal
 
-1. Cliente recebe notificaÃ§Ã£o/e-mail.
+1. Cliente recebe notificação/e-mail.
 2. Abre `/portal/social`.
-3. VÃª o post, preview, data e redes.
-4. Aprova ou rejeita com comentÃ¡rio.
-5. Staff Ã© notificado; se aprovado, o post Ã© agendado.
+3. Vê o post, preview, data e redes.
+4. Aprova ou rejeita com comentário.
+5. Staff é notificado; se aprovado, o post é agendado.
 
-### 5.4 PublicaÃ§Ã£o e falha
+### 5.4 Publicação e falha
 
 1. Worker pega o post due.
 2. Marca `publishing` e chama o agregador.
 3. Em sucesso, marca `published` e grava IDs externos.
 4. Em falha, marca `failed`, grava o erro e agenda retry com backoff.
-5. ApÃ³s o limite de tentativas, fica `failed` e notifica o staff.
+5. Após o limite de tentativas, fica `failed` e notifica o staff.
 
 ## 6. Requisitos funcionais
 
-### FR-01 â€” Contas sociais
+### FR-01 — Contas sociais
 
 - Cadastrar conta com `provider`, `provider_account_id`, nome, avatar e cliente.
 - Status: `connected`, `expired`, `revoked`, `error`.
 - Uma conta pertence a um tenant e pode estar vinculada a um cliente.
-- NÃ£o permitir conta duplicada para o mesmo `provider_account_id` no tenant.
-- Desconectar remove a conta da seleÃ§Ã£o, mas preserva posts histÃ³ricos.
+- Não permitir conta duplicada para o mesmo `provider_account_id` no tenant.
+- Desconectar remove a conta da seleção, mas preserva posts históricos.
 
-### FR-02 â€” Compositor
+### FR-02 — Compositor
 
-- Texto por post e variaÃ§Ã£o opcional por rede.
-- MÃ­dia: imagem e vÃ­deo, com limite por rede.
-- SeleÃ§Ã£o de mÃºltiplas contas/redes.
+- Texto por post e variação opcional por rede.
+- Mídia: imagem e vídeo, com limite por rede.
+- Seleção de múltiplas contas/redes.
 - Preview por rede.
-- ValidaÃ§Ã£o antes de salvar/agendar.
-- Hashtags e menÃ§Ãµes como texto livre no MVP.
+- Validação antes de salvar/agendar.
+- Hashtags e menções como texto livre no MVP.
 - Agendamento com data/hora; armazenar UTC.
 
-### FR-03 â€” Status do post
+### FR-03 — Status do post
 
-Status canÃ´nicos:
+Status canônicos:
 
 | Status                | Significado                                   |
 | --------------------- | --------------------------------------------- |
-| `draft`               | rascunho editÃ¡vel                            |
-| `pending_approval`    | aguardando aprovaÃ§Ã£o do cliente             |
-| `approved`            | aprovado, ainda nÃ£o agendado                 |
-| `scheduled`           | agendado para publicaÃ§Ã£o                    |
+| `draft`               | rascunho editável                             |
+| `pending_approval`    | aguardando aprovação do cliente               |
+| `approved`            | aprovado, ainda não agendado                  |
+| `scheduled`           | agendado para publicação                      |
 | `publishing`          | sendo publicado                               |
 | `published`           | publicado em pelo menos uma rede              |
 | `partially_published` | publicado em algumas redes e falhou em outras |
 | `failed`              | falhou em todas as tentativas                 |
 | `cancelled`           | cancelado pelo staff/cliente                  |
-| `rejected`            | rejeitado na aprovaÃ§Ã£o                      |
+| `rejected`            | rejeitado na aprovação                        |
 
-### FR-04 â€” AprovaÃ§Ã£o
+### FR-04 — Aprovação
 
-- ConfiguraÃ§Ã£o por tenant: aprovaÃ§Ã£o obrigatÃ³ria `on/off`.
-- Staff com permissÃ£o pode aprovar internamente.
-- Cliente aprova/rejeita no portal apenas posts do prÃ³prio cliente.
-- RejeiÃ§Ã£o exige comentÃ¡rio.
-- Toda mudanÃ§a gera evento de auditoria.
-- Post aprovado pode ser reagendado; nova alteraÃ§Ã£o de conteÃºdo exige nova aprovaÃ§Ã£o.
+- Configuração por tenant: aprovação obrigatória `on/off`.
+- Staff com permissão pode aprovar internamente.
+- Cliente aprova/rejeita no portal apenas posts do próprio cliente.
+- Rejeição exige comentário.
+- Toda mudança gera evento de auditoria.
+- Post aprovado pode ser reagendado; nova alteração de conteúdo exige nova aprovação.
 
-### FR-05 â€” Agendamento e fila
+### FR-05 — Agendamento e fila
 
 - Todo post agendado deve ter `scheduled_at` em UTC.
-- Worker busca posts due com lock para evitar publicaÃ§Ã£o dupla.
-- IdempotÃªncia por `post_id + target_id + attempt`.
-- Retry com backoff: 1 min, 5 min, 15 min, 1 h (mÃ¡ximo configurÃ¡vel).
+- Worker busca posts due com lock para evitar publicação dupla.
+- Idempotência por `post_id + target_id + attempt`.
+- Retry com backoff: 1 min, 5 min, 15 min, 1 h (máximo configurável).
 - Falha definitiva notifica staff.
-- MudanÃ§a de horÃ¡rio recalcula o job.
+- Mudança de horário recalcula o job.
 
-### FR-06 â€” CalendÃ¡rio
+### FR-06 — Calendário
 
-- VisÃ£o mensal e lista.
+- Visão mensal e lista.
 - Agrupar por dia; mostrar status e redes.
 - Filtros por cliente, conta, status e rede.
 - Clique abre o detalhe do post.
-- Arrastar para reagendar (fase 2; no MVP usar ediÃ§Ã£o).
+- Arrastar para reagendar (fase 2; no MVP usar edição).
 
-### FR-07 â€” MÃ­dia
+### FR-07 — Mídia
 
 - Bucket privado `social_media`.
 - Path por tenant: `tenant_id/post_id/uuid.ext`.
 - Tipos: JPEG, PNG, WebP, MP4.
 - Limite por arquivo e por plano.
 - Gerar URL assinada para preview.
-- Para o agregador, enviar URL assinada de longa duraÃ§Ã£o ou fazer upload via API.
-- Validar MIME real, tamanho e dimensÃµes.
+- Para o agregador, enviar URL assinada de longa duração ou fazer upload via API.
+- Validar MIME real, tamanho e dimensões.
 
-### FR-08 â€” IA (fase 2)
+### FR-08 — IA (fase 2)
 
 - Gerar legenda a partir de briefing.
-- Gerar variaÃ§Ãµes por rede.
+- Gerar variações por rede.
 - Sugerir hashtags.
 - Gerar imagem (opcional, com custo).
-- Limite de crÃ©ditos por plano.
-- Nunca publicar sem revisÃ£o humana.
+- Limite de créditos por plano.
+- Nunca publicar sem revisão humana.
 - Registrar uso e custo por tenant.
 
-### FR-09 â€” Analytics (fase 2)
+### FR-09 — Analytics (fase 2)
 
-- MÃ©tricas por post/rede: impressÃµes, alcance, curtidas, comentÃ¡rios, compartilhamentos, cliques.
-- Snapshot diÃ¡rio para evitar chamadas excessivas.
-- Dashboard por cliente/perÃ­odo.
-- ExportaÃ§Ã£o CSV.
+- Métricas por post/rede: impressões, alcance, curtidas, comentários, compartilhamentos, cliques.
+- Snapshot diário para evitar chamadas excessivas.
+- Dashboard por cliente/período.
+- Exportação CSV.
 
-### FR-10 â€” NotificaÃ§Ãµes
+### FR-10 — Notificações
 
-- Notificar cliente quando post entra em aprovaÃ§Ã£o.
+- Notificar cliente quando post entra em aprovação.
 - Notificar staff quando cliente aprova/rejeita.
-- Notificar staff em falha de publicaÃ§Ã£o.
-- Notificar cliente quando post Ã© publicado (opcional).
+- Notificar staff em falha de publicação.
+- Notificar cliente quando post é publicado (opcional).
 - Canais: in-app e e-mail; webhook opcional.
 
-### FR-11 â€” Auditoria
+### FR-11 — Auditoria
 
-- Registrar criaÃ§Ã£o, ediÃ§Ã£o, envio para aprovaÃ§Ã£o, aprovaÃ§Ã£o, rejeiÃ§Ã£o, agendamento, cancelamento, publicaÃ§Ã£o e falha.
-- Guardar ator, data, IP quando disponÃ­vel e metadados.
-- Reutilizar `activity_log` para CRUD e `social_post_events` para o ciclo de publicaÃ§Ã£o.
+- Registrar criação, edição, envio para aprovação, aprovação, rejeição, agendamento, cancelamento, publicação e falha.
+- Guardar ator, data, IP quando disponível e metadados.
+- Reutilizar `activity_log` para CRUD e `social_post_events` para o ciclo de publicação.
 
-### FR-12 â€” Limites de plano
+### FR-12 — Limites de plano
 
-| Recurso                 | Limite             |
-| ----------------------- | ------------------ |
-| Contas sociais          | por plano          |
-| Posts publicados/mÃªs   | por plano          |
-| Armazenamento de mÃ­dia | por plano          |
-| CrÃ©ditos de IA         | por plano (fase 2) |
-| Redes disponÃ­veis      | por plano          |
+| Recurso                | Limite             |
+| ---------------------- | ------------------ |
+| Contas sociais         | por plano          |
+| Posts publicados/mês   | por plano          |
+| Armazenamento de mídia | por plano          |
+| Créditos de IA         | por plano (fase 2) |
+| Redes disponíveis      | por plano          |
 
 ## 7. Modelo de dados
 
@@ -274,26 +286,26 @@ Status canÃ´nicos:
 | `connected_by`                             | uuid        | profiles                                              |
 | `created_at` / `updated_at` / `deleted_at` | timestamptz |                                                       |
 
-Ãndices: `(tenant_id, company_id)`, unique `(tenant_id, provider, provider_account_id)`.
+Índices: `(tenant_id, company_id)`, unique `(tenant_id, provider, provider_account_id)`.
 
 ### 7.2 `social_posts`
 
-| Coluna                                     | Tipo             | Notas                       |
-| ------------------------------------------ | ---------------- | --------------------------- |
-| `id`                                       | uuid             | PK                          |
-| `tenant_id`                                | uuid             | FK tenants                  |
-| `company_id`                               | uuid             | FK companies                |
-| `created_by`                               | uuid             | profiles                    |
-| `content`                                  | text             | Texto principal             |
-| `status`                                   | text             | status canÃ´nico            |
-| `scheduled_at`                             | timestamptz      | UTC                         |
-| `published_at`                             | timestamptz      |                             |
-| `requires_approval`                        | boolean          | Derivado da configuraÃ§Ã£o  |
-| `approved_by` / `approved_at`              | uuid/timestamptz | AprovaÃ§Ã£o interna/cliente |
-| `rejected_by` / `rejected_at`              | uuid/timestamptz |                             |
-| `rejection_note`                           | text             |                             |
-| `failure_reason`                           | text             | Ãšltima falha               |
-| `created_at` / `updated_at` / `deleted_at` | timestamptz      |                             |
+| Coluna                                     | Tipo             | Notas                     |
+| ------------------------------------------ | ---------------- | ------------------------- |
+| `id`                                       | uuid             | PK                        |
+| `tenant_id`                                | uuid             | FK tenants                |
+| `company_id`                               | uuid             | FK companies              |
+| `created_by`                               | uuid             | profiles                  |
+| `content`                                  | text             | Texto principal           |
+| `status`                                   | text             | status canônico           |
+| `scheduled_at`                             | timestamptz      | UTC                       |
+| `published_at`                             | timestamptz      |                           |
+| `requires_approval`                        | boolean          | Derivado da configuração  |
+| `approved_by` / `approved_at`              | uuid/timestamptz | Aprovação interna/cliente |
+| `rejected_by` / `rejected_at`              | uuid/timestamptz |                           |
+| `rejection_note`                           | text             |                           |
+| `failure_reason`                           | text             | Última falha              |
+| `created_at` / `updated_at` / `deleted_at` | timestamptz      |                           |
 
 ### 7.3 `social_post_targets`
 
@@ -340,7 +352,7 @@ Unique `(post_id, account_id)`.
 
 ### 7.6 `social_settings`
 
-ConfiguraÃ§Ã£o por tenant:
+Configuração por tenant:
 
 - `approval_required` boolean;
 - `default_timezone` text;
@@ -352,89 +364,89 @@ ConfiguraÃ§Ã£o por tenant:
 
 - `tenant_id`, `post_id`, `target_id`, `provider`, `date`, `impressions`, `reach`, `likes`, `comments`, `shares`, `clicks`, `raw jsonb`.
 
-## 8. RLS e seguranÃ§a
+## 8. RLS e segurança
 
 - Todas as tabelas com `tenant_id` e policy `is_tenant_member`.
 - Escrita de contas: apenas `owner`/`admin`.
-- Leitura do portal: **RPC `security definer`**, nÃ£o leitura direta.
-- Cliente vÃª apenas posts do prÃ³prio `company_id`.
-- Cliente sÃ³ pode aprovar/rejeitar posts `pending_approval` do prÃ³prio cliente.
-- FunÃ§Ãµes do portal:
+- Leitura do portal: **RPC `security definer`**, não leitura direta.
+- Cliente vê apenas posts do próprio `company_id`.
+- Cliente só pode aprovar/rejeitar posts `pending_approval` do próprio cliente.
+- Funções do portal:
   - `portal_list_social_posts(p_company)`;
   - `portal_get_social_post(p_company, p_post)`;
   - `portal_respond_social_post(p_company, p_post, p_approve, p_note)`.
 - Tokens/segredos:
   - com agregador, guardar apenas `provider_account_id` e metadados;
-  - se houver OAuth nativo, criptografar tokens com Supabase Vault ou chave de aplicaÃ§Ã£o;
+  - se houver OAuth nativo, criptografar tokens com Supabase Vault ou chave de aplicação;
   - nunca devolver tokens ao cliente.
-- Webhooks do agregador: validar assinatura, idempotÃªncia e origem.
-- Rate limit em endpoints pÃºblicos e no envio de aprovaÃ§Ã£o.
-- Validar MIME real e tamanho de mÃ­dia.
-- NÃ£o permitir URLs arbitrÃ¡rias em mÃ­dia (evitar SSRF).
+- Webhooks do agregador: validar assinatura, idempotência e origem.
+- Rate limit em endpoints públicos e no envio de aprovação.
+- Validar MIME real e tamanho de mídia.
+- Não permitir URLs arbitrárias em mídia (evitar SSRF).
 
 ## 9. Arquitetura
 
 ```text
 Next.js /app/social
-  -> Server Actions (Zod, autorizaÃ§Ã£o, tenant)
+  -> Server Actions (Zod, autorização, tenant)
   -> Supabase (RLS) para CRUD
   -> Worker/queue para posts agendados
   -> Agregador social (OAuth, publish, metrics)
-  -> Supabase Storage (mÃ­dia)
+  -> Supabase Storage (mídia)
 ```
 
 ### 9.1 Worker
 
-RecomendaÃ§Ã£o:
+Recomendação:
 
-- **Upstash QStash** (ou Inngest/Trigger.dev) para jobs por horÃ¡rio;
+- **Upstash QStash** (ou Inngest/Trigger.dev) para jobs por horário;
 - endpoint interno `POST /api/social/publish` com assinatura;
 - fallback por cron a cada 5 min em plano Pro;
 - lock por `post_target_id` e status `publishing`;
 - retry com backoff e dead-letter.
 
-O cron diÃ¡rio da Vercel **nÃ£o serve** para agendamento com precisÃ£o de minutos.
+O cron diário da Vercel **não serve** para agendamento com precisão de minutos.
 
-### 9.2 IntegraÃ§Ã£o com o agregador
+### 9.2 Integração com o agregador
 
-- Escolher um agregador que ofereÃ§a:
+- Escolher um agregador que ofereça:
   - OAuth hospedado;
-  - publicaÃ§Ã£o em mÃºltiplas redes;
-  - upload de mÃ­dia;
+  - publicação em múltiplas redes;
+  - upload de mídia;
   - status/webhooks;
-  - mÃ©tricas bÃ¡sicas.
+  - métricas básicas.
 - Criar uma camada `src/server/social/provider.ts` com interface:
   - `connectUrl()`;
   - `exchangeCode()`;
   - `publish(target)`;
   - `getMetrics(target, range)`.
-- Trocar de agregador sem mudar o domÃ­nio do app.
+- Trocar de agregador sem mudar o domínio do app.
 
 ### 9.3 IA
 
 - `OPENAI_API_KEY` e `OPENAI_MODEL` no servidor.
-- Endpoint/aÃ§Ã£o `generateSocialCaption`.
+- Endpoint/ação `generateSocialCaption`.
 - Limite por plano e registro de uso.
 - Prompt com briefing, rede, tom e limite de caracteres.
-- RevisÃ£o humana obrigatÃ³ria.
+- Revisão humana obrigatória.
 
 ## 10. Telas
 
 ### Internas
 
-- `/app/social` â€” dashboard: prÃ³ximos posts, aprovaÃ§Ãµes pendentes, falhas, contas conectadas.
-- `/app/social/compor` â€” compositor.
-- `/app/social/calendario` â€” calendÃ¡rio mensal/lista.
-- `/app/social/posts` â€” lista com filtros e status.
-- `/app/social/posts/[id]` â€” detalhe, targets, timeline, retry.
-- `/app/social/contas` â€” conectar/desconectar contas.
-- `/app/social/configuracoes` â€” aprovaÃ§Ã£o, IA, fuso, retries.
-- `/app/social/analytics` â€” fase 2.
+- `/app/social` — dashboard: próximos posts, aprovações pendentes, falhas, contas conectadas.
+- `/app/social/compor` — compositor.
+- `/app/social/calendario` — calendário mensal/lista.
+- `/app/social/posts` — lista com filtros e status.
+- `/app/social/posts/[id]` — detalhe, targets, timeline, retry.
+- `/app/social/contas` — conectar/desconectar contas.
+- `/app/social/configuracoes` — aprovação, IA, fuso, retries.
+- `/app/social/analytics` — fase 2.
 
 ### Portal
 
-- `/portal/social` â€” posts do cliente, pendentes de aprovaÃ§Ã£o.
-- `/portal/social/[id]` â€” preview, aprovar/rejeitar com comentÃ¡rio.
+- `/portal/social` — posts do cliente, pendentes de aprovação.
+- `/portal/social/[id]` — preview, aprovar/rejeitar com comentário.
 
 ### Componentes
 
@@ -467,119 +479,125 @@ O cron diÃ¡rio da Vercel **nÃ£o serve** para agendamento com precisÃ£o de 
 
 ### Rotas
 
-- `POST /api/social/publish` â€” worker.
-- `GET /api/social/callback` â€” retorno do agregador.
-- `POST /api/social/webhook` â€” status do agregador.
-- `GET /app/exportar/social` â€” CSV.
+- `POST /api/social/publish` — worker.
+- `GET /api/social/callback` — retorno do agregador.
+- `POST /api/social/webhook` — status do agregador.
+- `GET /app/exportar/social` — CSV.
 
-## 12. NotificaÃ§Ãµes e auditoria
+## 12. Notificações e auditoria
 
-- NotificaÃ§Ã£o in-app ao cliente quando `pending_approval`.
+- Notificação in-app ao cliente quando `pending_approval`.
 - E-mail ao cliente com link do portal.
-- NotificaÃ§Ã£o ao staff em aprovaÃ§Ã£o/rejeiÃ§Ã£o/falha.
+- Notificação ao staff em aprovação/rejeição/falha.
 - `social_post_events` para timeline.
 - `activity_log` para CRUD de posts/contas.
 - Registrar `actor_id`, `tenant_id`, `post_id`, `event`, `metadata`.
 
-## 13. Requisitos nÃ£o funcionais
+## 13. Requisitos não funcionais
 
-- PublicaÃ§Ã£o dentro de Â±2 minutos do horÃ¡rio agendado.
-- IdempotÃªncia: nunca publicar duas vezes o mesmo target.
-- Retry mÃ¡ximo configurÃ¡vel (default 4).
+- Publicação dentro de ±2 minutos do horário agendado.
+- Idempotência: nunca publicar duas vezes o mesmo target.
+- Retry máximo configurável (default 4).
 - p95 do compositor < 2 s (sem upload).
-- Upload de mÃ­dia atÃ© o limite do plano.
+- Upload de mídia até o limite do plano.
 - RLS testada para isolamento entre tenants.
-- Logs estruturados para publicaÃ§Ã£o/falha.
-- Erros do agregador nÃ£o devem vazar tokens/segredos.
-- Funcionar em mobile (compositor e aprovaÃ§Ã£o).
+- Logs estruturados para publicação/falha.
+- Erros do agregador não devem vazar tokens/segredos.
+- Funcionar em mobile (compositor e aprovação).
 - Acessibilidade: labels, foco, contraste e preview textual.
 
 ## 14. Fases de entrega
 
-### Fase 1 â€” MVP (4 a 6 semanas)
+### Fase 1A — Manual (custo zero, implementado)
 
-- Contas via agregador.
-- Compositor, mÃ­dia, mÃºltiplas contas.
-- Rascunho, aprovaÃ§Ã£o, agendamento, publicaÃ§Ã£o, retry.
-- CalendÃ¡rio e lista.
-- Portal de aprovaÃ§Ã£o.
-- NotificaÃ§Ãµes e auditoria.
-- Limites de plano e CSV.
+- Contas cadastradas manualmente.
+- Compositor de texto e múltiplas contas.
+- Rascunho, aprovação, agendamento, lembretes e marcação como publicado.
+- Copiar conteúdo, compartilhar via Web Share/links e histórico.
+- Portal de aprovação.
+- Limites de plano, auditoria e CSV.
 
-### Fase 2 â€” Produtividade (3 a 5 semanas)
+### Fase 1B — Publicação automática (agregador)
 
-- IA para legendas, variaÃ§Ãµes e hashtags.
+- OAuth/conexão real via agregador.
+- Upload de mídia.
+- Worker de publicação, retry e webhooks.
+- Calendário e analytics inicial.
+
+### Fase 2 — Produtividade (3 a 5 semanas)
+
+- IA para legendas, variações e hashtags.
 - Templates, RSS, posts recorrentes.
-- Analytics bÃ¡sico e snapshots.
-- Melhor horÃ¡rio.
-- RelatÃ³rio PDF/white-label.
+- Analytics básico e snapshots.
+- Melhor horário.
+- Relatório PDF/white-label.
 
-### Fase 3 â€” Escala
+### Fase 3 — Escala
 
-- OAuth nativo para redes prioritÃ¡rias.
-- Inbox/comentÃ¡rios.
+- OAuth nativo para redes prioritárias.
+- Inbox/comentários.
 - Social listening.
-- AnÃºncios.
-- AprovaÃ§Ã£o multi-etapas e agÃªncia/subclientes.
+- Anúncios.
+- Aprovação multi-etapas e agência/subclientes.
 
-## 15. CritÃ©rios de aceite do MVP
+## 15. Critérios de aceite do MVP
 
 - [ ] Conectar conta LinkedIn/Instagram/Facebook/X via agregador.
 - [ ] Criar post com texto, imagem e 2+ contas.
-- [ ] Salvar rascunho e retomÃ¡-lo.
-- [ ] Enviar para aprovaÃ§Ã£o e ver no portal do cliente.
-- [ ] Cliente aprova/rejeita com comentÃ¡rio.
-- [ ] Staff agenda e worker publica no horÃ¡rio.
-- [ ] Falha gera status, erro visÃ­vel e retry.
+- [ ] Salvar rascunho e retomá-lo.
+- [ ] Enviar para aprovação e ver no portal do cliente.
+- [ ] Cliente aprova/rejeita com comentário.
+- [ ] Staff agenda e worker publica no horário.
+- [ ] Falha gera status, erro visível e retry.
 - [ ] Reagendar/cancelar funciona.
-- [ ] CalendÃ¡rio mostra posts por dia/status.
-- [ ] NotificaÃ§Ãµes e auditoria registram os eventos.
+- [ ] Calendário mostra posts por dia/status.
+- [ ] Notificações e auditoria registram os eventos.
 - [ ] Limites de plano bloqueiam excesso de contas/posts.
 - [ ] RLS impede acesso entre tenants.
-- [ ] Portal sÃ³ mostra posts do prÃ³prio cliente.
-- [ ] Testes unitÃ¡rios, RLS e E2E dos fluxos principais.
+- [ ] Portal só mostra posts do próprio cliente.
+- [ ] Testes unitários, RLS e E2E dos fluxos principais.
 - [ ] `format:check`, `lint`, `typecheck`, `test`, `build` verdes.
 
 ## 16. Riscos
 
-| Risco                          | Impacto               | MitigaÃ§Ã£o                                         |
-| ------------------------------ | --------------------- | --------------------------------------------------- |
-| AprovaÃ§Ã£o de apps das redes  | atraso                | usar agregador no MVP                               |
-| Tokens/segredos                | seguranÃ§a            | nÃ£o armazenar tokens nativos; Vault se necessÃ¡rio |
-| Rate limits das APIs           | falhas                | fila, backoff e cache de mÃ©tricas                  |
-| MÃ­dia rejeitada por rede      | falha de publicaÃ§Ã£o | validaÃ§Ã£o por rede antes de agendar               |
-| Fuso horÃ¡rio                  | post na hora errada   | UTC no banco, conversÃ£o explÃ­cita na UI           |
-| Worker fora do ar              | atraso                | QStash/cron + alerta + reprocessamento              |
-| Custo de IA                    | margem                | crÃ©ditos por plano e limite rÃ­gido                |
-| Escopo excessivo               | atraso                | fases e nÃ£o-goals explÃ­citos                      |
-| Licenciamento das referÃªncias | jurÃ­dico             | clean-room; nÃ£o copiar cÃ³digo/assets              |
+| Risco                         | Impacto             | Mitigação                                         |
+| ----------------------------- | ------------------- | ------------------------------------------------- |
+| Aprovação de apps das redes   | atraso              | usar agregador no MVP                             |
+| Tokens/segredos               | segurança           | não armazenar tokens nativos; Vault se necessário |
+| Rate limits das APIs          | falhas              | fila, backoff e cache de métricas                 |
+| Mídia rejeitada por rede      | falha de publicação | validação por rede antes de agendar               |
+| Fuso horário                  | post na hora errada | UTC no banco, conversão explícita na UI           |
+| Worker fora do ar             | atraso              | QStash/cron + alerta + reprocessamento            |
+| Custo de IA                   | margem              | créditos por plano e limite rígido                |
+| Escopo excessivo              | atraso              | fases e não-goals explícitos                      |
+| Licenciamento das referências | jurídico            | clean-room; não copiar código/assets              |
 
-## 17. DecisÃµes abertas
+## 17. Decisões abertas
 
 1. Qual agregador usar (Ayrshare, Post Bridge, outro)?
-2. Quais redes entram no MVP alÃ©m de LinkedIn/Instagram/Facebook/X?
-3. AprovaÃ§Ã£o Ã© obrigatÃ³ria para todos os clientes ou configurÃ¡vel por cliente?
-4. Limite de mÃ­dia por plano (quantidade e MB).
-5. PreÃ§o do add-on Social e limites comerciais.
+2. Quais redes entram no MVP além de LinkedIn/Instagram/Facebook/X?
+3. Aprovação é obrigatória para todos os clientes ou configurável por cliente?
+4. Limite de mídia por plano (quantidade e MB).
+5. Preço do add-on Social e limites comerciais.
 6. Analytics via agregador ou APIs nativas na fase 2?
-7. IA: OpenAI apenas ou provider abstraÃ­do?
-8. Precisamos de timezone por tenant ou por usuÃ¡rio?
+7. IA: OpenAI apenas ou provider abstraído?
+8. Precisamos de timezone por tenant ou por usuário?
 
-## 18. ReferÃªncias e licenciamento
+## 18. Referências e licenciamento
 
-As referÃªncias analisadas sÃ£o proprietÃ¡rias (CodeCanyon/Envato/AltumCode) e **nÃ£o podem ser copiadas**. Este documento usa apenas conceitos de produto e estrutura.
+As referências analisadas são proprietárias (CodeCanyon/Envato/AltumCode) e **não podem ser copiadas**. Este documento usa apenas conceitos de produto e estrutura.
 
 - **Stackposts**: melhor mapa de features (publishing, approvals, AI, channels, teams, calendar, RSS, watermark).
-- **SocialVibe**: melhor referÃªncia de UX/arquitetura (Vue 3, client, accounts, posts, calendar, AI writer).
+- **SocialVibe**: melhor referência de UX/arquitetura (Vue 3, client, accounts, posts, calendar, AI writer).
 - **Mingle SAAS**: melhor cobertura de redes e analytics/calendar.
-- **BeePost**: referÃªncia de scheduling + real-time (socket.io).
-- **QuickPost**: referÃªncia de MVP enxuto (scheduler + AI post/image).
+- **BeePost**: referência de scheduling + real-time (socket.io).
+- **QuickPost**: referência de MVP enxuto (scheduler + AI post/image).
 
 ## 19. Anexos
 
 ### 19.1 Status de target
 
-`pending` â†’ `publishing` â†’ `published` | `failed`
+`pending` → `publishing` → `published` | `failed`
 
 ### 19.2 Eventos de post
 
@@ -587,14 +605,14 @@ As referÃªncias analisadas sÃ£o proprietÃ¡rias (CodeCanyon/Envato/AltumCod
 
 ### 19.3 Checklist de UI do compositor
 
-- [ ] seleÃ§Ã£o de cliente
-- [ ] seleÃ§Ã£o de contas
+- [ ] seleção de cliente
+- [ ] seleção de contas
 - [ ] texto e contador por rede
-- [ ] upload e preview de mÃ­dia
+- [ ] upload e preview de mídia
 - [ ] preview por rede
-- [ ] validaÃ§Ã£o de limites
+- [ ] validação de limites
 - [ ] agendamento
 - [ ] salvar rascunho
-- [ ] enviar para aprovaÃ§Ã£o
+- [ ] enviar para aprovação
 - [ ] agendar/publicar
 - [ ] feedback de erro/sucesso

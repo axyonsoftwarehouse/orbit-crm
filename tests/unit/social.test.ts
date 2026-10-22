@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { SOCIAL_POST_STATUSES } from "@/lib/constants"
+import { SOCIAL_POST_STATUSES, SOCIAL_PROVIDER_LIMITS } from "@/lib/constants"
 import { socialAccountSchema, socialPostSchema } from "@/lib/validations/social"
 
 describe("social post schema", () => {
@@ -62,5 +62,11 @@ describe("social post statuses", () => {
     )
     expect(SOCIAL_POST_STATUSES.scheduled.label).toBe("Agendado")
     expect(SOCIAL_POST_STATUSES.published.label).toBe("Publicado")
+  })
+
+  it("tem limites por rede", () => {
+    expect(SOCIAL_PROVIDER_LIMITS.x).toBe(280)
+    expect(SOCIAL_PROVIDER_LIMITS.instagram).toBe(2200)
+    expect(SOCIAL_PROVIDER_LIMITS.linkedin).toBe(3000)
   })
 })

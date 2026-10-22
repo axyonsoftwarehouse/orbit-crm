@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { timingSafeEqual } from "node:crypto"
 import { runReminders } from "@/server/reminders"
+import { runSocialPublishReminders } from "@/server/social/reminders"
 import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
@@ -26,9 +27,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await runReminders()
-    logger.info("cron.reminders", { result })
-    return NextResponse.json({ ok: true, ...result })
+    const [result, social] = await Promise.all([
+      runReminders(),
+      runSocialPublishReminders(),
+    ])
+    logger.info("cron.reminders", { result, social })
+    return NextResponse.json({ ok: true, ...result, social })
   } catch (error) {
     logger.error("cron.reminders.failed", {
       error: error instanceof Error ? error.message : String(error),

@@ -2,7 +2,12 @@ import type { NextRequest } from "next/server"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { toCsv } from "@/lib/csv"
-import { INVOICE_STATUSES, ESTIMATE_STATUSES } from "@/lib/constants"
+import {
+  INVOICE_STATUSES,
+  ESTIMATE_STATUSES,
+  SOCIAL_POST_STATUSES,
+  SOCIAL_PROVIDERS,
+} from "@/lib/constants"
 import { listCompanies } from "@/server/queries/companies"
 import { listLeads } from "@/server/queries/leads"
 import { listEstimates, listInvoices } from "@/server/queries/documents"
@@ -10,6 +15,7 @@ import { listExpenses } from "@/server/queries/expenses"
 import { listTimeEntries, formatDuration } from "@/server/queries/time"
 import { getReportData } from "@/server/queries/reports"
 import { listSeoAuditsForExport } from "@/server/queries/seo"
+import { listSocialPostsForExport } from "@/server/queries/social"
 
 function csvResponse(filename: string, csv: string) {
   return new Response(`\uFEFF${csv}`, {
@@ -165,6 +171,43 @@ export async function GET(
         ]),
       )
       return csvResponse(`seo-${stamp}.csv`, csv)
+    }
+
+    case "social": {
+      const rows = await listSocialPostsForExport(tenantId)
+      const csv = toCsv(
+        [
+          "Conteúdo",
+          "Cliente",
+          "Redes",
+          "Status",
+          "Agendado",
+          "Publicado",
+          "Criado",
+        ],
+        rows.map((row) => [
+          row.content,
+          row.company?.name ?? null,
+          row.targets
+            .map(
+              (target) =>
+                SOCIAL_PROVIDERS[
+                  target.provider as keyof typeof SOCIAL_PROVIDERS
+                ]?.label ?? target.provider,
+            )
+            .join(", "),
+          SOCIAL_POST_STATUSES[row.status as keyof typeof SOCIAL_POST_STATUSES]
+            ?.label ?? row.status,
+          row.scheduled_at
+            ? new Date(row.scheduled_at).toLocaleString("pt-BR")
+            : null,
+          row.published_at
+            ? new Date(row.published_at).toLocaleString("pt-BR")
+            : null,
+          new Date(row.created_at).toLocaleString("pt-BR"),
+        ]),
+      )
+      return csvResponse(`social-${stamp}.csv`, csv)
     }
 
     case "timesheet": {

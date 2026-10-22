@@ -290,6 +290,57 @@ export async function scheduleSocialPostAction(formData: FormData) {
   redirect(`/app/social/${id}`)
 }
 
+export async function markSocialPostPublishedAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) redirect("/app/social")
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) redirect("/app/social")
+
+  const supabase = await createClient()
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("id, status")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (!post || !["approved", "scheduled"].includes(post.status)) {
+    redirect(`/app/social/${id}`)
+  }
+
+  const user = await getUser()
+  const now = new Date().toISOString()
+  await supabase
+    .from("social_posts")
+    .update({
+      status: "published",
+      published_at: now,
+      failure_reason: null,
+    })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+
+  await supabase
+    .from("social_post_targets")
+    .update({
+      status: "published",
+      published_at: now,
+      error: null,
+    })
+    .eq("post_id", id)
+    .eq("tenant_id", active.tenantId)
+
+  await recordEvent(active.tenantId, id, "published", user?.id ?? null, {
+    mode: "manual",
+  })
+
+  revalidatePath("/app/social")
+  revalidatePath(`/app/social/${id}`)
+  redirect(`/app/social/${id}`)
+}
+
 export async function cancelSocialPostAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) redirect("/app/social")
@@ -330,6 +381,77 @@ export async function deleteSocialPostAction(formData: FormData) {
 
   revalidatePath("/app/social")
   redirect("/app/social")
+}
+
+export async function registerSocialMediaAction(input: {
+  postId: string
+  storagePath: string
+  fileName: string
+  mimeType: string | null
+  sizeBytes: number
+}): Promise<{ error?: string }> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+  if (!input.storagePath.startsWith(`${active.tenantId}/`)) {
+    return { error: "Caminho de arquivo inválido." }
+  }
+
+  const supabase = await createClient()
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("id")
+    .eq("id", input.postId)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (!post) return { error: "Post inválido." }
+
+  const user = await getUser()
+  const { error } = await supabase.from("social_media").insert({
+    tenant_id: active.tenantId,
+    post_id: input.postId,
+    storage_path: input.storagePath,
+    file_name: input.fileName,
+    mime_type: input.mimeType,
+    size_bytes: input.sizeBytes,
+    created_by: user?.id ?? null,
+  })
+
+  if (error) return dbError("social_media", error)
+
+  revalidatePath(`/app/social/${input.postId}`)
+  return {}
+}
+
+export async function deleteSocialMediaAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) return
+
+  const id = String(formData.get("id") ?? "")
+  const postId = String(formData.get("post_id") ?? "")
+  if (!id || !postId) return
+
+  const supabase = await createClient()
+  const user = await getUser()
+  const { data: media } = await supabase
+    .from("social_media")
+    .select("storage_path, created_by")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .maybeSingle()
+
+  if (!media) return
+  if (!isManager(active.role) && media.created_by !== user?.id) return
+
+  await supabase.storage.from("social_media").remove([media.storage_path])
+  await supabase
+    .from("social_media")
+    .delete()
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+
+  revalidatePath(`/app/social/${postId}`)
 }
 
 export async function respondPortalSocialPostAction(formData: FormData) {

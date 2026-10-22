@@ -2275,6 +2275,45 @@ export type Database = {
         }
         Relationships: []
       }
+      social_media: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          created_by: string | null
+          file_name: string
+          id: string
+          mime_type: string | null
+          post_id: string
+          size_bytes: number | null
+          storage_path: string
+          tenant_id: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          post_id: string
+          size_bytes?: number | null
+          storage_path: string
+          tenant_id: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          post_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       social_post_events: {
         Row: {
           actor_id: string | null
@@ -2358,6 +2397,7 @@ export type Database = {
           deleted_at: string | null
           failure_reason: string | null
           id: string
+          manual_reminder_sent_at: string | null
           published_at: string | null
           rejection_note: string | null
           rejected_at: string | null
@@ -2378,6 +2418,7 @@ export type Database = {
           deleted_at?: string | null
           failure_reason?: string | null
           id?: string
+          manual_reminder_sent_at?: string | null
           published_at?: string | null
           rejection_note?: string | null
           rejected_at?: string | null
@@ -2398,6 +2439,7 @@ export type Database = {
           deleted_at?: string | null
           failure_reason?: string | null
           id?: string
+          manual_reminder_sent_at?: string | null
           published_at?: string | null
           rejection_note?: string | null
           rejected_at?: string | null
@@ -2417,6 +2459,7 @@ export type Database = {
           created_at: string
           default_timezone: string
           max_retries: number
+          publish_mode: string
           tenant_id: string
           updated_at: string
         }
@@ -2426,6 +2469,7 @@ export type Database = {
           created_at?: string
           default_timezone?: string
           max_retries?: number
+          publish_mode?: string
           tenant_id: string
           updated_at?: string
         }
@@ -2435,6 +2479,7 @@ export type Database = {
           created_at?: string
           default_timezone?: string
           max_retries?: number
+          publish_mode?: string
           tenant_id?: string
           updated_at?: string
         }
