@@ -24,6 +24,17 @@ export const SOCIAL_PROVIDERS = {
 
 export type SocialProvider = keyof typeof SOCIAL_PROVIDERS
 
+export const SOCIAL_PROVIDER_LIMITS: Record<SocialProvider, number> = {
+  linkedin: 3000,
+  instagram: 2200,
+  facebook: 63206,
+  x: 280,
+  tiktok: 2200,
+  threads: 500,
+  youtube: 5000,
+  pinterest: 500,
+}
+
 export const SOCIAL_POST_STATUSES = {
   draft: { label: "Rascunho", color: "#64748b" },
   pending_approval: { label: "Aguardando aprovação", color: "#f59e0b" },

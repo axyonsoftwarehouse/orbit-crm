@@ -315,6 +315,57 @@ export async function listSocialPostsForExport(
   return hydrateSocialPosts(tenantId, (data ?? []) as SocialPostRow[])
 }
 
+export type SocialMediaItem = {
+  id: string
+  post_id: string
+  storage_path: string
+  file_name: string
+  mime_type: string | null
+  size_bytes: number | null
+  alt_text: string | null
+  url: string | null
+}
+
+export async function listSocialMedia(
+  tenantId: string,
+  postId: string,
+): Promise<SocialMediaItem[]> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("social_media")
+    .select(
+      "id, post_id, storage_path, file_name, mime_type, size_bytes, alt_text",
+    )
+    .eq("tenant_id", tenantId)
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true })
+
+  const rows = (data ?? []) as Omit<SocialMediaItem, "url">[]
+  if (rows.length === 0) return []
+
+  const { data: signed } = await supabase.storage
+    .from("social_media")
+    .createSignedUrls(
+      rows.map((row) => row.storage_path),
+      3600,
+    )
+
+  const urlByPath = new Map<string, string>()
+  for (const entry of (signed ?? []) as {
+    path: string | null
+    signedUrl: string
+  }[]) {
+    if (entry.path && entry.signedUrl) {
+      urlByPath.set(entry.path, entry.signedUrl)
+    }
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    url: urlByPath.get(row.storage_path) ?? null,
+  }))
+}
+
 export async function getSocialPost(
   tenantId: string,
   id: string,

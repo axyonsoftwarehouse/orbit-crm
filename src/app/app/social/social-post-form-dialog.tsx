@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { SOCIAL_PROVIDERS } from "@/lib/constants"
+import { SocialPreview } from "@/components/app/social-preview"
 import {
   createSocialPostAction,
   type SocialFormState,
@@ -34,6 +35,8 @@ export function SocialPostFormDialog({
 }) {
   const [open, setOpen] = useState(false)
   const [companyId, setCompanyId] = useState("")
+  const [content, setContent] = useState("")
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [state, formAction, isPending] = useActionState<
     SocialFormState,
     FormData
@@ -54,6 +57,18 @@ export function SocialPostFormDialog({
       )
     : accounts
 
+  const selectedAccounts = visibleAccounts.filter((account) =>
+    selectedIds.includes(account.id),
+  )
+
+  function toggleAccount(id: string) {
+    setSelectedIds((current) =>
+      current.includes(id)
+        ? current.filter((value) => value !== id)
+        : [...current, id],
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={<Button />}>
@@ -73,7 +88,10 @@ export function SocialPostFormDialog({
                 name="company_id"
                 required
                 value={companyId}
-                onChange={(event) => setCompanyId(event.target.value)}
+                onChange={(event) => {
+                  setCompanyId(event.target.value)
+                  setSelectedIds([])
+                }}
                 className={fieldClass}
               >
                 <option value="">Selecione</option>
@@ -92,6 +110,8 @@ export function SocialPostFormDialog({
                 rows={4}
                 maxLength={5000}
                 required
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
                 placeholder="Escreva o texto do post..."
               />
             </div>
@@ -114,6 +134,8 @@ export function SocialPostFormDialog({
                       type="checkbox"
                       name="target_ids"
                       value={account.id}
+                      checked={selectedIds.includes(account.id)}
+                      onChange={() => toggleAccount(account.id)}
                     />
                     <span className="truncate">{account.display_name}</span>
                     <span className="text-muted-foreground ml-auto text-xs">
@@ -136,6 +158,21 @@ export function SocialPostFormDialog({
             />
             Exigir aprovação do cliente antes de publicar
           </label>
+
+          {selectedAccounts.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Prévia por rede</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {selectedAccounts.map((account) => (
+                  <SocialPreview
+                    key={account.id}
+                    provider={account.provider}
+                    content={content}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <DialogFooter>
             <Button

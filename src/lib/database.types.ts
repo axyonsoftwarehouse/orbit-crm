@@ -2275,6 +2275,45 @@ export type Database = {
         }
         Relationships: []
       }
+      social_media: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          created_by: string | null
+          file_name: string
+          id: string
+          mime_type: string | null
+          post_id: string
+          size_bytes: number | null
+          storage_path: string
+          tenant_id: string
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          post_id: string
+          size_bytes?: number | null
+          storage_path: string
+          tenant_id: string
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          post_id?: string
+          size_bytes?: number | null
+          storage_path?: string
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       social_post_events: {
         Row: {
           actor_id: string | null

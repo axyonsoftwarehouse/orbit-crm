@@ -11,9 +11,11 @@ import { SOCIAL_EVENT_LABELS } from "@/lib/constants"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
-import { getSocialPost } from "@/server/queries/social"
+import { getSocialPost, listSocialMedia } from "@/server/queries/social"
 import { SocialPostActions } from "./social-post-actions"
 import { ManualPublishPanel } from "./manual-publish-panel"
+import { SocialMediaSection } from "./social-media-section"
+import { SocialPreview } from "@/components/app/social-preview"
 
 function formatDateTime(value: string | null) {
   if (!value) return "—"
@@ -35,6 +37,8 @@ export default async function SocialPostDetailPage({
 
   const post = await getSocialPost(active.tenantId, id)
   if (!post) notFound()
+
+  const media = await listSocialMedia(active.tenantId, post.id)
 
   return (
     <div className="space-y-6">
@@ -77,6 +81,27 @@ export default async function SocialPostDetailPage({
 
       {["approved", "scheduled"].includes(post.status) ? (
         <ManualPublishPanel postId={post.id} content={post.content} />
+      ) : null}
+
+      <SocialMediaSection tenantId={active.tenantId} postId={post.id} />
+
+      {post.targets.length > 0 ? (
+        <div>
+          <h2 className="mb-3 text-sm font-semibold">Prévia por rede</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {post.targets.map((target) => (
+              <SocialPreview
+                key={target.id}
+                provider={target.provider}
+                content={post.content}
+                media={media.map((item) => ({
+                  url: item.url,
+                  alt: item.alt_text,
+                }))}
+              />
+            ))}
+          </div>
+        </div>
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2">

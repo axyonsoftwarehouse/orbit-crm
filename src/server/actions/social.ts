@@ -383,6 +383,77 @@ export async function deleteSocialPostAction(formData: FormData) {
   redirect("/app/social")
 }
 
+export async function registerSocialMediaAction(input: {
+  postId: string
+  storagePath: string
+  fileName: string
+  mimeType: string | null
+  sizeBytes: number
+}): Promise<{ error?: string }> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+  if (!input.storagePath.startsWith(`${active.tenantId}/`)) {
+    return { error: "Caminho de arquivo inválido." }
+  }
+
+  const supabase = await createClient()
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("id")
+    .eq("id", input.postId)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (!post) return { error: "Post inválido." }
+
+  const user = await getUser()
+  const { error } = await supabase.from("social_media").insert({
+    tenant_id: active.tenantId,
+    post_id: input.postId,
+    storage_path: input.storagePath,
+    file_name: input.fileName,
+    mime_type: input.mimeType,
+    size_bytes: input.sizeBytes,
+    created_by: user?.id ?? null,
+  })
+
+  if (error) return dbError("social_media", error)
+
+  revalidatePath(`/app/social/${input.postId}`)
+  return {}
+}
+
+export async function deleteSocialMediaAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) return
+
+  const id = String(formData.get("id") ?? "")
+  const postId = String(formData.get("post_id") ?? "")
+  if (!id || !postId) return
+
+  const supabase = await createClient()
+  const user = await getUser()
+  const { data: media } = await supabase
+    .from("social_media")
+    .select("storage_path, created_by")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .maybeSingle()
+
+  if (!media) return
+  if (!isManager(active.role) && media.created_by !== user?.id) return
+
+  await supabase.storage.from("social_media").remove([media.storage_path])
+  await supabase
+    .from("social_media")
+    .delete()
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+
+  revalidatePath(`/app/social/${postId}`)
+}
+
 export async function respondPortalSocialPostAction(formData: FormData) {
   const contact = await getPortalContact()
   if (!contact) redirect("/portal/login")
