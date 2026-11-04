@@ -1922,7 +1922,11 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     const companies = await clientPortal.from("companies").select("id")
     expect(companies.data ?? []).toEqual([])
 
-    const profiles = await clientPortal.from("profiles").select("id")
+    // O próprio perfil é legível (profiles_select_self_or_admin); nenhum outro.
+    const profiles = await clientPortal
+      .from("profiles")
+      .select("id")
+      .neq("id", clientUserId)
     expect(profiles.data ?? []).toEqual([])
   })
 
@@ -2000,6 +2004,118 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     expect(first.data).toBe(true)
     expect(second.data).toBe(true)
     expect(third.data).toBe(false)
+  })
+
+  describe("Exclusão de clientes, projetos e tarefas só para owner/admin", () => {
+    async function createRows() {
+      const company = await admin
+        .from("companies")
+        .insert({ tenant_id: tenantA, name: `Excluir ${randomUUID()}` })
+        .select("id")
+        .single()
+      if (company.error) throw company.error
+      const project = await admin
+        .from("projects")
+        .insert({
+          tenant_id: tenantA,
+          company_id: company.data!.id,
+          name: `Excluir ${randomUUID()}`,
+        })
+        .select("id")
+        .single()
+      if (project.error) throw project.error
+      const task = await admin
+        .from("tasks")
+        .insert({
+          tenant_id: tenantA,
+          project_id: project.data!.id,
+          name: `Excluir ${randomUUID()}`,
+        })
+        .select("id")
+        .single()
+      if (task.error) throw task.error
+      return {
+        companies: company.data!.id,
+        projects: project.data!.id,
+        tasks: task.data!.id,
+      }
+    }
+
+    const tables = ["companies", "projects", "tasks"] as const
+
+    it("membro não consegue marcar deleted_at", async () => {
+      const ids = await createRows()
+      for (const table of tables) {
+        const { error } = await clientMember
+          .from(table)
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", ids[table])
+        expect(error, table).not.toBeNull()
+
+        const row = await admin
+          .from(table)
+          .select("deleted_at")
+          .eq("id", ids[table])
+          .single()
+        expect(row.data?.deleted_at, table).toBeNull()
+      }
+    })
+
+    it("membro continua editando os registros", async () => {
+      const ids = await createRows()
+      for (const table of tables) {
+        const name = `Editado ${randomUUID()}`
+        const { error } = await clientMember
+          .from(table)
+          .update({ name })
+          .eq("id", ids[table])
+        expect(error, table).toBeNull()
+
+        const row = await admin
+          .from(table)
+          .select("name")
+          .eq("id", ids[table])
+          .single()
+        expect(row.data?.name, table).toBe(name)
+      }
+    })
+
+    it("membro não consegue apagar as linhas", async () => {
+      const ids = await createRows()
+      for (const table of [...tables].reverse()) {
+        const deleted = await clientMember
+          .from(table)
+          .delete()
+          .eq("id", ids[table])
+          .select("id")
+        expect(deleted.data ?? [], table).toEqual([])
+
+        const row = await admin
+          .from(table)
+          .select("id")
+          .eq("id", ids[table])
+          .maybeSingle()
+        expect(row.data?.id, table).toBe(ids[table])
+      }
+    })
+
+    it("admin consegue marcar deleted_at", async () => {
+      const ids = await createRows()
+      for (const table of tables) {
+        const { error } = await clientAdmin
+          .from(table)
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", ids[table])
+        expect(error, table).toBeNull()
+
+        const row = await admin
+          .from(table)
+          .select("deleted_at")
+          .eq("id", ids[table])
+          .single()
+        expect(row.data?.deleted_at, table).not.toBeNull()
+      }
+    })
   })
 
   it("profiles.email é preenchido ao criar usuário", async () => {
