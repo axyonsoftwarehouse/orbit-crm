@@ -2,21 +2,43 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 
 type ResourceTable =
-  "companies" | "projects" | "tasks" | "tickets" | "leads" | "seo_sites"
+  | "companies"
+  | "projects"
+  | "tasks"
+  | "tickets"
+  | "leads"
+  | "seo_sites"
+  | "social_accounts"
+  | "social_posts"
 
-const RESOURCE_TABLES: Record<string, ResourceTable> = {
-  clients: "companies",
-  projects: "projects",
-  tasks: "tasks",
-  tickets: "tickets",
-  leads: "leads",
-  seo_sites: "seo_sites",
+/**
+ * Como cada chave de `plans.limits` é contada:
+ * - `active`: linhas não excluídas (`deleted_at is null`) do tenant;
+ * - `month`: linhas criadas desde o início do mês (UTC), inclusive as
+ *   excluídas, para que excluir não devolva a cota do mês.
+ */
+const RESOURCES: Record<
+  string,
+  { table: ResourceTable; scope: "active" | "month" }
+> = {
+  clients: { table: "companies", scope: "active" },
+  projects: { table: "projects", scope: "active" },
+  tasks: { table: "tasks", scope: "active" },
+  tickets: { table: "tickets", scope: "active" },
+  leads: { table: "leads", scope: "active" },
+  seo_sites: { table: "seo_sites", scope: "active" },
+  social_accounts: { table: "social_accounts", scope: "active" },
+  social_posts_month: { table: "social_posts", scope: "month" },
 }
 
 export type PlanLimitResult = {
   ok: boolean
   message?: string
   remaining?: number
+}
+
+export function startOfMonthUtc(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
 }
 
 /**
@@ -28,9 +50,10 @@ export async function checkPlanLimitWith(
   supabase: SupabaseClient,
   tenantId: string,
   resource: string,
+  now: Date = new Date(),
 ): Promise<PlanLimitResult> {
-  const table = RESOURCE_TABLES[resource]
-  if (!table) return { ok: true }
+  const config = RESOURCES[resource]
+  if (!config) return { ok: true }
 
   const { data: tenant } = await supabase
     .from("tenants")
@@ -48,11 +71,16 @@ export async function checkPlanLimitWith(
   const limit = limits[resource]
   if (limit === null || limit === undefined) return { ok: true }
 
-  const { count } = await supabase
-    .from(table)
+  let query = supabase
+    .from(config.table)
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
-    .is("deleted_at", null)
+  query =
+    config.scope === "month"
+      ? query.gte("created_at", startOfMonthUtc(now).toISOString())
+      : query.is("deleted_at", null)
+
+  const { count } = await query
 
   const used = count ?? 0
   const remaining = Math.max(0, limit - used)

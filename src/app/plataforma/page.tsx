@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
 import { formatMoney } from "@/lib/format"
 import { createClient } from "@/lib/supabase/server"
 import { CreateTenantForm } from "./create-tenant-form"
@@ -24,22 +25,12 @@ type Tenant = {
   created_at: string
 }
 
-const LIMIT_LABELS: Record<string, string> = {
-  clients: "Clientes",
-  projects: "Projetos",
-  tasks: "Tarefas",
-  tickets: "Tickets",
-  leads: "Leads",
-}
-
 function limitsSummary(limits: Record<string, number | null> | null) {
   if (!limits) return "—"
-  return Object.entries(LIMIT_LABELS)
-    .map(([key, label]) => {
-      const value = limits[key]
-      return `${label}: ${value === null || value === undefined ? "∞" : value}`
-    })
-    .join(" · ")
+  return PLAN_LIMIT_FIELDS.map(({ key, label }) => {
+    const value = limits[key]
+    return `${label}: ${value === null || value === undefined ? "∞" : value}`
+  }).join(" · ")
 }
 
 export default async function PlatformPage() {

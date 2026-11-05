@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { optionalLongText } from "@/lib/validations/fields"
+import { PLAN_LIMIT_FIELDS, type PlanLimitKey } from "@/lib/constants"
 
 const limitField = z.preprocess(
   (value) =>
@@ -9,6 +10,10 @@ const limitField = z.preprocess(
   z.number().int().min(0).nullable(),
 )
 
+const limitsShape = Object.fromEntries(
+  PLAN_LIMIT_FIELDS.map((field) => [field.key, limitField]),
+) as Record<PlanLimitKey, typeof limitField>
+
 export const planSchema = z.object({
   name: z.string().trim().min(1, "Informe o nome").max(120),
   description: optionalLongText,
@@ -16,13 +21,7 @@ export const planSchema = z.object({
   interval: z.enum(["monthly", "yearly"]).default("monthly"),
   trial_days: z.coerce.number().int().min(0).default(0),
   most_popular: z.boolean().default(false),
-  limits: z.object({
-    clients: limitField,
-    projects: limitField,
-    tasks: limitField,
-    tickets: limitField,
-    leads: limitField,
-  }),
+  limits: z.object(limitsShape),
 })
 
 export type PlanInput = z.infer<typeof planSchema>
