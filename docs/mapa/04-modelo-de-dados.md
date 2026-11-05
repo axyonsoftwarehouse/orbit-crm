@@ -1,8 +1,10 @@
 # 04. Modelo de dados
 
-> 44 tabelas · 0 enums nativos · 2 buckets de Storage · 22 funções expostas via PostgREST.
+> 52 tabelas · 0 enums nativos · 3 buckets de Storage · 29 funções expostas via PostgREST.
+>
+> Retrato de `main@29aac19`, atualizado em 04/11/2026 (`main@413c601`) com as tabelas de SEO (`0045`–`0048`) e Social (`0049`–`0051`).
 
-O Orbit CRM tem **44 tabelas** e **nenhum `enum` nativo do Postgres** (o bloco `Enums` do `database.types.ts` é vazio — os domínios são codificados como `smallint` ou `text` com `check`). O **schema canônico** vive em `supabase/migrations/` (`0001`–`0044`), e os **tipos TypeScript gerados** a partir dele estão em `src/lib/database.types.ts` (artefato gerado por `npm run db:types`, nunca editado à mão). Toda tabela de negócio tem `tenant_id` e RLS; o desenho das migrations, RLS e RPCs está em [01-banco](arquivos/01-banco-migrations-e-seed.md) §01.4, os status/domínios também aparecem nas [validações Zod](arquivos/03-validacoes-zod.md) e o uso nas telas está em [processos](02-processos.md). As regras de acesso e convenções transversais ficam em [regras e convenções](05-regras-e-convencoes.md).
+O Orbit CRM tem **52 tabelas** e **nenhum `enum` nativo do Postgres** (o bloco `Enums` do `database.types.ts` é vazio — os domínios são codificados como `smallint` ou `text` com `check`). O **schema canônico** vive em `supabase/migrations/` (`0001`–`0052`), e os **tipos TypeScript gerados** a partir dele estão em `src/lib/database.types.ts` (artefato gerado por `npm run db:types`, nunca editado à mão). Toda tabela de negócio tem `tenant_id` e RLS; o desenho das migrations, RLS e RPCs está em [01-banco](arquivos/01-banco-migrations-e-seed.md) §01.4, os status/domínios também aparecem nas [validações Zod](arquivos/03-validacoes-zod.md) e o uso nas telas está em [processos](02-processos.md). As regras de acesso e convenções transversais ficam em [regras e convenções](05-regras-e-convencoes.md).
 
 ## §04.1 Tabelas por área
 
@@ -88,6 +90,24 @@ Fonte: as migrations reais em `supabase/migrations/*.sql` (coluna citada) e a co
 | `email_templates` | Modelos de e-mail por tenant (`key`, `subject`, `body`) — `0031:3`. |
 | `email_log` | Histórico de envios (`to_email`, `status` sent/skipped/error) — `0031:22`. |
 
+### Marketing: SEO
+
+| Tabela | Papel (1 linha) |
+|---|---|
+| `seo_sites` | Site monitorado de um cliente (`label`, `url`, `company_id` opcional), soft delete, intervalo `check_interval_days` (0/1/7/30) e `next_audit_at` — `0045_seo_audits.sql:3`, `0047:3`. |
+| `seo_audits` | Uma execução de auditoria: `status` 1–3, `score` 0–100, contagens por severidade, `result jsonb` com as verificações, `error`, `ai_summary` — `0045:29`, `0048:3`. |
+
+### Marketing: Social
+
+| Tabela | Papel (1 linha) |
+|---|---|
+| `social_settings` | Configuração por tenant (PK = `tenant_id`): aprovação obrigatória, fuso, IA, `max_retries`, `publish_mode` — `0049_social_foundation.sql:3`, `0050:6`. Nenhum código a usa. |
+| `social_accounts` | Conta social de um cliente (`provider` em 8 redes, `provider_account_id`, `display_name`, `status` 1–4), soft delete — `0049:13`. |
+| `social_posts` | Post (`content` até 5.000), `status` text com 10 valores, agenda, aprovação/rejeição, `manual_reminder_sent_at`, soft delete — `0049:48`, `0050:3`. |
+| `social_post_targets` | Post × conta de destino, com status por destino — `0049:96`. |
+| `social_post_events` | Histórico do post (evento, autor, `metadata`); só insert e select — `0049:128`. |
+| `social_media` | Imagem do post no bucket `social_media` (`storage_path`, `mime_type`, `size_bytes`) — `0051_social_media.sql:17`. |
+
 ### Transversais (tags e campos personalizados)
 
 | Tabela | Papel (1 linha) |
@@ -127,6 +147,13 @@ O banco **não usa `enum`**: os status são `smallint`/`text` com `check`, e no 
 | Tipo de ticket | `smallint` 1–4 | `0010:68` · `constants.ts:153` |
 | Prioridade de roadmap | `smallint` 1–4 | `0017:15` |
 | Tipos de campo personalizado | `text` (`text`/`textarea`/`number`/`date`/`select`/`checkbox`) | `0020:12` · `constants.ts:65` |
+| Status da auditoria SEO | `smallint` 1–3 (executando/concluída/erro) | `0045:34` · `seo-bits.tsx:25` |
+| Intervalo de monitoramento SEO | `integer in (0, 1, 7, 30)` | `0047:4`–`:5` · `constants.ts:5` |
+| Status do post (Social) | `text` com 10 valores (`draft` … `rejected`) | `0049:54`–`:67` · `constants.ts:38` |
+| Status do destino do post | `text` `pending/publishing/published/failed` | `0049:101`–`:103` |
+| Rede social | `text` (linkedin, instagram, facebook, x, tiktok, threads, youtube, pinterest) | `0049:17`–`:19` · `constants.ts:14` |
+| Status da conta social | `smallint` 1–4 | `0049:23` |
+| Modo de publicação | `text` `manual/provider` | `0050:7`–`:8` |
 
 Domínios em **`text` com `check`** (não numéricos): papel de membership `owner/admin/member` (`0001:35`), status do tenant `active/suspended` (`0001:25`), `plan_status active/trial/suspended` (`0015:19`), `discount_type before_tax/after_tax` (`0007:32`), `entity_type` polimórfico, `tickets.source staff/portal/email` (`0010:74`), `goals.metric revenue/leads/hours` (`0030:7`), `email_log.status sent/skipped/error` (`0031:28`), `activity_log.action insert/update/delete` (`0029:9`). No front, esses mapas vivem em `src/lib/constants.ts` (e `EXPENSE_CATEGORIES`/`PAYMENT_MODES` em `constants.ts:113`/`:124`), e as validações correspondentes em [03-validacoes-zod](arquivos/03-validacoes-zod.md).
 
@@ -141,6 +168,7 @@ Domínios em **`text` com `check`** (não numéricos): papel de membership `owne
 - `leads` → muitos `lead_activities`; `leads` → `lead_statuses`, `lead_sources`.
 - `kb_categories` → muitos `kb_articles`; `tenants` → muitos `faqs`.
 - Polimórficos (sem FK direta, validados por `entity_belongs_to_tenant`): `comments`, `attachments` (task/project/ticket), `taggables` (tag × company/project/task/lead/ticket) e `custom_field_values` (campo × company/project/task/lead).
+- `companies` → muitos `seo_sites`, `social_accounts` e `social_posts` (FK composta, `on delete set null`); `seo_sites` → muitos `seo_audits`; `social_posts` → muitos `social_post_targets`, `social_post_events` e `social_media`; `social_accounts` → muitos `social_post_targets`.
 - 1:N por tenant: `notifications`, `goals`, `email_templates`, `email_log`, `calendar_events`, `activity_log`, `tags`, `custom_field_definitions`, `plans` (1 plano → muitos `tenants`).
 
 ## §04.5 Diagrama de entidades
@@ -189,6 +217,15 @@ erDiagram
   tenants ||--o{ goals : define
   tenants ||--o{ calendar_events : agenda
   tenants ||--o{ activity_log : audita
+  companies ||--o{ seo_sites : monitora
+  seo_sites ||--o{ seo_audits : audita
+  tenants ||--o| social_settings : configura
+  companies ||--o{ social_accounts : possui
+  companies ||--o{ social_posts : planeja
+  social_posts ||--o{ social_post_targets : destina
+  social_accounts ||--o{ social_post_targets : recebe
+  social_posts ||--o{ social_post_events : registra
+  social_posts ||--o{ social_media : anexa
 ```
 
 As entidades polimórficas (`comments`, `attachments`, `taggables`, `custom_field_values`) não aparecem ligadas por FK no diagrama porque se relacionam por `entity_type`/`entity_id`, não por chave estrangeira.
@@ -202,7 +239,7 @@ As entidades polimórficas (`comments`, `attachments`, `taggables`, `custom_fiel
 
 Conferido lendo `supabase/migrations/*.sql` e `src/lib/database.types.ts`:
 
-- **44 tabelas** em `public` (43 aparecem em `database.types.ts`; `rate_limit_hits` fica de fora porque não tem policies nem grants, sendo acessível só pela função `check_rate_limit`).
+- **52 tabelas** em `public`, todas presentes em `database.types.ts` (no retrato de `29aac19` eram 44, e `rate_limit_hits` ainda faltava nos tipos; ver [06](06-problemas-e-dividas.md) #13). As 8 novas: `seo_sites`, `seo_audits`, `social_settings`, `social_accounts`, `social_posts`, `social_post_targets`, `social_post_events`, `social_media`.
 - **0 enums** nativos (bloco `Enums` vazio em ambos os schemas).
-- **2 buckets** de Storage: `attachments` (privado, `0005:130`) e `branding` (público, `0021`).
-- **22 funções expostas** no PostgREST (bloco `Functions` de `database.types.ts:2646`), incluindo as **7 RPCs do portal** (`portal_contact`, `portal_list_projects`, `portal_get_project`, `portal_list_tasks`, `portal_list_milestones`, `portal_list_contracts`, `portal_list_expenses`), mais `check_rate_limit`, `client_respond_estimate`, `next_document_number` e `time_entries_summary`; as demais funções `security definer` (`is_tenant_member`, `has_tenant_role`, `is_super_admin`, `shares_tenant`, `entity_belongs_to_tenant`, `log_activity`, `protect_*`, `handle_*`) são internas.
+- **3 buckets** de Storage: `attachments` (privado, `0005:130`), `branding` (público, `0021`) e `social_media` (privado, `0051:53`).
+- **29 funções expostas** no PostgREST (bloco `Functions` de `public` em `database.types.ts`), incluindo **12 RPCs do portal**: as 5 novas de SEO/Social (`portal_list_seo_sites`, `portal_get_seo_audit`, `portal_list_social_posts`, `portal_get_social_post`, `portal_respond_social_post`) e as 7 originais (`portal_contact`, `portal_list_projects`, `portal_get_project`, `portal_list_tasks`, `portal_list_milestones`, `portal_list_contracts`, `portal_list_expenses`), mais `check_rate_limit`, `client_respond_estimate`, `next_document_number` e `time_entries_summary`; as demais funções `security definer` (`is_tenant_member`, `has_tenant_role`, `is_super_admin`, `shares_tenant`, `entity_belongs_to_tenant`, `log_activity`, `protect_*`, `handle_*`) são internas.

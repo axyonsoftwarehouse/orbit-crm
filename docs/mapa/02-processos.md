@@ -1,8 +1,8 @@
 ﻿# 2. Processos ponta a ponta
 
-> O "como funciona" do Orbit CRM: do gatilho do usuário até o banco e a resposta. Estado: `main@29aac19`.
+> O "como funciona" do Orbit CRM: do gatilho do usuário até o banco e a resposta. Estado: `main@29aac19`; 2.14 e 2.15 em `main@413c601`.
 
-São **14 processos** descritos aqui. Cada um lista os passos com o arquivo real, o que o banco vê, o que o usuário vê, o `sequenceDiagram` e onde mexer se mudar. No fim, a [tabela de resumo](#214-resumo). As fichas dos arquivos citados estão em [00-inventario](arquivos/00-inventario.md).
+São **16 processos** descritos aqui (2.14 e 2.15, de Social e SEO, acrescentados em 04/11/2026). Cada um lista os passos com o arquivo real, o que o banco vê, o que o usuário vê, o `sequenceDiagram` e onde mexer se mudar. No fim, a [tabela de resumo](#216-resumo). As fichas dos arquivos citados estão em [00-inventario](arquivos/00-inventario.md).
 
 ---
 
@@ -407,7 +407,83 @@ sequenceDiagram
 
 ---
 
-## 2.14 Resumo
+## 2.14 Portal do cliente: aprovar post do Social
+
+> Acrescentado em 04/11/2026 (`main@413c601`). Fichas em [20-social](arquivos/20-social.md).
+
+**Gatilho:** a equipe envia um post para aprovação e o contato do cliente o aprova ou rejeita em `/portal/social/<id>`.
+
+**Passos:**
+1. A equipe cria o post no compositor ([`social-post-form-dialog.tsx`](arquivos/20-social.md) §20.10). `createSocialPostAction` ([`src/server/actions/social.ts`](arquivos/20-social.md) §20.4) confere que as contas são do tenant (`:112`–`:121`), grava `social_posts` como `draft` (ou `approved`, sem aprovação, `:131`), os destinos em `social_post_targets` e o evento `created`.
+2. Em `/app/social/<id>`, "Enviar para aprovação" chama `submitSocialPostAction`, que aceita `draft`/`rejected` e grava `pending_approval` (`:174`, `:181`) e o evento `submitted`. Ninguém é notificado (ver [06](06-problemas-e-dividas.md) #29).
+3. O cliente abre `/portal/social` ([§20.21](arquivos/20-social.md)); a RPC `portal_list_social_posts` (`0049_social_foundation.sql:217`) devolve os posts da empresa dele, exceto rascunhos.
+4. No detalhe ([§20.22](arquivos/20-social.md)), lido pela RPC `portal_get_social_post` (`0049:252`), o formulário só aparece em `pending_approval`. Os botões `approve=1`/`approve=0` e a nota vão para `respondPortalSocialPostAction` (`social.ts:457`), que valida com `socialPostResponseSchema` e chama a RPC `portal_respond_social_post` (`:469`).
+5. A RPC (`0049:303`, `security definer`) confere `is_client_of_company` e se o post ainda está `pending_approval` (`:327`); grava `approved` (com `approved_by`/`approved_at`) ou `rejected` (com `rejected_by`/`rejected_at`/`rejection_note`) e insere o evento com `source: "portal"` (`:342`–`:348`).
+6. Depois de aprovado, owner/admin agenda (`scheduleSocialPostAction`, `approved` → `scheduled`). A aprovação interna (`approveSocialPostAction`/`rejectSocialPostAction`) é o caminho alternativo ao portal, só para owner/admin.
+
+**O banco vê:** `social_posts` (update de status), `social_post_events` (insert). O cliente não lê as tabelas `social_*` diretamente: só as RPCs.
+**O usuário vê:** o cliente vê o post sair da espera; a equipe vê o novo status, o motivo da rejeição e o evento no histórico do post. Se rejeitado, o post pode ser reenviado.
+
+```mermaid
+sequenceDiagram
+    participant E as Equipe
+    participant A as actions/social.ts
+    participant C as Cliente (portal)
+    participant DB as Supabase
+    E->>A: createSocialPostAction
+    A->>DB: insert social_posts (draft) + targets + evento
+    E->>A: submitSocialPostAction
+    A->>DB: update status = pending_approval
+    C->>DB: rpc portal_list_social_posts / portal_get_social_post
+    C->>A: respondPortalSocialPostAction(approve, note)
+    A->>DB: rpc portal_respond_social_post
+    DB-->>A: approved ou rejected + evento (source=portal)
+    A-->>C: redirect /portal/social
+```
+
+**Onde mexer:** [`actions/social.ts`](arquivos/20-social.md) §20.4, [`queries/social.ts`](arquivos/20-social.md) §20.5, migration `0049` (RPCs do portal).
+
+---
+
+## 2.15 Auditoria SEO agendada (cron)
+
+> Acrescentado em 04/11/2026 (`main@413c601`). Fichas em [19-seo](arquivos/19-seo.md).
+
+**Gatilho:** a Vercel chama `GET /api/cron/seo` às 09:30 UTC (`vercel.json`, `30 9 * * *`).
+
+**Passos:**
+1. Ao cadastrar o site ou trocar o intervalo (manual, 1, 7 ou 30 dias), `next_audit_at` é calculado por `nextAuditAt` ([`src/server/seo/scheduling.ts`](arquivos/19-seo.md) §19.8) e o trigger `set_seo_next_audit` (`0047_seo_monitoring.sql:13`) o mantém consistente (zera quando o intervalo é 0).
+2. A rota ([`src/app/api/cron/seo/route.ts`](arquivos/19-seo.md) §19.9) responde 503 sem `CRON_SECRET`, compara o `Authorization` com `timingSafeEqual` (`:23`) e chama `runScheduledSeoAudits()` (`:29`).
+3. `runScheduledSeoAudits` ([`src/server/seo/scheduled.ts`](arquivos/19-seo.md) §19.7) usa o cliente **admin** e pega até 3 sites vencidos (`check_interval_days > 0`, `next_audit_at <= agora`), em paralelo.
+4. Para cada site: insere `seo_audits` com `status: 1`, roda `runSeoAudit` ([§19.4](arquivos/19-seo.md)), que baixa o HTML com o guarda de SSRF ([§19.5](arquivos/19-seo.md)) e calcula o score; grava `status: 2` com o `result` e agenda o próximo `next_audit_at`.
+5. Em erro: grava `status: 3` com a mensagem e reagenda para o dia seguinte (`nextAuditAt(1)`, `scheduled.ts:109`).
+
+**O banco vê:** lê `seo_sites`; grava `seo_audits` (insert + update) e `seo_sites.next_audit_at`.
+**O usuário vê:** a nova auditoria no histórico de `/app/seo/<id>` e, se concluída, no portal (`/portal/seo/<id>`, que mostra só a última `status = 2`). Não há notificação.
+
+```mermaid
+sequenceDiagram
+    participant V as Vercel Cron
+    participant R as api/cron/seo
+    participant S as seo/scheduled.ts
+    participant Au as seo/audit.ts
+    participant DB as Supabase (admin)
+    V->>R: GET com Bearer CRON_SECRET
+    R->>S: runScheduledSeoAudits(3)
+    S->>DB: seo_sites vencidos (até 3)
+    S->>DB: insert seo_audits (status 1)
+    S->>Au: runSeoAudit(url)
+    Au-->>S: checks + score
+    S->>DB: update seo_audits (status 2 ou 3)
+    S->>DB: update seo_sites.next_audit_at
+    R-->>V: { success, processed, ok, failed }
+```
+
+**Onde mexer:** [`seo/scheduled.ts`](arquivos/19-seo.md) §19.7, [`seo/audit.ts`](arquivos/19-seo.md) §19.4, [`api/cron/seo/route.ts`](arquivos/19-seo.md) §19.9, migration `0047`. Com o limite de 3 sites por execução diária, a fila anda devagar se muitos sites vencerem no mesmo dia.
+
+---
+
+## 2.16 Resumo
 
 | Processo | Arquivos-chave | Tabelas | Testes | Telas |
 |---|---|---|---|---|
@@ -424,5 +500,7 @@ sequenceDiagram
 | 2.11 Ticket do portal | [`actions/portal.ts`](arquivos/07-servidor-actions-negocio.md) | `tickets`, `ticket_replies` | `tests/rls/isolation.test.ts` | `/portal/tickets` |
 | 2.12 Lembretes (cron) | [`server/reminders.ts`](arquivos/04-servidor-helpers.md) | `tasks`, `invoices`, `notifications`, `email_log` | — | sino de notificações, e-mail |
 | 2.13 Criar empresa/plano | [`actions/platform.ts`](arquivos/06-servidor-actions-core.md) | `tenants`, `memberships`, `plans`, defaults | — | `/plataforma` |
+| 2.14 Aprovar post (portal) | [`actions/social.ts`](arquivos/20-social.md) | `social_posts`, `social_post_events` (via RPC) | — | `/app/social/[id]`, `/portal/social/[id]` |
+| 2.15 Auditoria SEO agendada | [`seo/scheduled.ts`](arquivos/19-seo.md), [`seo/audit.ts`](arquivos/19-seo.md) | `seo_sites`, `seo_audits` | `tests/unit/seo-audit.test.ts` | `/app/seo/[id]`, `/portal/seo/[id]` |
 
 > Observação: `tests/rls/isolation.test.ts` cobre o **isolamento entre tenants** de forma transversal (118 casos), não cada fluxo individualmente. As fichas e os testes estão detalhados em [18-testes-e-scripts](arquivos/18-testes-e-scripts.md).
