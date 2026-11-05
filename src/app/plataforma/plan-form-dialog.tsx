@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
 import {
   createPlanAction,
   updatePlanAction,
@@ -34,14 +35,6 @@ export type PlanRow = {
   most_popular: boolean
   limits: Record<string, number | null> | null
 }
-
-const LIMIT_FIELDS = [
-  { key: "clients", label: "Clientes" },
-  { key: "projects", label: "Projetos" },
-  { key: "tasks", label: "Tarefas" },
-  { key: "tickets", label: "Tickets" },
-  { key: "leads", label: "Leads" },
-]
 
 export function PlanFormDialog({
   plan,
@@ -146,7 +139,7 @@ export function PlanFormDialog({
               Limites por recurso (deixe vazio para ilimitado)
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              {LIMIT_FIELDS.map((field) => (
+              {PLAN_LIMIT_FIELDS.map((field) => (
                 <div key={field.key} className="space-y-1">
                   <Label htmlFor={`lim-${field.key}`} className="text-xs">
                     {field.label}

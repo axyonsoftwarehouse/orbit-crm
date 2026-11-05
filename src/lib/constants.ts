@@ -2,6 +2,24 @@ export const APP_NAME = "Orbit CRM"
 
 export const TENANT_COOKIE = "orbit.tenant"
 
+/**
+ * Chaves de `plans.limits`, na ordem exibida na plataforma. Fonte única para
+ * o formulário, a validação e o resumo: uma chave fora daqui é descartada ao
+ * salvar o plano. Valor vazio/nulo = ilimitado.
+ */
+export const PLAN_LIMIT_FIELDS = [
+  { key: "clients", label: "Clientes" },
+  { key: "projects", label: "Projetos" },
+  { key: "tasks", label: "Tarefas" },
+  { key: "tickets", label: "Tickets" },
+  { key: "leads", label: "Leads" },
+  { key: "seo_sites", label: "Sites SEO" },
+  { key: "social_accounts", label: "Contas sociais" },
+  { key: "social_posts_month", label: "Posts sociais/mês" },
+] as const
+
+export type PlanLimitKey = (typeof PLAN_LIMIT_FIELDS)[number]["key"]
+
 export const SEO_CHECK_INTERVALS = [0, 1, 7, 30] as const
 
 export const SEO_CHECK_INTERVAL_LABELS: Record<number, string> = {

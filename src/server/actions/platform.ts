@@ -12,6 +12,7 @@ import {
 } from "@/lib/leads-defaults"
 import { createTenantSchema } from "@/lib/validations/auth"
 import { planSchema } from "@/lib/validations/plan"
+import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
 
 export type CreateTenantState = { error?: string; success?: string } | undefined
 
@@ -112,13 +113,12 @@ function parsePlan(formData: FormData) {
     interval: formData.get("interval") || "monthly",
     trial_days: formData.get("trial_days") ?? 0,
     most_popular: formData.get("most_popular") === "on",
-    limits: {
-      clients: formData.get("limits_clients"),
-      projects: formData.get("limits_projects"),
-      tasks: formData.get("limits_tasks"),
-      tickets: formData.get("limits_tickets"),
-      leads: formData.get("limits_leads"),
-    },
+    limits: Object.fromEntries(
+      PLAN_LIMIT_FIELDS.map((field) => [
+        field.key,
+        formData.get(`limits_${field.key}`),
+      ]),
+    ),
   })
 }
 
