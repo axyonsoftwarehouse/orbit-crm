@@ -2118,6 +2118,128 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
   })
 
+  describe("Social: destino do post restrito ao cliente", () => {
+    let companyXId = ""
+    let companyYId = ""
+    let accountXId = ""
+    let accountYId = ""
+    let accountAgencyId = ""
+    let postXId = ""
+
+    beforeAll(async () => {
+      const companies = await admin
+        .from("companies")
+        .insert([
+          { tenant_id: tenantA, name: `Social X ${suffix}` },
+          { tenant_id: tenantA, name: `Social Y ${suffix}` },
+        ])
+        .select("id, name")
+      if (companies.error) throw companies.error
+      companyXId = companies.data.find((c) => c.name.startsWith("Social X"))!.id
+      companyYId = companies.data.find((c) => c.name.startsWith("Social Y"))!.id
+
+      const accounts = await admin
+        .from("social_accounts")
+        .insert([
+          {
+            tenant_id: tenantA,
+            company_id: companyXId,
+            provider: "linkedin",
+            provider_account_id: `x-${suffix}`,
+            display_name: "Conta X",
+          },
+          {
+            tenant_id: tenantA,
+            company_id: companyYId,
+            provider: "linkedin",
+            provider_account_id: `y-${suffix}`,
+            display_name: "Conta Y",
+          },
+          {
+            tenant_id: tenantA,
+            company_id: null,
+            provider: "linkedin",
+            provider_account_id: `agencia-${suffix}`,
+            display_name: "Conta da agência",
+          },
+        ])
+        .select("id, display_name")
+      if (accounts.error) throw accounts.error
+      const byName = (name: string) =>
+        accounts.data.find((a) => a.display_name === name)!.id
+      accountXId = byName("Conta X")
+      accountYId = byName("Conta Y")
+      accountAgencyId = byName("Conta da agência")
+
+      const post = await admin
+        .from("social_posts")
+        .insert({
+          tenant_id: tenantA,
+          company_id: companyXId,
+          content: `Post X ${suffix}`,
+        })
+        .select("id")
+        .single()
+      if (post.error) throw post.error
+      postXId = post.data.id
+    })
+
+    it("membro adiciona conta do próprio cliente e conta da agência", async () => {
+      const { error } = await clientMember.from("social_post_targets").insert([
+        { tenant_id: tenantA, post_id: postXId, account_id: accountXId },
+        { tenant_id: tenantA, post_id: postXId, account_id: accountAgencyId },
+      ])
+      expect(error).toBeNull()
+    })
+
+    it("membro não adiciona conta de outro cliente", async () => {
+      const { error } = await clientMember.from("social_post_targets").insert({
+        tenant_id: tenantA,
+        post_id: postXId,
+        account_id: accountYId,
+      })
+      expect(error?.code).toBe("23514")
+
+      const rows = await admin
+        .from("social_post_targets")
+        .select("id")
+        .eq("post_id", postXId)
+        .eq("account_id", accountYId)
+      expect(rows.data ?? []).toEqual([])
+    })
+
+    it("membro não move o post para outro cliente com destinos do cliente atual", async () => {
+      const { error } = await clientMember
+        .from("social_posts")
+        .update({ company_id: companyYId })
+        .eq("id", postXId)
+      expect(error?.code).toBe("23514")
+
+      const row = await admin
+        .from("social_posts")
+        .select("company_id")
+        .eq("id", postXId)
+        .single()
+      expect(row.data?.company_id).toBe(companyXId)
+    })
+
+    it("admin não passa uma conta em uso para outro cliente", async () => {
+      const { error } = await clientAdmin
+        .from("social_accounts")
+        .update({ company_id: companyYId })
+        .eq("id", accountXId)
+      expect(error?.code).toBe("23514")
+    })
+
+    it("admin pode tornar a conta da agência", async () => {
+      const { error } = await clientAdmin
+        .from("social_accounts")
+        .update({ company_id: null })
+        .eq("id", accountXId)
+      expect(error).toBeNull()
+    })
+  })
+
   it("profiles.email é preenchido ao criar usuário", async () => {
     const { data } = await admin
       .from("profiles")

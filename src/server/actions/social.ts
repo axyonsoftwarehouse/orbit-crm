@@ -16,6 +16,7 @@ import {
   socialScheduleSchema,
 } from "@/lib/validations/social"
 import { getPortalContact } from "@/server/queries/portal"
+import { validatePostTargets } from "@/lib/social-accounts"
 
 export type SocialFormState = { error?: string; success?: string } | undefined
 
@@ -115,16 +116,29 @@ export async function createSocialPostAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   }
 
+  const targetIds = [...new Set(parsed.data.target_ids)]
   const supabase = await createClient()
-  const { data: accounts } = await supabase
+  const { data: accounts, error: accountsError } = await supabase
     .from("social_accounts")
     .select("id, company_id")
     .eq("tenant_id", active.tenantId)
     .is("deleted_at", null)
-    .in("id", parsed.data.target_ids)
+    .in("id", targetIds)
 
-  if ((accounts ?? []).length !== parsed.data.target_ids.length) {
-    return { error: "Selecione contas válidas da empresa." }
+  if (accountsError) return dbError("social_accounts", accountsError)
+
+  const targets = validatePostTargets(
+    targetIds,
+    accounts ?? [],
+    parsed.data.company_id,
+  )
+  if (!targets.ok) {
+    return {
+      error:
+        targets.reason === "other_company"
+          ? "Selecione apenas contas deste cliente ou da agência."
+          : "Selecione contas válidas da empresa.",
+    }
   }
 
   const user = await getUser()
@@ -146,7 +160,7 @@ export async function createSocialPostAction(
   const { error: targetsError } = await supabase
     .from("social_post_targets")
     .insert(
-      parsed.data.target_ids.map((accountId) => ({
+      targetIds.map((accountId) => ({
         tenant_id: active.tenantId,
         post_id: post.id,
         account_id: accountId,
