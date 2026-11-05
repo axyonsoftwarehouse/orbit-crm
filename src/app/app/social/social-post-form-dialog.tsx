@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { SOCIAL_PROVIDERS } from "@/lib/constants"
+import { isAccountAllowedForCompany } from "@/lib/social-accounts"
 import { SocialPreview } from "@/components/app/social-preview"
 import {
   createSocialPostAction,
@@ -52,8 +53,8 @@ export function SocialPostFormDialog({
   }, [state])
 
   const visibleAccounts = companyId
-    ? accounts.filter(
-        (account) => !account.company_id || account.company_id === companyId,
+    ? accounts.filter((account) =>
+        isAccountAllowedForCompany(account, companyId),
       )
     : accounts
 
