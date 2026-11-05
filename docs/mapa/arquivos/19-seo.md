@@ -96,7 +96,7 @@ flowchart LR
 **Usado por:** §19.11, §19.12, §19.13, §19.14 (formulário de monitoramento), §19.15.
 **Bibliotecas externas:** `next/cache`, `next/navigation`.
 
-> **Limite de plano:** `seo_sites` está em `RESOURCE_TABLES` (`src/server/plan-limits.ts:13`), mas o super-admin não consegue configurá-lo. Ver [06](../06-problemas-e-dividas.md) #24.
+> **Limite de plano:** `seo_sites` está em `RESOURCE_TABLES` (`src/server/plan-limits.ts:13`), mas nesta `main` o super-admin não consegue configurá-lo ([06](../06-problemas-e-dividas.md) #24, **resolvido no PR #23, aguardando merge**).
 
 ### §19.3 `src/server/queries/seo.ts`
 

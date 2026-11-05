@@ -37,18 +37,18 @@
 | Portal: orçamento com aceite | completa | `respondEstimateAction` + RPC `client_respond_estimate` | — |
 | Portal: faturas, contratos, despesas faturáveis | completa | [`queries/portal.ts`](arquivos/05-servidor-queries.md) §05.16 | — |
 | Portal: tickets e ajuda | completa | [`actions/portal.ts`](arquivos/07-servidor-actions-negocio.md) §07.15 | — |
-| Planos e limites por recurso | completa | [`plan-limits.ts`](arquivos/04-servidor-helpers.md) §04.2, `/plataforma` | enforcement só de clientes/projetos/tarefas/tickets/leads (`seo_sites` na action, mas sem campo no plano: #24) |
+| Planos e limites por recurso | completa | [`plan-limits.ts`](arquivos/04-servidor-helpers.md) §04.2, `/plataforma` | enforcement só de clientes/projetos/tarefas/tickets/leads (`seo_sites` na action, mas sem campo no plano: #24; o PR #23, aguardando merge, resolve e acrescenta os limites do Social) |
 | Painel super-admin (empresas, planos) | completa | [`actions/platform.ts`](arquivos/06-servidor-actions-core.md) §06.5, `/plataforma` | tela de roadmap/backlog |
 | Notificações em tempo real + preferências | completa | `notifications` (Realtime), [`notifications-bell.tsx`](arquivos/08-componentes-app-nucleo.md) §08.4 | — |
 | E-mail: modelos editáveis + histórico | completa | [`actions/email.ts`](arquivos/06-servidor-actions-core.md) §06.7, [`server/email.ts`](arquivos/04-servidor-helpers.md) §04.5 | — |
 | Lembretes automáticos (cron) | completa | [`server/reminders.ts`](arquivos/04-servidor-helpers.md) §04.7, `vercel.json` | — |
 | Branding por tenant (cor + logo) | completa | [`company-settings-form.tsx`](arquivos/16-app-configuracoes-e-plataforma.md) §16.2, bucket `branding` | — |
 | Tags e campos personalizados | completa | [`actions/tags.ts`](arquivos/06-servidor-actions-core.md) §06.10, [`actions/custom-fields.ts`](arquivos/06-servidor-actions-core.md) §06.11 | campos/tags no portal; tipos URL/moeda/multisseleção |
-| SEO: sites monitorados e auditoria técnica (26 verificações, score) | completa | [`actions/seo.ts`](arquivos/19-seo.md) §19.2, [`seo/audit.ts`](arquivos/19-seo.md) §19.4, `/app/seo` | audita só a URL informada (sem rastreamento do site); limite de plano `seo_sites` não configurável ([06](06-problemas-e-dividas.md) #24) |
+| SEO: sites monitorados e auditoria técnica (26 verificações, score) | completa | [`actions/seo.ts`](arquivos/19-seo.md) §19.2, [`seo/audit.ts`](arquivos/19-seo.md) §19.4, `/app/seo` | audita só a URL informada (sem rastreamento do site); limite de plano `seo_sites` não configurável ([06](06-problemas-e-dividas.md) #24, resolvido no PR #23, aguardando merge) |
 | SEO: monitoramento agendado (diário/semanal/mensal) | completa | [`seo/scheduled.ts`](arquivos/19-seo.md) §19.7, `/api/cron/seo` (`vercel.json`) | no máximo 3 sites por execução diária; sem notificação de queda de score |
 | SEO: resumo com IA e relatório PDF | completa | [`seo/ai-summary.ts`](arquivos/19-seo.md) §19.6, [`relatorio/route.ts`](arquivos/19-seo.md) §19.16 | depende de `OPENAI_API_KEY`; sem rate limit |
 | Portal: SEO (última auditoria concluída) | completa | RPCs `portal_list_seo_sites`/`portal_get_seo_audit`, [§19.18](arquivos/19-seo.md) | histórico no portal; testes de RLS (#25) |
-| Social: contas, posts, destinos e prévia por rede | completa | [`actions/social.ts`](arquivos/20-social.md) §20.4, `/app/social`, `/app/social/contas` | conexão real com as redes (OAuth); limite de plano (#22); validação de conta × cliente no servidor (#28) |
+| Social: contas, posts, destinos e prévia por rede | completa | [`actions/social.ts`](arquivos/20-social.md) §20.4, `/app/social`, `/app/social/contas` | conexão real com as redes (OAuth); limite de plano (#22, resolvido no PR #23, aguardando merge); validação de conta × cliente no servidor (#28) |
 | Social: fluxo de aprovação interno e agendamento | completa | [`social-post-actions.tsx`](arquivos/20-social.md) §20.16, processo [2.14](02-processos.md) | notificações de envio/aprovação (#29); fuso do agendamento (#27) |
 | Social: calendário mensal | completa | [`calendario/page.tsx`](arquivos/20-social.md) §20.12 | dias calculados em UTC |
 | Social: mídia (imagens) | completa | [`social-media-uploader.tsx`](arquivos/20-social.md) §20.19, bucket `social_media` | mídia no portal; validação de tipo/tamanho no servidor |
