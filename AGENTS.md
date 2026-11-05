@@ -22,7 +22,7 @@ Outros:
 ```bash
 npm run dev            # servidor de desenvolvimento
 npm run test:watch     # Vitest em watch
-npm run test:rls       # isolamento RLS (roda contra o Supabase remoto)
+npm run test:rls       # isolamento RLS (usa as variáveis NEXT_PUBLIC_SUPABASE_*; ver "Testes")
 npm run test:e2e       # Playwright
 npm run format         # Prettier --write
 ```
@@ -64,42 +64,49 @@ Definidas em `.env.local` (não versionado) e na Vercel:
 ## Testes
 
 - Unitários em `tests/unit/`, RLS em `tests/rls/`, E2E em `tests/e2e/`.
-- `tests/rls/isolation.test.ts` cria tenants/usuários descartáveis no projeto
-  **remoto** e limpa no `afterAll`. Rode com cuidado e prefira um projeto
-  Supabase dedicado a testes.
-- O CI (`ci.yml`) roda format/lint/typecheck/unit/build.
+- `tests/rls/isolation.test.ts` cria tenants/usuários descartáveis no banco
+  apontado por `NEXT_PUBLIC_SUPABASE_URL` e limpa no `afterAll`. Prefira rodar
+  contra o **Supabase local** (Docker), como o CI faz:
+
+  ```bash
+  npx supabase start
+  eval "$(npx supabase status -o env | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=')"
+  NEXT_PUBLIC_SUPABASE_URL=$API_URL NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY \
+    SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY npm run test:rls
+  ```
+
+  Variáveis já exportadas têm precedência sobre o `.env.local`. Sem elas, o
+  teste lê o `.env.local` e roda contra o projeto **remoto** (produção).
+
+- O CI (`ci.yml`) roda format/lint/typecheck/unit/build; o `rls.yml` roda o
+  `test:rls` contra um Supabase local no runner.
 
 ## CI/CD
 
 - **CI** (`.github/workflows/ci.yml`): em PR e `main` roda format, lint,
   typecheck, unit e build.
-- **RLS** (`.github/workflows/rls.yml`): em PR e `main` roda `test:rls` contra
-  um projeto Supabase **de testes**, se os secrets `TEST_SUPABASE_*` existirem.
-  Sem eles o job é ignorado (não bloqueia) — ver "Ambientes".
+- **RLS** (`.github/workflows/rls.yml`): em PR e `main` sobe um Supabase
+  **local** no runner (`supabase start`: migrations + seed) e roda `test:rls`
+  contra ele. Não usa secrets nem toca a produção.
 - **Migrations** (`.github/workflows/migrate.yml`): no push para `main` que
   altere `supabase/migrations/**`, aplica `supabase db push` na **produção**.
 - **Deploy**: a Vercel faz Preview por PR e Produção no `main` (integração Git).
 
 ### Secrets (Settings → Secrets and variables → Actions)
 
-| Secret                   | Obrigatório | Uso                                            |
-| ------------------------ | ----------- | ---------------------------------------------- |
-| `SUPABASE_ACCESS_TOKEN`  | sim         | token pessoal (supabase.com/dashboard/account) |
-| `SUPABASE_DB_PASSWORD`   | sim         | senha do banco de produção                     |
-| `SUPABASE_PROJECT_ID`    | sim         | ref do projeto de produção                     |
-| `TEST_SUPABASE_URL`      | opcional    | URL do projeto Supabase de testes              |
-| `TEST_SUPABASE_ANON_KEY` | opcional    | anon key do projeto de testes                  |
-| `TEST_SERVICE_ROLE_KEY`  | opcional    | service role do projeto de testes              |
+| Secret                  | Obrigatório | Uso                                            |
+| ----------------------- | ----------- | ---------------------------------------------- |
+| `SUPABASE_ACCESS_TOKEN` | sim         | token pessoal (supabase.com/dashboard/account) |
+| `SUPABASE_DB_PASSWORD`  | sim         | senha do banco de produção                     |
+| `SUPABASE_PROJECT_ID`   | sim         | ref do projeto de produção                     |
 
 ### Ambientes (plano Hobby: 2 projetos)
 
 O plano Hobby permite 2 projetos e ambos já estão em uso, então **não há projeto
 de testes nem de staging**. Decisões:
 
-- **RLS no CI**: o job fica **desligado** até existir um projeto de testes
-  (secrets `TEST_*`). Enquanto isso, rode `npm run test:rls` localmente. A
-  alternativa sem custo (quando quiser ligar no CI) é subir o Supabase **local**
-  no próprio runner (`supabase start`) — sem projeto na nuvem.
+- **RLS no CI**: roda contra o Supabase **local** no próprio runner
+  (`supabase start`), sem projeto na nuvem.
 - **Previews da Vercel**: usam o banco de **produção**. Mitigação:
   - testar apenas através de um **tenant de preview** dedicado (e usuários
     próprios deste tenant), aproveitando o isolamento por `tenant_id`/RLS;
@@ -112,6 +119,5 @@ de testes nem de staging**. Decisões:
 1. Gerar um Personal Access Token e configurar `SUPABASE_ACCESS_TOKEN`,
    `SUPABASE_DB_PASSWORD` e `SUPABASE_PROJECT_ID` (habilita as migrations
    automáticas no `main`).
-2. (Opcional) Configurar os secrets `TEST_*` para ligar o RLS no CI.
-3. Proteção de branch em `main`: exigir PR e os checks
+2. Proteção de branch em `main`: exigir PR e os checks
    `Format, lint, types, testes e build` e `Isolamento RLS`.
