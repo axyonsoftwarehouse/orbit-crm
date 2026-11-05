@@ -1,6 +1,8 @@
 ﻿# Inventário de arquivos de código
 
-> Fichas completas: **274** · Exceções em tabela: **68** · Total: **342** arquivos de código.
+> Fichas completas: **315** · Exceções em tabela: **81** · Total: **396** arquivos de código.
+>
+> Até o módulo 18, retrato de `main@29aac19`. Em 04/11/2026 (`main@413c601`) entraram os módulos **19 SEO** (19 fichas · 6 exceções) e **20 Social** (22 fichas · 6 exceções) e a linha da migration `0052` no módulo 01.
 
 > Gerado a partir das fichas em docs/mapa/arquivos/. Migrations, testes e primitivos de UI viram linhas de tabela de exceção nos respectivos módulos.
 
@@ -54,6 +56,7 @@
 | `supabase/migrations/0042_portal_reads.sql` | supabase/migrations | Cria RPCs `portal_contact`, `portal_list_projects`, `portal_get_project`, `portal_list_tasks`, `portal_list_milestones`; remove a leitura direta do... | tabela | Migração de RPC/portal. | [01-banco-migrations-e-seed.md](01-banco-migrations-e-seed.md) §01 |
 | `supabase/migrations/0043_portal_contracts_expenses.sql` | supabase/migrations | Cria RPCs `portal_list_contracts` e `portal_list_expenses`; remove a leitura direta do cliente nessas tabelas. | tabela | Migração de RPC/portal. | [01-banco-migrations-e-seed.md](01-banco-migrations-e-seed.md) §01 |
 | `supabase/migrations/0044_rate_limit_and_profile_email.sql` | supabase/migrations | Cria `rate_limit_hits` + função `check_rate_limit`; adiciona `profiles.email`; recria `handle_new_user` e cria `handle_user_email_update` + trigg... | tabela | Migração de schema + RPC de rate limit. | [01-banco-migrations-e-seed.md](01-banco-migrations-e-seed.md) §01 |
+| `supabase/migrations/0052_soft_delete_managers_only.sql` | supabase/migrations | Trigger `protect_soft_delete` e policies de DELETE: só owner/admin excluem (inclusive por soft delete) clientes, projetos e tarefas. Acrescentada em 04/11/2026; `0045`–`0051` estão nos módulos 19 e 20. | tabela | Migração de segurança. | [06-problemas-e-dividas.md](../06-problemas-e-dividas.md) #3 |
 
 #### Módulo 02 — Núcleo da aplicação (src/lib) e sessão
 
@@ -435,3 +438,66 @@
 | `tests/unit/reports.test.ts` | tests | Funções de `src/lib/reports.ts`: `buildProfitability` (margem e ordenação), `buildProductivity` (tarefas concluídas no período, horas, valor ... | tabela | Arquivo de teste | [18-testes-e-scripts.md](18-testes-e-scripts.md) §18 |
 | `tests/unit/validations.test.ts` | tests | Validações Zod e utilitários: `signInSchema`, `milestoneSchema`, `tagSchema`, `customFieldDefinitionSchema`, `tenantSettingsSchema`, `inviteMemb... | tabela | Arquivo de teste | [18-testes-e-scripts.md](18-testes-e-scripts.md) §18 |
 | `tests/e2e/smoke.spec.ts` | tests | Smoke de Playwright: a raiz redireciona para `/login` quando não autenticado e a página de login mostra o botão "Entrar". | tabela | Arquivo de teste | [18-testes-e-scripts.md](18-testes-e-scripts.md) §18 |
+
+#### Módulo 19 — SEO
+
+| Arquivo | Camada | Propósito em 1 linha | Ficha? | Motivo da exceção | Ficha em |
+|---|---|---|---|---|---|
+| `src/lib/validations/seo.ts` | src/lib | schemas Zod do cadastro de site (URL normalizada para `https://`) e do intervalo de monitoramento. | completa | — | [19-seo.md](19-seo.md) |
+| `src/server/actions/seo.ts` | src/server/actions | server actions do SEO: cadastrar site, auditar agora, mudar intervalo, gerar resumo com IA e excluir (só owner/admin). | completa | — | [19-seo.md](19-seo.md) |
+| `src/server/queries/seo.ts` | src/server/queries | leituras de sites, última auditoria, histórico e exportação CSV. | completa | — | [19-seo.md](19-seo.md) |
+| `src/server/seo/audit.ts` | src/server | motor da auditoria: 26 verificações em 5 categorias e score 0–100 ponderado por severidade. | completa | — | [19-seo.md](19-seo.md) |
+| `src/server/seo/fetch-page.ts` | src/server | download do HTML com guarda de SSRF, redirecionamentos manuais, timeout de 8 s e limite de 2 MB. | completa | — | [19-seo.md](19-seo.md) |
+| `src/server/seo/ai-summary.ts` | src/server | resumo da auditoria em português pela API da OpenAI (`OPENAI_API_KEY`/`OPENAI_MODEL`). | completa | — | [19-seo.md](19-seo.md) |
+| `src/server/seo/scheduled.ts` | src/server | executa até 3 auditorias agendadas vencidas por chamada, com o cliente admin. | completa | — | [19-seo.md](19-seo.md) |
+| `src/server/seo/scheduling.ts` | src/server | calcula `next_audit_at` a partir do intervalo em dias. | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/api/cron/seo/route.ts` | src/app/api | cron diário (09:30) das auditorias agendadas, protegido por `CRON_SECRET`. | completa | — | [19-seo.md](19-seo.md) |
+| `src/components/app/seo-bits.tsx` | src/components/app | selos de score, status da auditoria, resultado e severidade das verificações. | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/app/seo/page.tsx` | src/app/app | lista paginada dos sites monitorados com o último score. | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/app/seo/seo-site-form-dialog.tsx` | src/app/app | diálogo client de novo site (URL, rótulo, cliente, intervalo). | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/app/seo/run-audit-button.tsx` | src/app/app | botão que dispara `runSeoAuditAction` e mostra "Auditando...". | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/app/seo/[id]/page.tsx` | src/app/app | detalhe do site: verificações por categoria, resumo com IA, PDF, intervalo e histórico. | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/app/seo/delete-seo-site-button.tsx` | src/app/app | exclusão do site (soft delete) com confirmação, visível só para owner/admin. | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/app/seo/[id]/relatorio/route.ts` | src/app/app | gera o relatório da última auditoria concluída em PDF (`pdf-lib`). | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/app/seo/[id]/generate-ai-summary-button.tsx` | src/app/app | botão client que chama `generateSeoAiSummaryAction`. | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/portal/(portal)/seo/page.tsx` | src/app/portal | sites de SEO da empresa do cliente via RPC `portal_list_seo_sites`. | completa | — | [19-seo.md](19-seo.md) |
+| `src/app/portal/(portal)/seo/[id]/page.tsx` | src/app/portal | última auditoria concluída de um site via RPC `portal_get_seo_audit`. | completa | — | [19-seo.md](19-seo.md) |
+| `supabase/migrations/0045_seo_audits.sql` | supabase/migrations | Cria `seo_sites` e `seo_audits` com FKs compostas e RLS (DELETE só owner/admin). | tabela | Migração de schema + RLS. | [19-seo.md](19-seo.md) §19 |
+| `supabase/migrations/0046_portal_seo.sql` | supabase/migrations | RPCs `portal_list_seo_sites` e `portal_get_seo_audit` (`security definer`). | tabela | Migração de RPC/portal. | [19-seo.md](19-seo.md) §19 |
+| `supabase/migrations/0047_seo_monitoring.sql` | supabase/migrations | Colunas `check_interval_days`/`next_audit_at` e trigger `set_seo_next_audit`. | tabela | Migração de schema + trigger. | [19-seo.md](19-seo.md) §19 |
+| `supabase/migrations/0048_seo_ai_summary.sql` | supabase/migrations | Coluna `seo_audits.ai_summary` e recriação de `portal_get_seo_audit`. | tabela | Migração de schema + RPC. | [19-seo.md](19-seo.md) §19 |
+| `tests/unit/seo-audit.test.ts` | tests | `buildChecks`, `summarize`, `nextAuditAt` e `isPrivateAddress`. | tabela | Arquivo de teste | [19-seo.md](19-seo.md) §19 |
+| `tests/unit/seo-ai.test.ts` | tests | `generateSeoAiSummary` com `fetch` simulado. | tabela | Arquivo de teste | [19-seo.md](19-seo.md) §19 |
+
+#### Módulo 20 — Social
+
+| Arquivo | Camada | Propósito em 1 linha | Ficha? | Motivo da exceção | Ficha em |
+|---|---|---|---|---|---|
+| `src/lib/validations/social.ts` | src/lib | schemas Zod de conta social, post, agendamento e resposta do portal. | completa | — | [20-social.md](20-social.md) |
+| `src/lib/social-calendar.ts` | src/lib | helpers puros do calendário mensal (intervalo, grade e chave do dia em UTC). | completa | — | [20-social.md](20-social.md) |
+| `src/lib/social-share.ts` | src/lib | links "abrir na rede" (X, Bluesky, WhatsApp e, com URL, Telegram, Facebook, LinkedIn). | completa | — | [20-social.md](20-social.md) |
+| `src/server/actions/social.ts` | src/server/actions | escritas do Social: contas, posts, transições de status, mídia e resposta do portal. | completa | — | [20-social.md](20-social.md) |
+| `src/server/queries/social.ts` | src/server/queries | leituras de contas, posts, calendário, mídia (URLs assinadas), exportação e RPCs do portal. | completa | — | [20-social.md](20-social.md) |
+| `src/server/social/reminders.ts` | src/server | lembrete (notificação + e-mail) de posts agendados nas próximas 24 h, chamado pelo cron das 09:00. | completa | — | [20-social.md](20-social.md) |
+| `src/components/app/social-bits.tsx` | src/components/app | selos de status do post e de rede. | completa | — | [20-social.md](20-social.md) |
+| `src/components/app/social-preview.tsx` | src/components/app | prévia do post por rede com contador de caracteres. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/page.tsx` | src/app/app | lista paginada de posts com filtros por cliente e status. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/social-post-form-dialog.tsx` | src/app/app | compositor de post: cliente, contas, texto, prévia e "requer aprovação". | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/contas/social-account-form-dialog.tsx` | src/app/app | diálogo de cadastro de conta social (sem OAuth). | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/calendario/page.tsx` | src/app/app | calendário mensal dos posts agendados. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/contas/page.tsx` | src/app/app | lista de contas sociais; cadastro e exclusão só para owner/admin. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/contas/delete-social-account-button.tsx` | src/app/app | botão de exclusão (soft delete) de conta social. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/[id]/page.tsx` | src/app/app | detalhe do post: ações, publicação manual, mídia, prévias, destinos e histórico. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/[id]/social-post-actions.tsx` | src/app/app | botões das transições de status (enviar, aprovar, rejeitar, agendar, cancelar, excluir). | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/[id]/manual-publish-panel.tsx` | src/app/app | copiar texto, compartilhar, links das redes e "Marcar como publicado". | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/[id]/social-media-section.tsx` | src/app/app | cartão de mídia do post com uploader e remoção. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/[id]/social-media-uploader.tsx` | src/app/app | envio de imagem (até 10 MB) ao bucket `social_media` e registro via action. | completa | — | [20-social.md](20-social.md) |
+| `src/app/app/social/[id]/delete-social-media-button.tsx` | src/app/app | remoção de imagem do post com confirmação. | completa | — | [20-social.md](20-social.md) |
+| `src/app/portal/(portal)/social/page.tsx` | src/app/portal | posts do cliente no portal (sem rascunhos) via RPC `portal_list_social_posts`. | completa | — | [20-social.md](20-social.md) |
+| `src/app/portal/(portal)/social/[id]/page.tsx` | src/app/portal | detalhe do post no portal e aprovação/rejeição via `portal_respond_social_post`. | completa | — | [20-social.md](20-social.md) |
+| `supabase/migrations/0049_social_foundation.sql` | supabase/migrations | Cria `social_settings`, `social_accounts`, `social_posts`, `social_post_targets`, `social_post_events`, RLS e as 3 RPCs do portal. | tabela | Migração de schema + RLS + RPC. | [20-social.md](20-social.md) §20 |
+| `supabase/migrations/0050_social_manual_publish.sql` | supabase/migrations | `social_posts.manual_reminder_sent_at`, `social_settings.publish_mode` e índice dos agendados. | tabela | Migração de schema. | [20-social.md](20-social.md) §20 |
+| `supabase/migrations/0051_social_media.sql` | supabase/migrations | Cria `social_media` e o bucket privado `social_media` com policies por tenant. | tabela | Migração de schema + Storage. | [20-social.md](20-social.md) §20 |
+| `tests/unit/social.test.ts` | tests | schemas de post e conta, status e limites por rede. | tabela | Arquivo de teste | [20-social.md](20-social.md) §20 |
+| `tests/unit/social-calendar.test.ts` | tests | helpers de `src/lib/social-calendar.ts`. | tabela | Arquivo de teste | [20-social.md](20-social.md) §20 |
+| `tests/unit/social-share.test.ts` | tests | helpers de `src/lib/social-share.ts`. | tabela | Arquivo de teste | [20-social.md](20-social.md) §20 |
