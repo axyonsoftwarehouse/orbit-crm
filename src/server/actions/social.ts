@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { dbError } from "@/lib/db-error"
 import type { Json } from "@/lib/database.types"
 import { isManager } from "@/server/permissions"
+import { checkPlanLimit } from "@/server/plan-limits"
 import {
   socialAccountSchema,
   socialPostResponseSchema,
@@ -44,6 +45,9 @@ export async function createSocialAccountAction(
   if (!isManager(active.role)) {
     return { error: "Apenas owner/admin podem conectar contas." }
   }
+
+  const limit = await checkPlanLimit(active.tenantId, "social_accounts")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const parsed = socialAccountSchema.safeParse({
     provider: formData.get("provider"),
@@ -97,6 +101,9 @@ export async function createSocialPostAction(
 ): Promise<SocialFormState> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const limit = await checkPlanLimit(active.tenantId, "social_posts_month")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const parsed = socialPostSchema.safeParse({
     company_id: formData.get("company_id"),
