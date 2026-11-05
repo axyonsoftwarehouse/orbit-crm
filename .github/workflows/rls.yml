@@ -1,8 +1,8 @@
 name: RLS
 
-# Testes de isolamento entre tenants (tests/rls) contra um projeto Supabase
-# DEDICADO a testes. Configure os secrets TEST_* (ver AGENTS.md > CI/CD).
-# Enquanto os secrets não existirem, o job é apenas ignorado (não bloqueia).
+# Testes de isolamento entre tenants (tests/rls) contra um Supabase LOCAL
+# iniciado no próprio runner (supabase start: migrations + seed). Não usa
+# projeto na nuvem nem secrets, e nunca toca a produção.
 
 on:
   pull_request:
@@ -18,32 +18,39 @@ jobs:
   rls:
     name: Isolamento RLS
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.TEST_SERVICE_ROLE_KEY }}
+    timeout-minutes: 20
     steps:
-      - id: guard
-        name: Verificar credenciais de teste
-        run: |
-          if [ -n "$NEXT_PUBLIC_SUPABASE_URL" ] && [ -n "$NEXT_PUBLIC_SUPABASE_ANON_KEY" ] && [ -n "$SUPABASE_SERVICE_ROLE_KEY" ]; then
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::RLS desabilitado: configure os secrets TEST_SUPABASE_* do projeto de testes."
-          fi
+      - uses: actions/checkout@v4
 
-      - if: steps.guard.outputs.enabled == 'true'
-        uses: actions/checkout@v4
-
-      - if: steps.guard.outputs.enabled == 'true'
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
 
-      - if: steps.guard.outputs.enabled == 'true'
-        run: npm ci
+      - run: npm ci
 
-      - if: steps.guard.outputs.enabled == 'true'
-        run: npm run test:rls
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.117.0
+
+      # Só os serviços que os testes usam (Postgres, Auth, PostgREST, Storage, Kong).
+      - name: Iniciar Supabase local
+        run: supabase start -x realtime,studio,imgproxy,edge-runtime,logflare,vector,supavisor,postgres-meta,mailpit
+
+      - name: Exportar credenciais locais
+        run: |
+          eval "$(supabase status -o env | grep -E '^(API_URL|ANON_KEY|SERVICE_ROLE_KEY)=')"
+          if [ -z "$API_URL" ] || [ -z "$ANON_KEY" ] || [ -z "$SERVICE_ROLE_KEY" ]; then
+            echo "::error::supabase status não retornou API_URL/ANON_KEY/SERVICE_ROLE_KEY"
+            exit 1
+          fi
+          {
+            echo "NEXT_PUBLIC_SUPABASE_URL=$API_URL"
+            echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+          } >> "$GITHUB_ENV"
+
+      - run: npm run test:rls
+
+      - if: always()
+        run: supabase stop --no-backup
