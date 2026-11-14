@@ -1,5 +1,24 @@
 import { z } from "zod"
 
+function emptyToUndefined(value: unknown) {
+  return typeof value === "string" && value.trim() === "" ? undefined : value
+}
+
+const optionalEnv = z.preprocess(emptyToUndefined, z.string().min(1).optional())
+
+const versionEnv = (fallback: string) =>
+  z.preprocess(emptyToUndefined, z.string().min(1).default(fallback))
+
+const booleanEnv = z.preprocess(
+  (value) => (value === "" ? "false" : value),
+  z.enum(["true", "false"]).default("false"),
+)
+
+const batchSizeEnv = z.preprocess(
+  emptyToUndefined,
+  z.coerce.number().int().min(1).max(50).default(5),
+)
+
 const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z
     .string()
@@ -15,6 +34,15 @@ const serverEnvSchema = z.object({
   SUPER_ADMIN_EMAILS: z.string().optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_MODEL: z.string().default("gpt-4o-mini"),
+  SOCIAL_NATIVE_ENABLED: booleanEnv,
+  SOCIAL_PUBLISH_BATCH_SIZE: batchSizeEnv,
+  INSTAGRAM_APP_ID: optionalEnv,
+  INSTAGRAM_APP_SECRET: optionalEnv,
+  INSTAGRAM_API_VERSION: versionEnv("v23.0"),
+  LINKEDIN_CLIENT_ID: optionalEnv,
+  LINKEDIN_CLIENT_SECRET: optionalEnv,
+  LINKEDIN_API_VERSION: versionEnv("202601"),
+  LINKEDIN_ORGANIZATION_URN: optionalEnv,
 })
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>
@@ -34,6 +62,10 @@ export function env(): ServerEnv {
 
   cached = parsed.data
   return cached
+}
+
+export function socialNativeEnabled(): boolean {
+  return env().SOCIAL_NATIVE_ENABLED === "true"
 }
 
 export function superAdminEmails(): string[] {

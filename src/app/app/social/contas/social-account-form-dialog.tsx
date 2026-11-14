@@ -25,8 +25,10 @@ const fieldClass =
 
 export function SocialAccountFormDialog({
   companies,
+  nativeEnabled,
 }: {
   companies: { id: string; name: string }[]
+  nativeEnabled: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [state, formAction, isPending] = useActionState<
@@ -63,11 +65,19 @@ export function SocialAccountFormDialog({
                 required
                 className={fieldClass}
               >
-                {Object.entries(SOCIAL_PROVIDERS).map(([value, config]) => (
-                  <option key={value} value={value}>
-                    {config.label}
-                  </option>
-                ))}
+                {Object.entries(SOCIAL_PROVIDERS)
+                  .filter(
+                    ([value]) =>
+                      !(
+                        nativeEnabled &&
+                        (value === "instagram" || value === "linkedin")
+                      ),
+                  )
+                  .map(([value, config]) => (
+                    <option key={value} value={value}>
+                      {config.label}
+                    </option>
+                  ))}
               </select>
             </div>
             <div className="space-y-2">
@@ -108,8 +118,8 @@ export function SocialAccountFormDialog({
           </div>
 
           <p className="text-muted-foreground text-xs">
-            Cadastro manual para o MVP interno. A conexão OAuth via agregador
-            entra na próxima etapa.
+            Cadastro manual para redes sem integração nativa. Para Instagram e
+            LinkedIn, use os botões “Conectar conta”.
           </p>
 
           <DialogFooter>

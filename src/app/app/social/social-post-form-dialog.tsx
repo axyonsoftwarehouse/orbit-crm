@@ -30,9 +30,11 @@ const fieldClass =
 export function SocialPostFormDialog({
   companies,
   accounts,
+  defaultApproval,
 }: {
   companies: { id: string; name: string }[]
   accounts: SocialAccount[]
+  defaultApproval: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [companyId, setCompanyId] = useState("")
@@ -60,6 +62,9 @@ export function SocialPostFormDialog({
 
   const selectedAccounts = visibleAccounts.filter((account) =>
     selectedIds.includes(account.id),
+  )
+  const hasInstagramTarget = selectedAccounts.some(
+    (account) => account.provider === "instagram",
   )
 
   function toggleAccount(id: string) {
@@ -154,11 +159,18 @@ export function SocialPostFormDialog({
             <Input
               type="checkbox"
               name="requires_approval"
-              defaultChecked
+              defaultChecked={defaultApproval}
               className="size-4"
             />
             Exigir aprovação do cliente antes de publicar
           </label>
+
+          {hasInstagramTarget ? (
+            <p className="text-muted-foreground text-xs">
+              O Instagram exige uma imagem. Anexe a imagem na página do post
+              antes de agendar.
+            </p>
+          ) : null}
 
           {selectedAccounts.length > 0 ? (
             <div className="space-y-2">

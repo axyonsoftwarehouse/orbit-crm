@@ -7,8 +7,12 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { dbError } from "@/lib/db-error"
 import type { Json } from "@/lib/database.types"
+import { socialNativeEnabled } from "@/lib/env"
+import { zonedTimeToUtc } from "@/lib/timezone"
 import { isManager } from "@/server/permissions"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { getSocialSettings } from "@/server/queries/social"
+import { clearSocialTokens } from "@/server/social/tokens"
 import {
   socialAccountSchema,
   socialPostResponseSchema,
@@ -50,6 +54,17 @@ export async function createSocialAccountAction(
   const limit = await checkPlanLimit(active.tenantId, "social_accounts")
   if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
+  const provider = String(formData.get("provider") ?? "")
+  if (
+    socialNativeEnabled() &&
+    (provider === "instagram" || provider === "linkedin")
+  ) {
+    return {
+      error:
+        "Use o botão Conectar conta para Instagram e LinkedIn; o cadastro manual é só para as demais redes.",
+    }
+  }
+
   const parsed = socialAccountSchema.safeParse({
     provider: formData.get("provider"),
     provider_account_id: formData.get("provider_account_id"),
@@ -86,6 +101,22 @@ export async function deleteSocialAccountAction(formData: FormData) {
   if (!id) redirect("/app/social/contas")
 
   const supabase = await createClient()
+  const { data: account } = await supabase
+    .from("social_accounts")
+    .select("id")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (!account) redirect("/app/social/contas")
+
+  try {
+    await clearSocialTokens(id)
+  } catch {
+    void 0
+  }
+
   await supabase
     .from("social_accounts")
     .update({ deleted_at: new Date().toISOString() })
@@ -172,8 +203,12 @@ export async function createSocialPostAction(
   await recordEvent(active.tenantId, post.id, "created", user?.id ?? null)
 
   revalidatePath("/app/social")
-  revalidatePath("/app/social/posts")
-  return { success: "Post criado como rascunho." }
+  revalidatePath(`/app/social/${post.id}`)
+  return {
+    success: parsed.data.requires_approval
+      ? "Post criado como rascunho."
+      : "Post aprovado e pronto para agendar.",
+  }
 }
 
 export async function submitSocialPostAction(formData: FormData) {
@@ -197,11 +232,15 @@ export async function submitSocialPostAction(formData: FormData) {
   }
 
   const user = await getUser()
-  await supabase
+  const { data: updated } = await supabase
     .from("social_posts")
     .update({ status: "pending_approval", rejection_note: null })
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
+    .in("status", ["draft", "rejected"])
+    .select("id")
+
+  if (!updated?.length) redirect(`/app/social/${id}`)
 
   await recordEvent(active.tenantId, id, "submitted", user?.id ?? null)
   revalidatePath("/app/social")
@@ -230,7 +269,7 @@ export async function approveSocialPostAction(formData: FormData) {
     redirect(`/app/social/${id}`)
   }
 
-  await supabase
+  const { data: updated } = await supabase
     .from("social_posts")
     .update({
       status: "approved",
@@ -239,6 +278,10 @@ export async function approveSocialPostAction(formData: FormData) {
     })
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
+    .eq("status", "pending_approval")
+    .select("id")
+
+  if (!updated?.length) redirect(`/app/social/${id}`)
 
   await recordEvent(active.tenantId, id, "approved", user?.id ?? null)
   revalidatePath("/app/social")
@@ -257,7 +300,7 @@ export async function rejectSocialPostAction(formData: FormData) {
 
   const user = await getUser()
   const supabase = await createClient()
-  await supabase
+  const { data: updated } = await supabase
     .from("social_posts")
     .update({
       status: "rejected",
@@ -268,6 +311,9 @@ export async function rejectSocialPostAction(formData: FormData) {
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
     .eq("status", "pending_approval")
+    .select("id")
+
+  if (!updated?.length) redirect(`/app/social/${id}`)
 
   await recordEvent(active.tenantId, id, "rejected", user?.id ?? null, {
     note,
@@ -288,12 +334,46 @@ export async function scheduleSocialPostAction(formData: FormData) {
   })
   if (!id || !parsed.success) redirect(`/app/social/${id}`)
 
-  const scheduledAt = new Date(parsed.data.scheduled_at)
-  if (Number.isNaN(scheduledAt.getTime())) redirect(`/app/social/${id}`)
+  const settings = await getSocialSettings(active.tenantId)
+  const scheduledAt = zonedTimeToUtc(
+    parsed.data.scheduled_at,
+    settings.default_timezone,
+  )
+  if (!scheduledAt) redirect(`/app/social/${id}?error=schedule`)
+
+  const supabase = await createClient()
+
+  if (socialNativeEnabled()) {
+    const { data: targets } = await supabase
+      .from("social_post_targets")
+      .select("account_id")
+      .eq("post_id", id)
+      .eq("tenant_id", active.tenantId)
+    const accountIds = [
+      ...new Set((targets ?? []).map((target) => target.account_id)),
+    ]
+    if (accountIds.length > 0) {
+      const { data: accounts } = await supabase
+        .from("social_accounts")
+        .select("provider")
+        .eq("tenant_id", active.tenantId)
+        .in("id", accountIds)
+      const hasInstagram = (accounts ?? []).some(
+        (account) => account.provider === "instagram",
+      )
+      if (hasInstagram) {
+        const { count } = await supabase
+          .from("social_media")
+          .select("id", { count: "exact", head: true })
+          .eq("post_id", id)
+          .eq("tenant_id", active.tenantId)
+        if (!count) redirect(`/app/social/${id}?error=media`)
+      }
+    }
+  }
 
   const user = await getUser()
-  const supabase = await createClient()
-  await supabase
+  const { data: updated } = await supabase
     .from("social_posts")
     .update({
       status: "scheduled",
@@ -302,6 +382,9 @@ export async function scheduleSocialPostAction(formData: FormData) {
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
     .eq("status", "approved")
+    .select("id")
+
+  if (!updated?.length) redirect(`/app/social/${id}`)
 
   await recordEvent(active.tenantId, id, "scheduled", user?.id ?? null, {
     scheduled_at: scheduledAt.toISOString(),
@@ -314,6 +397,7 @@ export async function scheduleSocialPostAction(formData: FormData) {
 export async function markSocialPostPublishedAction(formData: FormData) {
   const active = await getActiveMembership()
   if (!active) redirect("/app/social")
+  if (!isManager(active.role)) redirect("/app/social")
 
   const id = String(formData.get("id") ?? "")
   if (!id) redirect("/app/social")
@@ -333,7 +417,7 @@ export async function markSocialPostPublishedAction(formData: FormData) {
 
   const user = await getUser()
   const now = new Date().toISOString()
-  await supabase
+  const { data: updated } = await supabase
     .from("social_posts")
     .update({
       status: "published",
@@ -342,6 +426,10 @@ export async function markSocialPostPublishedAction(formData: FormData) {
     })
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
+    .in("status", ["approved", "scheduled"])
+    .select("id")
+
+  if (!updated?.length) redirect(`/app/social/${id}`)
 
   await supabase
     .from("social_post_targets")
@@ -349,14 +437,79 @@ export async function markSocialPostPublishedAction(formData: FormData) {
       status: "published",
       published_at: now,
       error: null,
+      locked_at: null,
+      next_attempt_at: null,
     })
     .eq("post_id", id)
     .eq("tenant_id", active.tenantId)
+    .in("status", ["pending", "failed"])
 
   await recordEvent(active.tenantId, id, "published", user?.id ?? null, {
     mode: "manual",
   })
 
+  revalidatePath("/app/social")
+  revalidatePath(`/app/social/${id}`)
+  redirect(`/app/social/${id}`)
+}
+
+export async function retrySocialPostAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) redirect("/app/social")
+  if (!isManager(active.role)) redirect("/app/social")
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) redirect("/app/social")
+
+  const supabase = await createClient()
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("id, status, scheduled_at")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (
+    !post ||
+    !["failed", "partially_published", "scheduled", "publishing"].includes(
+      post.status,
+    )
+  ) {
+    redirect(`/app/social/${id}`)
+  }
+
+  const now = new Date().toISOString()
+  const { data: targets } = await supabase
+    .from("social_post_targets")
+    .update({
+      status: "pending",
+      attempts: 0,
+      error: null,
+      locked_at: null,
+      next_attempt_at: now,
+    })
+    .eq("post_id", id)
+    .eq("tenant_id", active.tenantId)
+    .in("status", ["failed", "publishing"])
+    .select("id")
+
+  if (!targets?.length) redirect(`/app/social/${id}`)
+
+  await supabase
+    .from("social_posts")
+    .update({
+      status: "scheduled",
+      scheduled_at: post.scheduled_at ?? now,
+      failure_reason: null,
+    })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+
+  const user = await getUser()
+  await recordEvent(active.tenantId, id, "retried", user?.id ?? null, {
+    mode: "native",
+  })
   revalidatePath("/app/social")
   revalidatePath(`/app/social/${id}`)
   redirect(`/app/social/${id}`)
@@ -372,12 +525,15 @@ export async function cancelSocialPostAction(formData: FormData) {
 
   const user = await getUser()
   const supabase = await createClient()
-  await supabase
+  const { data: updated } = await supabase
     .from("social_posts")
     .update({ status: "cancelled", scheduled_at: null })
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
     .in("status", ["draft", "pending_approval", "approved", "scheduled"])
+    .select("id")
+
+  if (!updated?.length) redirect(`/app/social/${id}`)
 
   await recordEvent(active.tenantId, id, "cancelled", user?.id ?? null)
   revalidatePath("/app/social")

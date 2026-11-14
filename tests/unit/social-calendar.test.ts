@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest"
 import {
   addMonths,
   buildCalendarDays,
+  dateKeyInTimeZone,
   monthKey,
   monthRange,
+  monthRangeInTimeZone,
   parseMonth,
 } from "@/lib/social-calendar"
 
@@ -29,6 +31,21 @@ describe("social calendar", () => {
       start: "2026-02-01T00:00:00.000Z",
       end: "2026-03-01T00:00:00.000Z",
     })
+  })
+
+  it("calcula o intervalo do mês no fuso do tenant", () => {
+    expect(
+      monthRangeInTimeZone({ year: 2026, month: 11 }, "America/Sao_Paulo"),
+    ).toEqual({
+      start: "2026-11-01T03:00:00.000Z",
+      end: "2026-12-01T03:00:00.000Z",
+    })
+  })
+
+  it("agrupa o post pelo dia no fuso do tenant", () => {
+    expect(
+      dateKeyInTimeZone("2026-11-14T01:00:00.000Z", "America/Sao_Paulo"),
+    ).toBe("2026-11-13")
   })
 
   it("monta a grade com dias do mês anterior e seguinte", () => {

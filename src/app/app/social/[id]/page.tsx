@@ -8,37 +8,67 @@ import {
 } from "@/components/app/social-bits"
 import { formatDate } from "@/lib/format"
 import { SOCIAL_EVENT_LABELS } from "@/lib/constants"
+import { socialNativeEnabled } from "@/lib/env"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
-import { getSocialPost, listSocialMedia } from "@/server/queries/social"
+import {
+  getSocialPost,
+  getSocialSettings,
+  listSocialMedia,
+} from "@/server/queries/social"
 import { SocialPostActions } from "./social-post-actions"
 import { ManualPublishPanel } from "./manual-publish-panel"
 import { SocialMediaSection } from "./social-media-section"
 import { SocialPreview } from "@/components/app/social-preview"
 
-function formatDateTime(value: string | null) {
+const TARGET_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendente",
+  publishing: "Publicando",
+  published: "Publicado",
+  failed: "Falhou",
+}
+
+function formatDateTime(value: string | null, timeZone: string) {
   if (!value) return "—"
   return new Date(value).toLocaleString("pt-BR", {
     dateStyle: "short",
     timeStyle: "short",
+    timeZone,
   })
 }
 
 export default async function SocialPostDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ error?: string }>
 }) {
   const { id } = await params
+  const { error } = await searchParams
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const post = await getSocialPost(active.tenantId, id)
+  const [post, settings] = await Promise.all([
+    getSocialPost(active.tenantId, id),
+    getSocialSettings(active.tenantId),
+  ])
   if (!post) notFound()
 
   const media = await listSocialMedia(active.tenantId, post.id)
+  const nativeEnabled = socialNativeEnabled()
+  const hasNativeTarget = post.targets.some(
+    (target) =>
+      target.provider === "instagram" || target.provider === "linkedin",
+  )
+  const hasInstagramTarget = post.targets.some(
+    (target) => target.provider === "instagram",
+  )
+  const showManualPublish =
+    ["approved", "scheduled"].includes(post.status) &&
+    !(nativeEnabled && hasNativeTarget)
 
   return (
     <div className="space-y-6">
@@ -59,10 +89,28 @@ export default async function SocialPostDetailPage({
           </div>
           <p className="text-muted-foreground text-sm">
             {post.company?.name ?? "Sem cliente"} · criado em{" "}
-            {formatDateTime(post.created_at)}
+            {formatDateTime(post.created_at, settings.default_timezone)}
           </p>
         </div>
       </div>
+
+      {error === "media" ? (
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border px-4 py-3 text-sm">
+          O Instagram exige pelo menos uma imagem. Anexe a imagem antes de
+          agendar.
+        </div>
+      ) : null}
+      {error === "schedule" ? (
+        <div className="border-destructive/30 bg-destructive/10 text-destructive rounded-xl border px-4 py-3 text-sm">
+          Data e hora inválidas. Confira o horário e tente novamente.
+        </div>
+      ) : null}
+      {nativeEnabled && hasInstagramTarget && media.length === 0 ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          Este post tem destino no Instagram e ainda não possui imagem. O
+          agendamento será bloqueado até você anexar uma imagem.
+        </div>
+      ) : null}
 
       <SocialPostActions
         id={post.id}
@@ -79,7 +127,7 @@ export default async function SocialPostDetailPage({
         </CardContent>
       </Card>
 
-      {["approved", "scheduled"].includes(post.status) ? (
+      {showManualPublish ? (
         <ManualPublishPanel postId={post.id} content={post.content} />
       ) : null}
 
@@ -124,9 +172,16 @@ export default async function SocialPostDetailPage({
                     <SocialProviderBadge provider={target.provider} />
                     <span className="text-sm">{target.display_name}</span>
                   </div>
-                  <span className="text-muted-foreground text-xs">
-                    {target.status}
-                  </span>
+                  <div className="text-right">
+                    <div className="text-muted-foreground text-xs">
+                      {TARGET_STATUS_LABELS[target.status] ?? target.status}
+                    </div>
+                    {target.error ? (
+                      <div className="text-destructive max-w-56 text-xs">
+                        {target.error}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
               ))
             )}
@@ -140,14 +195,23 @@ export default async function SocialPostDetailPage({
           <CardContent className="space-y-2 text-sm">
             <div className="flex items-center gap-2">
               <CalendarClock className="text-muted-foreground size-4" />
-              <span>Agendado: {formatDateTime(post.scheduled_at)}</span>
+              <span>
+                Agendado:{" "}
+                {formatDateTime(post.scheduled_at, settings.default_timezone)}
+              </span>
             </div>
             <p className="text-muted-foreground">
-              Publicado: {formatDateTime(post.published_at)}
+              Publicado:{" "}
+              {formatDateTime(post.published_at, settings.default_timezone)}
             </p>
             {post.rejection_note ? (
               <p className="text-destructive">
                 Motivo da rejeição: {post.rejection_note}
+              </p>
+            ) : null}
+            {post.failure_reason ? (
+              <p className="text-destructive">
+                Falha na publicação: {post.failure_reason}
               </p>
             ) : null}
           </CardContent>
@@ -171,7 +235,7 @@ export default async function SocialPostDetailPage({
               >
                 <span>{SOCIAL_EVENT_LABELS[event.event] ?? event.event}</span>
                 <span className="text-muted-foreground text-xs">
-                  {formatDateTime(event.created_at)}
+                  {formatDateTime(event.created_at, settings.default_timezone)}
                 </span>
               </div>
             ))
@@ -180,8 +244,8 @@ export default async function SocialPostDetailPage({
       </Card>
 
       <p className="text-muted-foreground text-xs">
-        Criado em {formatDate(post.created_at)}. A publicação automática via
-        agregador entra na próxima etapa.
+        Criado em {formatDate(post.created_at, settings.default_timezone)}.
+        Contas conectadas publicam automaticamente no horário agendado.
       </p>
     </div>
   )

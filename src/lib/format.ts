@@ -13,6 +13,13 @@ export function formatMoney(
   }
 }
 
-export function formatDate(value: string | null | undefined) {
-  return value ? new Date(value).toLocaleDateString("pt-BR") : "—"
+export function formatDate(
+  value: string | null | undefined,
+  timeZone?: string,
+) {
+  if (!value) return "—"
+  return new Date(value).toLocaleDateString(
+    "pt-BR",
+    timeZone ? { timeZone } : undefined,
+  )
 }
