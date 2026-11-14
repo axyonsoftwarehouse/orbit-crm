@@ -2229,6 +2229,8 @@ export type Database = {
       }
       social_accounts: {
         Row: {
+          access_token_id: string | null
+          account_type: string
           avatar_url: string | null
           company_id: string | null
           connected_by: string | null
@@ -2236,14 +2238,20 @@ export type Database = {
           deleted_at: string | null
           display_name: string
           id: string
+          last_synced_at: string | null
           metadata: Json
           provider: string
           provider_account_id: string
+          refresh_token_id: string | null
+          scopes: string[]
           status: number
           tenant_id: string
+          token_expires_at: string | null
           updated_at: string
         }
         Insert: {
+          access_token_id?: string | null
+          account_type?: string
           avatar_url?: string | null
           company_id?: string | null
           connected_by?: string | null
@@ -2251,14 +2259,20 @@ export type Database = {
           deleted_at?: string | null
           display_name: string
           id?: string
+          last_synced_at?: string | null
           metadata?: Json
           provider: string
           provider_account_id: string
+          refresh_token_id?: string | null
+          scopes?: string[]
           status?: number
           tenant_id: string
+          token_expires_at?: string | null
           updated_at?: string
         }
         Update: {
+          access_token_id?: string | null
+          account_type?: string
           avatar_url?: string | null
           company_id?: string | null
           connected_by?: string | null
@@ -2266,11 +2280,15 @@ export type Database = {
           deleted_at?: string | null
           display_name?: string
           id?: string
+          last_synced_at?: string | null
           metadata?: Json
           provider?: string
           provider_account_id?: string
+          refresh_token_id?: string | null
+          scopes?: string[]
           status?: number
           tenant_id?: string
+          token_expires_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -2352,6 +2370,9 @@ export type Database = {
           error: string | null
           external_post_id: string | null
           id: string
+          locked_at: string | null
+          metadata: Json
+          next_attempt_at: string | null
           post_id: string
           published_at: string | null
           status: string
@@ -2365,6 +2386,9 @@ export type Database = {
           error?: string | null
           external_post_id?: string | null
           id?: string
+          locked_at?: string | null
+          metadata?: Json
+          next_attempt_at?: string | null
           post_id: string
           published_at?: string | null
           status?: string
@@ -2378,6 +2402,9 @@ export type Database = {
           error?: string | null
           external_post_id?: string | null
           id?: string
+          locked_at?: string | null
+          metadata?: Json
+          next_attempt_at?: string | null
           post_id?: string
           published_at?: string | null
           status?: string
@@ -3084,8 +3111,46 @@ export type Database = {
       }
       client_can_view_project: { Args: { p_project: string }; Returns: boolean }
       client_can_view_ticket: { Args: { p_ticket: string }; Returns: boolean }
+      claim_social_publish_targets: {
+        Args: { p_limit?: number }
+        Returns: {
+          account_id: string
+          post_id: string
+          target_id: string
+          tenant_id: string
+        }[]
+      }
       client_respond_estimate: {
         Args: { p_accept: boolean; p_estimate: string }
+        Returns: undefined
+      }
+      configure_social_publish_cron: {
+        Args: { p_cron_secret: string; p_site_url: string }
+        Returns: undefined
+      }
+      reset_stale_social_targets: {
+        Args: { p_minutes?: number }
+        Returns: number
+      }
+      social_clear_tokens: {
+        Args: { p_account: string }
+        Returns: undefined
+      }
+      social_get_tokens: {
+        Args: { p_account: string }
+        Returns: {
+          access_token: string | null
+          expires_at: string | null
+          refresh_token: string | null
+        }[]
+      }
+      social_store_tokens: {
+        Args: {
+          p_access_token: string
+          p_account: string
+          p_expires_at: string | null
+          p_refresh_token: string | null
+        }
         Returns: undefined
       }
       entity_belongs_to_tenant: {

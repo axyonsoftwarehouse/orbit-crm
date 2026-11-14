@@ -7,6 +7,7 @@ import {
   cancelSocialPostAction,
   deleteSocialPostAction,
   rejectSocialPostAction,
+  retrySocialPostAction,
   scheduleSocialPostAction,
   submitSocialPostAction,
 } from "@/server/actions/social"
@@ -64,6 +65,15 @@ export function SocialPostActions({
             </div>
             <Button type="submit" size="sm">
               Agendar
+            </Button>
+          </form>
+        ) : null}
+
+        {["failed", "partially_published"].includes(status) && canManage ? (
+          <form action={retrySocialPostAction}>
+            <input type="hidden" name="id" value={id} />
+            <Button type="submit" size="sm" variant="outline">
+              Tentar novamente
             </Button>
           </form>
         ) : null}

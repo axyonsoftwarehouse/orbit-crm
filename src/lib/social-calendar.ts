@@ -1,3 +1,5 @@
+import { zonedTimeToUtc } from "@/lib/timezone"
+
 export type CalendarMonth = {
   year: number
   month: number
@@ -62,6 +64,17 @@ export function monthRange({ year, month }: CalendarMonth): {
   return { start: start.toISOString(), end: end.toISOString() }
 }
 
+export function monthRangeInTimeZone(
+  month: CalendarMonth,
+  timeZone: string,
+): { start: string; end: string } {
+  const next = addMonths(month, 1)
+  const start = zonedTimeToUtc(`${monthKey(month)}-01T00:00`, timeZone)
+  const end = zonedTimeToUtc(`${monthKey(next)}-01T00:00`, timeZone)
+  if (!start || !end) return monthRange(month)
+  return { start: start.toISOString(), end: end.toISOString() }
+}
+
 export function monthLabel({ year, month }: CalendarMonth): string {
   return `${MONTH_NAMES[month - 1]} de ${year}`
 }
@@ -97,4 +110,20 @@ export function buildCalendarDays({
 
 export function dateKey(value: string): string {
   return new Date(value).toISOString().slice(0, 10)
+}
+
+export function dateKeyInTimeZone(value: string, timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(new Date(value))
+    const read = (type: string) =>
+      parts.find((part) => part.type === type)?.value ?? ""
+    return `${read("year")}-${read("month")}-${read("day")}`
+  } catch {
+    return dateKey(value)
+  }
 }

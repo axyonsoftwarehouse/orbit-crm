@@ -8,7 +8,16 @@ export type SocialAccount = {
   provider_account_id: string
   display_name: string
   avatar_url: string | null
+  account_type: string
+  token_expires_at: string | null
   status: number
+}
+
+export type SocialSettings = {
+  approval_required: boolean
+  default_timezone: string
+  max_retries: number
+  publish_mode: string
 }
 
 export type SocialPostRow = {
@@ -21,6 +30,7 @@ export type SocialPostRow = {
   requires_approval: boolean
   created_at: string
   rejection_note: string | null
+  failure_reason: string | null
 }
 
 export type SocialPostTarget = {
@@ -51,7 +61,7 @@ export type SocialPostDetail = SocialPostListRow & {
 }
 
 const POST_COLUMNS =
-  "id, company_id, content, status, scheduled_at, published_at, requires_approval, created_at, rejection_note"
+  "id, company_id, content, status, scheduled_at, published_at, requires_approval, created_at, rejection_note, failure_reason"
 
 export async function listSocialAccounts(
   tenantId: string,
@@ -61,7 +71,7 @@ export async function listSocialAccounts(
   let query = supabase
     .from("social_accounts")
     .select(
-      "id, tenant_id, company_id, provider, provider_account_id, display_name, avatar_url, status",
+      "id, tenant_id, company_id, provider, provider_account_id, display_name, avatar_url, account_type, token_expires_at, status",
     )
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
@@ -71,6 +81,26 @@ export async function listSocialAccounts(
 
   const { data } = await query
   return (data ?? []) as SocialAccount[]
+}
+
+export async function getSocialSettings(
+  tenantId: string,
+): Promise<SocialSettings> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("social_settings")
+    .select("approval_required, default_timezone, max_retries, publish_mode")
+    .eq("tenant_id", tenantId)
+    .maybeSingle()
+
+  return (
+    data ?? {
+      approval_required: true,
+      default_timezone: "America/Sao_Paulo",
+      max_retries: 3,
+      publish_mode: "manual",
+    }
+  )
 }
 
 export async function listSocialPostsPage(

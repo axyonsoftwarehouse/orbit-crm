@@ -2,10 +2,10 @@ import Link from "next/link"
 import {
   addMonths,
   buildCalendarDays,
-  dateKey,
+  dateKeyInTimeZone,
   monthKey,
   monthLabel,
-  monthRange,
+  monthRangeInTimeZone,
   parseMonth,
   WEEKDAY_NAMES,
 } from "@/lib/social-calendar"
@@ -14,17 +14,19 @@ import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { listCompanies } from "@/server/queries/companies"
 import {
+  getSocialSettings,
   listSocialAccounts,
   listSocialCalendar,
   type SocialPostListRow,
 } from "@/server/queries/social"
 import { SocialPostFormDialog } from "../social-post-form-dialog"
 
-function time(value: string | null) {
+function time(value: string | null, timeZone: string) {
   if (!value) return ""
   return new Date(value).toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
+    timeZone,
   })
 }
 
@@ -35,11 +37,12 @@ export default async function SocialCalendarPage({
 }) {
   const { month: monthParam } = await searchParams
   const current = parseMonth(monthParam)
-  const range = monthRange(current)
   const memberships = await getMemberships()
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
+  const settings = await getSocialSettings(active.tenantId)
+  const range = monthRangeInTimeZone(current, settings.default_timezone)
   const [posts, companies, accounts] = await Promise.all([
     listSocialCalendar(active.tenantId, range.start, range.end),
     listCompanies(active.tenantId),
@@ -49,7 +52,7 @@ export default async function SocialCalendarPage({
   const byDay = new Map<string, SocialPostListRow[]>()
   for (const post of posts) {
     if (!post.scheduled_at) continue
-    const key = dateKey(post.scheduled_at)
+    const key = dateKeyInTimeZone(post.scheduled_at, settings.default_timezone)
     const list = byDay.get(key) ?? []
     list.push(post)
     byDay.set(key, list)
@@ -81,6 +84,7 @@ export default async function SocialCalendarPage({
               name: company.name,
             }))}
             accounts={accounts}
+            defaultApproval={settings.approval_required}
           />
         </div>
       </div>
@@ -151,7 +155,8 @@ export default async function SocialCalendarPage({
                             style={{ backgroundColor: config.color }}
                           />
                           <span className="truncate text-[11px] font-medium">
-                            {time(post.scheduled_at)} · {post.content}
+                            {time(post.scheduled_at, settings.default_timezone)}{" "}
+                            · {post.content}
                           </span>
                         </div>
                         <div className="text-muted-foreground mt-0.5 truncate text-[10px]">

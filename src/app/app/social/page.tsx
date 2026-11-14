@@ -22,6 +22,7 @@ import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import { SOCIAL_POST_STATUSES } from "@/lib/constants"
 import { listCompanies } from "@/server/queries/companies"
 import {
+  getSocialSettings,
   listSocialAccounts,
   listSocialPostsPage,
 } from "@/server/queries/social"
@@ -41,16 +42,18 @@ export default async function SocialPage({
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [companies, accounts, { rows: posts, total }] = await Promise.all([
-    listCompanies(active.tenantId),
-    listSocialAccounts(active.tenantId),
-    listSocialPostsPage(active.tenantId, {
-      page,
-      pageSize: PAGE_SIZE,
-      status,
-      companyId: company,
-    }),
-  ])
+  const [companies, accounts, settings, { rows: posts, total }] =
+    await Promise.all([
+      listCompanies(active.tenantId),
+      listSocialAccounts(active.tenantId),
+      getSocialSettings(active.tenantId),
+      listSocialPostsPage(active.tenantId, {
+        page,
+        pageSize: PAGE_SIZE,
+        status,
+        companyId: company,
+      }),
+    ])
 
   const companyOptions = companies.map((item) => ({
     id: item.id,
@@ -87,6 +90,7 @@ export default async function SocialPage({
           <SocialPostFormDialog
             companies={companyOptions}
             accounts={accounts}
+            defaultApproval={settings.approval_required}
           />
         </div>
       </div>
@@ -183,7 +187,7 @@ export default async function SocialPage({
                     <SocialStatusBadge status={post.status} />
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {formatDate(post.scheduled_at)}
+                    {formatDate(post.scheduled_at, settings.default_timezone)}
                   </TableCell>
                   <TableCell>
                     <Button
