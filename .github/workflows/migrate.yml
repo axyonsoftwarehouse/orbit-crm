@@ -41,7 +41,9 @@ jobs:
       - if: steps.guard.outputs.enabled == 'true'
         uses: supabase/setup-cli@v1
         with:
-          version: latest
+          # Versão fixa (a mesma do rls.yml). Com `latest`, a v3 do CLI mudou o
+          # alvo padrão do `db push` para o banco local e o job falhou.
+          version: 2.117.0
 
       - if: steps.guard.outputs.enabled == 'true'
         name: Linkar projeto
@@ -49,4 +51,4 @@ jobs:
 
       - if: steps.guard.outputs.enabled == 'true'
         name: Aplicar migrations
-        run: supabase db push --yes
+        run: supabase db push --linked --yes
