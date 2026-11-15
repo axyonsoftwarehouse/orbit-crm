@@ -5,7 +5,10 @@ import { logger } from "@/lib/logger"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { Json } from "@/lib/database.types"
 import { getSocialProvider } from "@/server/social"
-import { socialPublishNextAttemptAt } from "@/server/social/backoff"
+import {
+  socialPublishIsFinalFailure,
+  socialPublishNextAttemptAt,
+} from "@/server/social/backoff"
 import {
   SocialProviderError,
   type SocialAccountType,
@@ -15,8 +18,6 @@ import { getValidTokens } from "@/server/social/tokens"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
-
-const MAX_RETRIES = 4
 
 function safeEqual(a: string, b: string) {
   const bufferA = Buffer.from(a)
@@ -332,9 +333,7 @@ async function processTarget(input: {
     const message = errorText(error)
     const nextAttempts = attempts + 1
     const status = error instanceof SocialProviderError ? error.status : null
-    const nonRetryable =
-      status !== null && status >= 400 && status < 500 && status !== 429
-    const final = nonRetryable || nextAttempts >= MAX_RETRIES
+    const final = socialPublishIsFinalFailure(status, nextAttempts)
 
     await admin
       .from("social_post_targets")
