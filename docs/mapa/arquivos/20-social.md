@@ -2,10 +2,12 @@
 
 > 28 arquivos de código · 22 fichas completas · 6 em tabela de exceção (3 migrations e 3 testes).
 > Retrato de `main@413c601` (04/11/2026). Entrou depois de `29aac19`. Evidência no formato `arquivo:linha`. Spec do produto: [`docs/specs/social-media.md`](../../specs/social-media.md).
+>
+> **Desatualizado em relação a `main@5086092` (15/11/2026):** os PRs #23 (limites de plano), #25 (destino do post restrito ao cliente, `0053`) e #26 (publicação nativa, `0054`) mudaram o módulo depois deste retrato. **Contagens e números de linha abaixo são os de `413c601`**; para o estado atual, ver [06 Problemas e dívidas](../06-problemas-e-dividas.md) #22–#32. O fluxo **nativo** (OAuth, Vault, worker e retries) tem ficha própria no módulo [21 Publicação nativa](21-publicacao-nativa.md); o guia operacional está em [`docs/social-native-setup.md`](../../social-native-setup.md).
 
-O módulo Social organiza o **planejamento de posts de redes sociais dos clientes**: a equipe cadastra as **contas sociais** de cada cliente (`social_accounts`), escreve o **post** (`social_posts`) escolhendo as contas de destino (`social_post_targets`), anexa **imagens** (`social_media`, bucket privado `social_media`) e leva o post por um **fluxo de aprovação** interno ou pelo **portal do cliente**. Depois de aprovado, o post é **agendado** e aparece no **calendário mensal**. A publicação é **manual** nesta fase: o cron diário cria lembretes para posts agendados nas próximas 24 h, e alguém da equipe copia o texto, abre a rede (links de compartilhamento) e marca o post como publicado. Toda mudança de estado grava um evento em `social_post_events`, que aparece como histórico do post.
+O módulo Social organiza o **planejamento de posts de redes sociais dos clientes**: a equipe cadastra as **contas sociais** de cada cliente (`social_accounts`), escreve o **post** (`social_posts`) escolhendo as contas de destino (`social_post_targets`), anexa **imagens** (`social_media`, bucket privado `social_media`) e leva o post por um **fluxo de aprovação** interno ou pelo **portal do cliente**. Depois de aprovado, o post é **agendado** e aparece no **calendário mensal** (no fuso de `social_settings.default_timezone`). Nesta fase, Instagram e LinkedIn podem ser **publicados nativamente** (OAuth + worker `pg_cron`, quando `publish_mode='provider'`); as demais redes seguem **manuais**: o cron diário cria lembretes para posts agendados nas próximas 24 h, e alguém da equipe copia o texto, abre a rede (links de compartilhamento) e marca o post como publicado. Toda mudança de estado grava um evento em `social_post_events`, que aparece como histórico do post.
 
-Não há integração com as APIs das redes: `provider_account_id` é digitado à mão, as colunas `external_post_id`/`attempts`/`failure_reason` e os status `publishing`, `partially_published` e `failed` existem no banco, mas nenhum código os grava. A tabela `social_settings` (aprovação obrigatória, fuso, IA, `publish_mode`) também não é lida nem gravada por nenhum código. Ver [06](../06-problemas-e-dividas.md) #23 e #26–#29. O limite de plano de contas e posts (#22) está **resolvido no PR #23 (aguardando merge)**.
+A integração nativa com as APIs das redes entrou no PR #26 (`0053`/`0054`, OAuth, tokens no Supabase Vault e worker `/api/social/publish`) e está fichada no módulo [21](21-publicacao-nativa.md); `social_settings` é lida por `getSocialSettings`. O limite de plano de contas e posts (#22) está **resolvido** desde o PR #23, e o destino do post restrito ao cliente (#28) desde o #25.
 
 ## Ciclo de vida do post (como o código implementa)
 
@@ -16,7 +18,7 @@ Não há integração com as APIs das redes: `provider_account_id` é digitado �
 | `pending_approval` | `approved` ou `rejected` | owner/admin | `approveSocialPostAction` (`:194`, `:208`), `rejectSocialPostAction` (`:231`, `:249`) |
 | `pending_approval` | `approved` ou `rejected` | contato do cliente (portal) | RPC `portal_respond_social_post` (`0049_social_foundation.sql:303`, `:327`) |
 | `approved` | `scheduled` | owner/admin | `scheduleSocialPostAction` (`:262`, `:283`) |
-| `approved`, `scheduled` | `published` | **qualquer membro** | `markSocialPostPublishedAction` (`:293`, `:309`) |
+| `approved`, `scheduled` | `published` | owner/admin (era "qualquer membro" em `413c601`; o PR #26 passou a exigir `isManager`) | `markSocialPostPublishedAction` (`src/server/actions/social.ts:397`, guarda em `:400`) |
 | `draft`, `pending_approval`, `approved`, `scheduled` | `cancelled` | owner/admin | `cancelSocialPostAction` (`:347`, `:359`) |
 | qualquer | soft delete (`deleted_at`) | owner/admin | `deleteSocialPostAction` (`:370`) |
 
@@ -136,7 +138,7 @@ flowchart LR
 - `submitSocialPostAction` (`:158`), `approveSocialPostAction` (`:191`), `rejectSocialPostAction` (`:228`), `scheduleSocialPostAction` (`:259`), `markSocialPostPublishedAction` (`:293`), `cancelSocialPostAction` (`:344`), `deleteSocialPostAction` (`:367`): as transições da tabela acima; cada uma grava o evento correspondente e redireciona para o post. Publicar atualiza também todos os destinos para `published` (`:325`–`:333`) e grava o evento com `mode: "manual"`.
 - `registerSocialMediaAction` (`:386`): exige que o caminho comece com `<tenantId>/` (`:395`) e que o post seja do tenant; insere em `social_media`. `deleteSocialMediaAction` (`:427`): owner/admin ou o autor da mídia (`:445`); remove o objeto do Storage e a linha.
 - `respondPortalSocialPostAction` (`:457`): resolve o contato do portal, valida e chama a RPC `portal_respond_social_post` (`:469`).
-**Estado:** `implementado`, com divergências: nesta `main` não chama `checkPlanLimit` (#22, **resolvido no PR #23, aguardando merge**: `social_accounts` em `createSocialAccountAction` e `social_posts_month` em `createSocialPostAction`); eventos gravados mesmo quando a atualização condicional não muda nada (#26); `scheduled_at` interpretado no fuso do servidor (#27); não confere se as contas são do mesmo cliente do post (#28); publicar não exige papel gerencial (#29). Números em [06](../06-problemas-e-dividas.md).
+**Estado:** `implementado`. Na `main` atual (15/11): `checkPlanLimit` é checado (`social_accounts` em `createSocialAccountAction`, `social_posts_month` em `createSocialPostAction`; #22 resolvido); o evento só é gravado se o `update` mudou alguma linha (#26 resolvido); `scheduled_at` usa `social_settings.default_timezone` (#27 resolvido); as contas de destino são validadas por cliente na action e no banco (`0053`; #28 resolvido); publicar exige papel gerencial. Seguem abertas as notificações de enviar/aprovar e a obrigatoriedade de aprovação (#29). Números em [06](../06-problemas-e-dividas.md).
 **Testes:** sem teste das actions (ver [06](../06-problemas-e-dividas.md) #4).
 **Depende de:** `src/lib/supabase/server.ts`, `src/lib/auth.ts`, `src/lib/tenant.ts`, `src/lib/db-error.ts`, `src/server/permissions.ts` (`isManager`), §20.1, `src/server/queries/portal.ts` (`getPortalContact`). Tabelas `social_accounts`, `social_posts`, `social_post_targets`, `social_post_events`, `social_media`; bucket `social_media`.
 **Usado por:** §20.10, §20.14, §20.15, §20.16, §20.17, §20.19, §20.20, §20.22.
@@ -162,7 +164,7 @@ flowchart LR
 
 **Propósito:** lembrete diário de posts agendados para publicar manualmente.
 **Processo:** `runSocialPublishReminders` (`:21`) usa o cliente admin e busca até 50 posts `scheduled`, sem `deleted_at`, ainda sem `manual_reminder_sent_at` e com `scheduled_at` até daqui a 24 h (`:24`–`:34`). Destinatário: o autor do post ou, sem autor, os owner/admin ativos do tenant (`:41`–`:51`). Para cada um cria a notificação `social_publish_due` com link `/app/social/<id>` (`:59`) e, se o perfil tem e-mail e `notify_email`, envia o template `social_publish_due` (`:76`). Por fim marca `manual_reminder_sent_at` (`:90`–`:94`). Em erro, registra no log e devolve zeros.
-**Estado:** `implementado`. Posts com data já vencida também entram (o filtro é só `<= agora + 24 h`).
+**Estado:** `implementado`. Posts com data já vencida também entram (o filtro é só `<= agora + 24 h`). **Atualização de 15/11/2026:** o lembrete deixou de disparar para posts 100% nativos — consulta `social_settings.publish_mode`, os destinos e o status da conta, e só notifica quando há destino manual (`needsManualPublishReminder`, `tests/unit/social-reminders.test.ts`); ver [21](21-publicacao-nativa.md) e [06](../06-problemas-e-dividas.md) #32. Os números de linha desta ficha são os de `413c601`.
 **Testes:** sem teste.
 **Depende de:** `src/lib/supabase/admin.ts`, `src/lib/logger.ts`, `src/server/notifications.ts` (`createNotification`), `src/server/email.ts` (`sendTenantEmail`); template em `src/lib/email-templates.ts:28`. Env: `NEXT_PUBLIC_SITE_URL`.
 **Usado por:** `src/app/api/cron/reminders/route.ts:30`–`:33`, que roda os lembretes gerais e os do Social em paralelo (cron das 09:00).
@@ -366,7 +368,7 @@ flowchart LR
 
 > A migration `0052_soft_delete_managers_only.sql` não é do Social: ela restringe a exclusão de clientes, projetos e tarefas a owner/admin (ver [06](../06-problemas-e-dividas.md) #3) e está listada no módulo 01 do [inventário](00-inventario.md).
 >
-> Não há teste de RLS para nenhuma tabela `social_*` nem para as RPCs do portal ([06](../06-problemas-e-dividas.md) #23).
+> O PR #25 acrescentou testes de RLS para a restrição de **mesmo cliente** nos destinos (`tests/rls/isolation.test.ts:2121`, migration `0053`), mas ainda não há teste de isolamento entre tenants para as tabelas `social_*` nem para as RPCs do portal ([06](../06-problemas-e-dividas.md) #23).
 
 ## Fichas do módulo
 

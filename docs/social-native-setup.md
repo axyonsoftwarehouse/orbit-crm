@@ -4,6 +4,9 @@ Este guia cobre a ativação do modo nativo do módulo Social do Orbit CRM. Ele
 publica direto no Instagram (conta Professional, via Instagram Login) e no
 LinkedIn (perfil pessoal e Página da empresa), sem agregador.
 
+O mapa do código (OAuth, Vault, providers, worker e retries) está em
+[`docs/mapa/arquivos/21-publicacao-nativa.md`](mapa/arquivos/21-publicacao-nativa.md).
+
 ## 1. Visão geral
 
 Fluxo:
@@ -194,5 +197,5 @@ where tenant_id = 'SEU_TENANT_ID';
 - Instagram Standalone não exige Página do Facebook; o LinkedIn exige uma
   Página vinculada ao app na criação.
 - App Review da Meta é necessário para publicar em contas de terceiros.
-- Ainda não há testes de RLS específicos para as tabelas `social_*`.
+- Testes de RLS cobrem só a restrição de mesmo cliente nos destinos (`tests/rls/isolation.test.ts`); ainda faltam isolamento entre tenants para as tabelas `social_*` e as RPCs do portal.
 - O worker processa no máximo `SOCIAL_PUBLISH_BATCH_SIZE` destinos por minuto.

@@ -1,8 +1,8 @@
 ﻿# 2. Processos ponta a ponta
 
-> O "como funciona" do Orbit CRM: do gatilho do usuário até o banco e a resposta. Estado: `main@29aac19`; 2.14 e 2.15 em `main@413c601`.
+> O "como funciona" do Orbit CRM: do gatilho do usuário até o banco e a resposta. Estado: `main@29aac19`; 2.14–2.16 em `main@413c601` e `main@5086092`.
 
-São **16 processos** descritos aqui (2.14 e 2.15, de Social e SEO, acrescentados em 04/11/2026). Cada um lista os passos com o arquivo real, o que o banco vê, o que o usuário vê, o `sequenceDiagram` e onde mexer se mudar. No fim, a [tabela de resumo](#216-resumo). As fichas dos arquivos citados estão em [00-inventario](arquivos/00-inventario.md).
+São **16 processos** descritos aqui (2.14–2.16, de Social, publicação nativa e SEO, acrescentados em 04/11 e 15/11/2026). Cada um lista os passos com o arquivo real, o que o banco vê, o que o usuário vê, o `sequenceDiagram` e onde mexer se mudar. No fim, a [tabela de resumo](#217-resumo). As fichas dos arquivos citados estão em [00-inventario](arquivos/00-inventario.md).
 
 ---
 
@@ -389,7 +389,7 @@ sequenceDiagram
 2. Planos são gerenciados por `createPlanAction`/`updatePlanAction`/`deletePlanAction` (tabela `plans`, com `limits` por recurso); `setTenantPlanAction` associa o plano (`tenants.plan_id`).
 
 **O banco vê:** `tenants`, `memberships`, `lead_statuses`, `lead_sources`, `departments`, `plans`.
-**O usuário vê:** a empresa aparece no painel; os limites do plano passam a valer ao criar clientes/projetos/tarefas/tickets/leads.
+**O usuário vê:** a empresa aparece no painel; os limites do plano passam a valer ao criar clientes/projetos/tarefas/tickets/leads, sites de SEO, contas sociais e posts sociais do mês.
 
 ```mermaid
 sequenceDiagram
@@ -414,7 +414,7 @@ sequenceDiagram
 **Gatilho:** a equipe envia um post para aprovação e o contato do cliente o aprova ou rejeita em `/portal/social/<id>`.
 
 **Passos:**
-1. A equipe cria o post no compositor ([`social-post-form-dialog.tsx`](arquivos/20-social.md) §20.10). `createSocialPostAction` ([`src/server/actions/social.ts`](arquivos/20-social.md) §20.4) confere que as contas são do tenant (`:112`–`:121`), grava `social_posts` como `draft` (ou `approved`, sem aprovação, `:131`), os destinos em `social_post_targets` e o evento `created`.
+1. A equipe cria o post no compositor ([`social-post-form-dialog.tsx`](arquivos/20-social.md) §20.10). `createSocialPostAction` ([`src/server/actions/social.ts`](arquivos/20-social.md) §20.4) confere que as contas são do tenant **e do mesmo cliente do post** (ou da agência; o banco repete a regra no trigger da `0053`), grava `social_posts` como `draft` (ou `approved`, sem aprovação, `:131`), os destinos em `social_post_targets` e o evento `created`.
 2. Em `/app/social/<id>`, "Enviar para aprovação" chama `submitSocialPostAction`, que aceita `draft`/`rejected` e grava `pending_approval` (`:174`, `:181`) e o evento `submitted`. Ninguém é notificado (ver [06](06-problemas-e-dividas.md) #29).
 3. O cliente abre `/portal/social` ([§20.21](arquivos/20-social.md)); a RPC `portal_list_social_posts` (`0049_social_foundation.sql:217`) devolve os posts da empresa dele, exceto rascunhos.
 4. No detalhe ([§20.22](arquivos/20-social.md)), lido pela RPC `portal_get_social_post` (`0049:252`), o formulário só aparece em `pending_approval`. Os botões `approve=1`/`approve=0` e a nota vão para `respondPortalSocialPostAction` (`social.ts:457`), que valida com `socialPostResponseSchema` e chama a RPC `portal_respond_social_post` (`:469`).
@@ -445,7 +445,49 @@ sequenceDiagram
 
 ---
 
-## 2.15 Auditoria SEO agendada (cron)
+## 2.15 Publicação nativa (conectar conta e worker)
+
+> Acrescentado em 15/11/2026 (`main@5086092`). Fichas em [21-publicacao-nativa](arquivos/21-publicacao-nativa.md). Guia de configuração: [`docs/social-native-setup.md`](../../social-native-setup.md).
+
+**Gatilho:** owner/admin clica em **Conectar Instagram/LinkedIn** em `/app/social/contas`; depois, um post **agendado** de um tenant com `social_settings.publish_mode='provider'` vence e o `pg_cron` chama o worker a cada minuto.
+
+**Passos:**
+1. `GET /api/social/connect/<provider>` ([§21.9](arquivos/21-publicacao-nativa.md)) exige sessão, tenant ativo, `isManager`, `SOCIAL_NATIVE_ENABLED` e provider configurado; grava um cookie httpOnly com `state` (provider/tipo/tenant/usuário, 10 min) e redireciona para o provedor.
+2. No retorno, `GET /api/social/callback/<provider>` ([§21.10](arquivos/21-publicacao-nativa.md)) confere o `state` contra o cookie e o tenant/usuário atuais, troca o `code` por tokens/perfil, aplica o limite `social_accounts` se a conta é nova, faz upsert em `social_accounts` e grava os tokens no Vault ([§21.5](arquivos/21-publicacao-nativa.md)).
+3. O callback também faz upsert de `social_settings` com `publish_mode='provider'` — a partir daí os posts agendados entram na fila automática.
+4. O agendamento (`scheduleSocialPostAction`) converte o `datetime-local` pelo fuso do tenant e, se houver destino Instagram e o modo nativo estiver ligado, bloqueia o agendamento sem imagem (`src/server/actions/social.ts:346`–`:373`).
+5. A cada minuto, o `pg_cron` criado por `configure_social_publish_cron` (`0054:217`) chama `POST /api/social/publish` com `Bearer CRON_SECRET`. A rota reseta destinos presos há mais de 10 min e reivindica um lote de destinos vencidos com `FOR UPDATE SKIP LOCKED` (`0054:146`), filtrando `publish_mode='provider'`, conta ativa e post agendado.
+6. Para cada destino, o worker lê a conta/post/mídia, gera URLs assinadas de 24 h, exige imagem no Instagram, publica pelo provider ([§21.7](arquivos/21-publicacao-nativa.md)/[§21.8](arquivos/21-publicacao-nativa.md)) e grava `external_post_id`/`published_at` no destino.
+7. Sucesso agrega o post em `published`/`partially_published`; erro 4xx (exceto 429) falha direto, o resto retenta em 1/5/15/60 min até 4 tentativas. O botão **Tentar novamente** devolve destinos `failed`/`publishing` para `pending` (`retrySocialPostAction`).
+
+**O banco vê:** `social_accounts` (upsert + tokens no Vault), `social_settings` (modo), `social_post_targets` (claim/status/attempts/metadata), `social_posts` (agregação) e `social_post_events` (`published`/`failed`/`retried` com `mode: "native"`).
+**O usuário vê:** a conta "Conectada" (ou "Token expirado"/"Desconectada") em `/app/social/contas`; o post muda para **Publicando**, **Publicado**, **Parcialmente publicado** ou **Falhou**, com o erro por destino e o botão de nova tentativa em `/app/social/<id>`.
+
+```mermaid
+sequenceDiagram
+    participant U as Owner/admin
+    participant C as api/social/connect+callback
+    participant DB as Supabase (admin + Vault)
+    participant Cron as pg_cron (1 min)
+    participant W as api/social/publish
+    participant P as Instagram/LinkedIn
+    U->>C: autoriza a conta
+    C->>DB: upsert social_accounts + social_store_tokens
+    C->>DB: publish_mode = provider
+    Cron->>W: Bearer CRON_SECRET
+    W->>DB: claim_social_publish_targets(batch)
+    W->>DB: tokens + signed URLs (24 h)
+    W->>P: publish
+    P-->>W: externalId
+    W->>DB: destino published/failed/pending + evento
+    W->>DB: agrega status do post
+```
+
+**Onde mexer:** [21-publicacao-nativa](arquivos/21-publicacao-nativa.md) §21.9–§21.11, migrations `0053`/`0054`, `src/server/actions/social.ts` (`retrySocialPostAction` e o bloqueio de Instagram sem imagem). A configuração operacional (apps Meta/LinkedIn, `CRON_SECRET`, `configure_social_publish_cron`) está em [`docs/social-native-setup.md`](../../social-native-setup.md).
+
+---
+
+## 2.16 Auditoria SEO agendada (cron)
 
 > Acrescentado em 04/11/2026 (`main@413c601`). Fichas em [19-seo](arquivos/19-seo.md).
 
@@ -483,7 +525,7 @@ sequenceDiagram
 
 ---
 
-## 2.16 Resumo
+## 2.17 Resumo
 
 | Processo | Arquivos-chave | Tabelas | Testes | Telas |
 |---|---|---|---|---|
@@ -501,6 +543,7 @@ sequenceDiagram
 | 2.12 Lembretes (cron) | [`server/reminders.ts`](arquivos/04-servidor-helpers.md) | `tasks`, `invoices`, `notifications`, `email_log` | — | sino de notificações, e-mail |
 | 2.13 Criar empresa/plano | [`actions/platform.ts`](arquivos/06-servidor-actions-core.md) | `tenants`, `memberships`, `plans`, defaults | — | `/plataforma` |
 | 2.14 Aprovar post (portal) | [`actions/social.ts`](arquivos/20-social.md) | `social_posts`, `social_post_events` (via RPC) | — | `/app/social/[id]`, `/portal/social/[id]` |
-| 2.15 Auditoria SEO agendada | [`seo/scheduled.ts`](arquivos/19-seo.md), [`seo/audit.ts`](arquivos/19-seo.md) | `seo_sites`, `seo_audits` | `tests/unit/seo-audit.test.ts` | `/app/seo/[id]`, `/portal/seo/[id]` |
+| 2.15 Publicação nativa (OAuth + worker) | [`connect/route.ts`](arquivos/21-publicacao-nativa.md) §21.9, [`publish/route.ts`](arquivos/21-publicacao-nativa.md) §21.11 | `social_accounts`, `social_settings`, `social_post_targets`, `social_post_events` | `tests/unit/social-native.test.ts`, `tests/unit/social-accounts.test.ts` | `/app/social/contas`, `/app/social/[id]` |
+| 2.16 Auditoria SEO agendada | [`seo/scheduled.ts`](arquivos/19-seo.md), [`seo/audit.ts`](arquivos/19-seo.md) | `seo_sites`, `seo_audits` | `tests/unit/seo-audit.test.ts` | `/app/seo/[id]`, `/portal/seo/[id]` |
 
 > Observação: `tests/rls/isolation.test.ts` cobre o **isolamento entre tenants** de forma transversal (118 casos), não cada fluxo individualmente. As fichas e os testes estão detalhados em [18-testes-e-scripts](arquivos/18-testes-e-scripts.md).
