@@ -18,6 +18,7 @@ import {
   Receipt,
   Search,
   Settings,
+  ShieldCheck,
   Target,
   Trophy,
   Users,
@@ -65,11 +66,19 @@ const NAV_ITEMS = [
 export function AppSidebar({
   memberships,
   activeTenantId,
+  isSuperAdmin = false,
 }: {
   memberships: Membership[]
   activeTenantId?: string
+  isSuperAdmin?: boolean
 }) {
   const pathname = usePathname()
+  const items = isSuperAdmin
+    ? [
+        ...NAV_ITEMS,
+        { title: "Plataforma", href: "/plataforma", icon: ShieldCheck },
+      ]
+    : NAV_ITEMS
 
   return (
     <Sidebar collapsible="icon">
@@ -86,7 +95,7 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              {NAV_ITEMS.map((item) => (
+              {items.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     render={<Link href={item.href} />}
