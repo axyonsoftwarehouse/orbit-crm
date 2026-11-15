@@ -15,6 +15,50 @@ import { planSchema } from "@/lib/validations/plan"
 import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
 
 export type CreateTenantState = { error?: string; success?: string } | undefined
+export type UpdateTenantState = { error?: string; success?: string } | undefined
+
+export async function updateTenantAction(
+  _prevState: UpdateTenantState,
+  formData: FormData,
+): Promise<UpdateTenantState> {
+  const profile = await getProfile()
+  if (!profile?.is_super_admin) {
+    return { error: "Apenas super-admins podem editar empresas." }
+  }
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) return { error: "Empresa inválida." }
+
+  const parsed = createTenantSchema.safeParse({
+    name: formData.get("name"),
+    slug: formData.get("slug") || undefined,
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+
+  const slug = parsed.data.slug ?? slugify(parsed.data.name)
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("tenants")
+    .update({ name: parsed.data.name, slug })
+    .eq("id", id)
+
+  if (error) {
+    if (error.code === "23505") {
+      return { error: "Este slug já está em uso por outra empresa." }
+    }
+    return dbError(
+      "platform.update_tenant",
+      error,
+      "Não foi possível atualizar a empresa.",
+    )
+  }
+
+  revalidatePath("/plataforma")
+  revalidatePath("/app", "layout")
+  return { success: "Empresa atualizada." }
+}
 
 function slugify(value: string) {
   return value

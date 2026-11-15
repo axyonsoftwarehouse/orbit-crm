@@ -12,6 +12,7 @@ import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
 import { formatMoney } from "@/lib/format"
 import { createClient } from "@/lib/supabase/server"
 import { CreateTenantForm } from "./create-tenant-form"
+import { EditTenantDialog } from "./edit-tenant-dialog"
 import { PlanFormDialog, type PlanRow } from "./plan-form-dialog"
 import { SetPlanSelect } from "./set-plan-select"
 import { DeletePlanButton, DeleteTenantButton } from "./admin-buttons"
@@ -163,7 +164,10 @@ export default async function PlatformPage() {
                       {new Date(tenant.created_at).toLocaleDateString("pt-BR")}
                     </TableCell>
                     <TableCell className="text-right">
-                      <DeleteTenantButton id={tenant.id} />
+                      <div className="flex justify-end gap-2">
+                        <EditTenantDialog tenant={tenant} />
+                        <DeleteTenantButton id={tenant.id} />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))

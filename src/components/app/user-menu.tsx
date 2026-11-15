@@ -1,7 +1,8 @@
 "use client"
 
+import Link from "next/link"
 import { useTransition } from "react"
-import { LogOut } from "lucide-react"
+import { LogOut, ShieldCheck } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -58,6 +59,12 @@ export function UserMenu({
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        {profile?.is_super_admin ? (
+          <DropdownMenuItem render={<Link href="/plataforma" />}>
+            <ShieldCheck className="size-4" />
+            Plataforma
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem
           variant="destructive"
           disabled={isPending}

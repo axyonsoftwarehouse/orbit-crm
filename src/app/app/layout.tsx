@@ -80,7 +80,11 @@ export default async function AppLayout({
 
   return (
     <SidebarProvider style={brandingStyle}>
-      <AppSidebar memberships={memberships} activeTenantId={active.tenant.id} />
+      <AppSidebar
+        memberships={memberships}
+        activeTenantId={active.tenant.id}
+        isSuperAdmin={profile?.is_super_admin ?? false}
+      />
       <SidebarInset>
         <header className="bg-background/80 flex h-16 shrink-0 items-center gap-3 border-b px-4 backdrop-blur md:px-6">
           <SidebarTrigger />
