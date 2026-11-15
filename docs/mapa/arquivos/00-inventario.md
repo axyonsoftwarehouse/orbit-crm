@@ -1,8 +1,8 @@
 ﻿# Inventário de arquivos de código
 
-> Fichas completas: **315** · Exceções em tabela: **81** · Total: **396** arquivos de código.
+> Fichas completas: **326** · Exceções em tabela: **86** · Total: **412** arquivos de código.
 >
-> Até o módulo 18, retrato de `main@29aac19`. Em 04/11/2026 (`main@413c601`) entraram os módulos **19 SEO** (19 fichas · 6 exceções) e **20 Social** (22 fichas · 6 exceções) e a linha da migration `0052` no módulo 01.
+> Até o módulo 18, retrato de `main@29aac19`. Em 04/11/2026 (`main@413c601`) entraram os módulos **19 SEO** (19 fichas · 6 exceções) e **20 Social** (22 fichas · 6 exceções) e a linha da migration `0052` no módulo 01. Em 15/11/2026 (`main@5086092`), o PR #26 acrescentou a **publicação nativa** e a correção #32 acrescentou `tests/unit/social-reminders.test.ts`; o **módulo 21** cobre as migrations `0053`/`0054`, os arquivos de OAuth/worker/providers e seus testes (11 fichas · 5 exceções).
 
 > Gerado a partir das fichas em docs/mapa/arquivos/. Migrations, testes e primitivos de UI viram linhas de tabela de exceção nos respectivos módulos.
 
@@ -501,3 +501,24 @@
 | `tests/unit/social.test.ts` | tests | schemas de post e conta, status e limites por rede. | tabela | Arquivo de teste | [20-social.md](20-social.md) §20 |
 | `tests/unit/social-calendar.test.ts` | tests | helpers de `src/lib/social-calendar.ts`. | tabela | Arquivo de teste | [20-social.md](20-social.md) §20 |
 | `tests/unit/social-share.test.ts` | tests | helpers de `src/lib/social-share.ts`. | tabela | Arquivo de teste | [20-social.md](20-social.md) §20 |
+
+#### Módulo 21 — Publicação nativa
+
+| Arquivo | Camada | Propósito em 1 linha | Ficha? | Motivo da exceção | Ficha em |
+|---|---|---|---|---|---|
+| `src/lib/social-accounts.ts` | src/lib | regra pura de conta de destino permitida por cliente (conta da agência ou do próprio cliente). | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/server/social/provider.ts` | src/server | contrato dos provedores nativos, erro com status HTTP e utilidades de resposta/escopo. | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/server/social/index.ts` | src/server | registro dos provedores Instagram/LinkedIn e `getSocialProvider`. | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/server/social/oauth.ts` | src/server | `redirect_uri`, `state` em cookie httpOnly e validação do retorno do OAuth. | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/server/social/tokens.ts` | src/server | gravação/leitura dos tokens no Vault e renovação antes de publicar. | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/server/social/backoff.ts` | src/server | cálculo puro do próximo retry (1, 5, 15 e 60 minutos). | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/server/social/providers/instagram.ts` | src/server | OAuth, perfil, renovação e publicação no Instagram (container + media_publish). | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/server/social/providers/linkedin.ts` | src/server | OAuth, perfil/Página, renovação e publicação no LinkedIn (upload de imagem + `/rest/posts`). | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/app/api/social/connect/[provider]/route.ts` | src/app/api | inicia o OAuth com guardas de sessão/papel/gate e cookie de `state`. | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/app/api/social/callback/[provider]/route.ts` | src/app/api | troca o código, valida o `state`, faz upsert da conta, guarda tokens no Vault e liga `publish_mode`. | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `src/app/api/social/publish/route.ts` | src/app/api | worker do pg_cron: claim, publicação por destino, retry/backoff e agregação de status. | completa | — | [21-publicacao-nativa.md](21-publicacao-nativa.md) |
+| `supabase/migrations/0053_social_targets_same_company.sql` | supabase/migrations | triggers que impedem destino de post/conta de outro cliente (`23514`). | tabela | Migração de integridade/segurança. | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `supabase/migrations/0054_social_native_publishing.sql` | supabase/migrations | colunas de token/retry, RPCs do Vault, claim/reset do worker e cron do pg_cron. | tabela | Migração de schema + RPC + integração Vault/pg_cron. | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-native.test.ts` | tests | backoff, `splitScopes` e `zonedTimeToUtc`. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-accounts.test.ts` | tests | `isAccountAllowedForCompany` e `validatePostTargets`. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-reminders.test.ts` | tests | `needsManualPublishReminder` (lembrete só quando há destino manual; #32). | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |

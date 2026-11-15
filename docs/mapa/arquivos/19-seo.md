@@ -2,6 +2,8 @@
 
 > 25 arquivos de código · 19 fichas completas · 6 em tabela de exceção (4 migrations e 2 testes).
 > Retrato de `main@413c601` (04/11/2026). Entrou depois de `29aac19`. Evidência no formato `arquivo:linha`.
+>
+> **Revisão de 15/11/2026 (`main@5086092`):** o único item deste módulo que mudou foi o limite de plano `seo_sites`, configurável desde o PR #23 ([06](../06-problemas-e-dividas.md) #24, resolvido). A falta de testes de RLS do SEO (#25) continua.
 
 O módulo de SEO deixa a equipe **cadastrar o site de um cliente** (`seo_sites`), **rodar uma auditoria técnica e de conteúdo** da página informada e **guardar o histórico** (`seo_audits`). A auditoria baixa o HTML com um guarda contra SSRF (`src/server/seo/fetch-page.ts`), aplica **26 verificações** em cinco categorias (Conteúdo, Técnico, Performance, Segurança e Social) e calcula um **score 0–100** ponderado pela severidade (`src/server/seo/audit.ts:43`, `:561`). Cada site pode ter **monitoramento agendado** (manual, diário, semanal ou mensal), executado por um cron da Vercel às 09:30 (`vercel.json`, rota `/api/cron/seo`). Sobre uma auditoria concluída, a equipe pode **gerar um resumo com IA** (OpenAI, `src/server/seo/ai-summary.ts`) e **baixar um relatório em PDF** (`pdf-lib`). O **cliente do portal** vê os sites vinculados à empresa dele e a última auditoria concluída por duas RPCs `security definer` (`0046`, recriada em `0048`).
 
@@ -96,7 +98,7 @@ flowchart LR
 **Usado por:** §19.11, §19.12, §19.13, §19.14 (formulário de monitoramento), §19.15.
 **Bibliotecas externas:** `next/cache`, `next/navigation`.
 
-> **Limite de plano:** `seo_sites` está em `RESOURCE_TABLES` (`src/server/plan-limits.ts:13`), mas nesta `main` o super-admin não consegue configurá-lo ([06](../06-problemas-e-dividas.md) #24, **resolvido no PR #23, aguardando merge**).
+> **Limite de plano:** `seo_sites` está em `RESOURCES` (`src/server/plan-limits.ts:29`) e desde o PR #23 (mergeado em 13/11) o super-admin consegue configurá-lo: o campo vem de `PLAN_LIMIT_FIELDS` (`src/lib/constants.ts:16`) no `planSchema` e no formulário de planos ([06](../06-problemas-e-dividas.md) #24, **resolvido**).
 
 ### §19.3 `src/server/queries/seo.ts`
 

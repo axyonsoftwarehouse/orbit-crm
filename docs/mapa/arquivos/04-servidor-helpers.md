@@ -54,13 +54,13 @@ flowchart LR
 
 ### `src/server/plan-limits.ts`
 
-**Propósito:** verificar se o tenant ainda pode criar novos registros de um recurso (clientes, projetos, tarefas, tickets, leads) conforme os limites do plano contratado.
-**Processo:** `checkPlanLimitWith(supabase, tenantId, resource)` traduz o nome do recurso em tabela pelo mapa `RESOURCE_TABLES` (`clients`→`companies`, os demais mantêm o nome). Depois lê `tenants` com o relacionamento `plan:plans(limits)` e pega o valor `limits[resource]`; se for `null`/`undefined`, considera sem limite e devolve `{ ok: true }`. Em seguida conta as linhas da tabela com `tenant_id` e `deleted_at is null`; se o total já atingiu o limite, devolve `{ ok: false, remaining: 0, message }`; caso contrário `{ ok: true, remaining }`. `checkPlanLimit(tenantId, resource)` é o atalho que cria o cliente da sessão via `createClient()` e delega para `checkPlanLimitWith`.
+**Propósito:** verificar se o tenant ainda pode criar novos registros de um recurso (clientes, projetos, tarefas, tickets, leads, sites de SEO, contas sociais e posts sociais por mês) conforme os limites do plano contratado.
+**Processo:** `checkPlanLimitWith(supabase, tenantId, resource)` traduz o nome do recurso em tabela pelo mapa `RESOURCES` (`clients`→`companies`; `social_posts_month`→`social_posts`) e no modo de contagem (`active`: linhas com `deleted_at is null`; `month`: linhas criadas desde o início do mês UTC, inclusive as excluídas). Depois lê `tenants` com o relacionamento `plan:plans(limits)` e pega o valor `limits[resource]`; se for `null`/`undefined`, considera sem limite e devolve `{ ok: true }`. Em seguida conta as linhas da tabela com `tenant_id` (e o filtro de escopo); se o total já atingiu o limite, devolve `{ ok: false, remaining: 0, message }`; caso contrário `{ ok: true, remaining }`. `checkPlanLimit(tenantId, resource)` é o atalho que cria o cliente da sessão via `createClient()` e delega para `checkPlanLimitWith`.
 **Estado:** `implementado`.
-**Testes:** sem teste (busca por `checkPlanLimit` em `tests/` não retornou nada).
+**Testes:** `tests/unit/plan-limits.test.ts` cobre os escopos `active`/`month` e as chaves de SEO/Social.
 **Depende de:**
 - `src/lib/supabase/server.ts`: `createClient()` para o cliente autenticado.
-- Tabelas: lê `tenants` (coluna de relacionamento `plan_id`), `plans` (coluna `limits` jsonb) e conta em `companies`, `projects`, `tasks`, `tickets`, `leads`.
+- Tabelas: lê `tenants` (coluna de relacionamento `plan_id`), `plans` (coluna `limits` jsonb) e conta em `companies`, `projects`, `tasks`, `tickets`, `leads`, `seo_sites`, `social_accounts` e `social_posts`.
 
 **Usado por:** `src/server/actions/companies.ts`, `leads.ts`, `import.ts`, `tickets.ts`, `projects.ts`, `tasks.ts` (via `checkPlanLimit`) e `src/server/actions/portal.ts`, `public-lead.ts` (via `checkPlanLimitWith`, em fluxos sem sessão/portal).
 **Bibliotecas externas:** `@supabase/supabase-js` (só o tipo `SupabaseClient`).

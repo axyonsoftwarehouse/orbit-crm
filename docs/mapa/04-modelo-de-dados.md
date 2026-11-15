@@ -1,10 +1,10 @@
 # 04. Modelo de dados
 
-> 52 tabelas · 0 enums nativos · 3 buckets de Storage · 29 funções expostas via PostgREST.
+> 52 tabelas · 0 enums nativos · 3 buckets de Storage · 35 funções expostas via PostgREST.
 >
-> Retrato de `main@29aac19`, atualizado em 04/11/2026 (`main@413c601`) com as tabelas de SEO (`0045`–`0048`) e Social (`0049`–`0051`).
+> Retrato de `main@29aac19`, atualizado em 04/11/2026 (`main@413c601`) com as tabelas de SEO (`0045`–`0048`) e Social (`0049`–`0051`). Em 15/11/2026 (`main@5086092`), as migrations `0053` (triggers de mesmo cliente no Social) e `0054` (colunas de OAuth/token e de retry) não criaram tabelas; as colunas novas estão detalhadas no módulo [21 Publicação nativa](arquivos/21-publicacao-nativa.md).
 
-O Orbit CRM tem **52 tabelas** e **nenhum `enum` nativo do Postgres** (o bloco `Enums` do `database.types.ts` é vazio — os domínios são codificados como `smallint` ou `text` com `check`). O **schema canônico** vive em `supabase/migrations/` (`0001`–`0052`), e os **tipos TypeScript gerados** a partir dele estão em `src/lib/database.types.ts` (artefato gerado por `npm run db:types`, nunca editado à mão). Toda tabela de negócio tem `tenant_id` e RLS; o desenho das migrations, RLS e RPCs está em [01-banco](arquivos/01-banco-migrations-e-seed.md) §01.4, os status/domínios também aparecem nas [validações Zod](arquivos/03-validacoes-zod.md) e o uso nas telas está em [processos](02-processos.md). As regras de acesso e convenções transversais ficam em [regras e convenções](05-regras-e-convencoes.md).
+O Orbit CRM tem **52 tabelas** e **nenhum `enum` nativo do Postgres** (o bloco `Enums` do `database.types.ts` é vazio — os domínios são codificados como `smallint` ou `text` com `check`). O **schema canônico** vive em `supabase/migrations/` (`0001`–`0054`), e os **tipos TypeScript gerados** a partir dele estão em `src/lib/database.types.ts` (artefato gerado por `npm run db:types`, nunca editado à mão). Toda tabela de negócio tem `tenant_id` e RLS; o desenho das migrations, RLS e RPCs está em [01-banco](arquivos/01-banco-migrations-e-seed.md) §01.4, os status/domínios também aparecem nas [validações Zod](arquivos/03-validacoes-zod.md) e o uso nas telas está em [processos](02-processos.md). As regras de acesso e convenções transversais ficam em [regras e convenções](05-regras-e-convencoes.md).
 
 ## §04.1 Tabelas por área
 
@@ -101,10 +101,10 @@ Fonte: as migrations reais em `supabase/migrations/*.sql` (coluna citada) e a co
 
 | Tabela | Papel (1 linha) |
 |---|---|
-| `social_settings` | Configuração por tenant (PK = `tenant_id`): aprovação obrigatória, fuso, IA, `max_retries`, `publish_mode` — `0049_social_foundation.sql:3`, `0050:6`. Nenhum código a usa. |
-| `social_accounts` | Conta social de um cliente (`provider` em 8 redes, `provider_account_id`, `display_name`, `status` 1–4), soft delete — `0049:13`. |
+| `social_settings` | Configuração por tenant (PK = `tenant_id`): aprovação obrigatória, fuso, IA, `max_retries`, `publish_mode` — `0049_social_foundation.sql:3`, `0050:6`. Lida por `getSocialSettings` (`src/server/queries/social.ts`) e gravada pelo callback de conexão (`publish_mode='provider'`). |
+| `social_accounts` | Conta social de um cliente (`provider` em 8 redes, `provider_account_id`, `display_name`, `status` 1–4), soft delete — `0049:13`. Desde a `0054`, guarda `account_type` (`member`/`organization`/`instagram`), ids dos segredos no Vault, `token_expires_at`, `scopes` e `last_synced_at` — [21](arquivos/21-publicacao-nativa.md). |
 | `social_posts` | Post (`content` até 5.000), `status` text com 10 valores, agenda, aprovação/rejeição, `manual_reminder_sent_at`, soft delete — `0049:48`, `0050:3`. |
-| `social_post_targets` | Post × conta de destino, com status por destino — `0049:96`. |
+| `social_post_targets` | Post × conta de destino, com status por destino — `0049:96`; desde a `0054`, `next_attempt_at`, `locked_at` e `metadata` sustentam o worker — [21](arquivos/21-publicacao-nativa.md). |
 | `social_post_events` | Histórico do post (evento, autor, `metadata`); só insert e select — `0049:128`. |
 | `social_media` | Imagem do post no bucket `social_media` (`storage_path`, `mime_type`, `size_bytes`) — `0051_social_media.sql:17`. |
 
