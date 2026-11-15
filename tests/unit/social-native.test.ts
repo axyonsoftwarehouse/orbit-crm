@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { zonedTimeToUtc } from "@/lib/timezone"
-import { socialPublishNextAttemptAt } from "@/server/social/backoff"
+import {
+  socialPublishIsFinalFailure,
+  socialPublishNextAttemptAt,
+} from "@/server/social/backoff"
 import { splitScopes } from "@/server/social/provider"
 
 describe("social publish backoff", () => {
@@ -25,6 +28,20 @@ describe("social publish backoff", () => {
     expect(socialPublishNextAttemptAt(9, now)).toBe(
       new Date(now + 60 * 60_000).toISOString(),
     )
+  })
+})
+
+describe("socialPublishIsFinalFailure", () => {
+  it("trata 4xx como definitivo, exceto 429", () => {
+    expect(socialPublishIsFinalFailure(400, 1)).toBe(true)
+    expect(socialPublishIsFinalFailure(403, 1)).toBe(true)
+    expect(socialPublishIsFinalFailure(429, 1)).toBe(false)
+  })
+
+  it("retenta 5xx, rede e tempo esgotado até o limite", () => {
+    expect(socialPublishIsFinalFailure(500, 1)).toBe(false)
+    expect(socialPublishIsFinalFailure(null, 3)).toBe(false)
+    expect(socialPublishIsFinalFailure(null, 4)).toBe(true)
   })
 })
 

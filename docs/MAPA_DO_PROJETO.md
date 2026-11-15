@@ -1,11 +1,11 @@
 # Mapa do Projeto: Orbit CRM
 
 > Gerado em 09/10/2026 · branch `main` · commit `29aac19`.
-> Cobertura: **326 fichas de 412 arquivos de código + 86 exceções em tabela · 21 módulos · 16 processos**.
+> Cobertura: **326 fichas de 418 arquivos de código + 92 exceções em tabela · 21 módulos · 16 processos**.
 >
 > **Revisão de 04/11/2026 (`main@413c601`):** o [06 Problemas e dívidas](mapa/06-problemas-e-dividas.md) foi conferido item por item contra o código atual, e os comandos, a regra de CI e as sugestões resolvidas foram atualizados. Na mesma data foram mapeados os módulos de **SEO** (migrations `0045`–`0048`, ficha [19](mapa/arquivos/19-seo.md)) e **Social** (`0049`–`0051`, ficha [20](mapa/arquivos/20-social.md); spec em [`docs/specs/social-media.md`](specs/social-media.md)), com as tabelas no 04, as funcionalidades no 03 e os processos 2.14 (Social) e 2.16 (SEO) no 02; o 2.15 (publicação nativa) entrou em 15/11. As fichas dos módulos 01–18 e o restante dos capítulos continuam sendo um **retrato de `29aac19`**.
 >
-> **Revisão de 15/11/2026 (`main@5086092`):** o [06](mapa/06-problemas-e-dividas.md) foi revisado após os PRs #23–#27. Ficaram registrados como resolvidos os itens #22 (limites de plano de Social/SEO), #24 (`seo_sites` configurável), #26 (evento só após transição), #27 (fuso do agendamento) e #28 (destino do post restrito ao cliente); os itens #23 e #29 viraram parciais (#23: só a restrição de mesmo cliente tem teste de RLS; #29: restam notificações e aprovação obrigatória). O item #30 foi **mapeado** no novo módulo [21 Publicação nativa](mapa/arquivos/21-publicacao-nativa.md) (OAuth e worker de Instagram/LinkedIn, migrations `0053`/`0054`); o mapeamento acrescentou o item #31 (sem testes de worker/providers/rotas) e o #32 (lembrete manual também para posts nativos), **corrigido** na mesma data com `needsManualPublishReminder` e teste próprio. As fichas 19/20 seguem o retrato de `main@413c601`: os números de linha e as contagens de arquivos nelas são anteriores a esses PRs.
+> **Revisão de 15/11/2026 (`main@5086092`):** o [06](mapa/06-problemas-e-dividas.md) foi revisado após os PRs #23–#27. Ficaram registrados como resolvidos os itens #22 (limites de plano de Social/SEO), #24 (`seo_sites` configurável), #26 (evento só após transição), #27 (fuso do agendamento) e #28 (destino do post restrito ao cliente); os itens #23 e #29 viraram parciais (#23: só a restrição de mesmo cliente tem teste de RLS; #29: restam notificações e aprovação obrigatória). O item #30 foi **mapeado** no novo módulo [21 Publicação nativa](mapa/arquivos/21-publicacao-nativa.md) (OAuth e worker de Instagram/LinkedIn, migrations `0053`/`0054`); o mapeamento acrescentou o item #31 (testes de providers/tokens/OAuth/worker) e o #32 (lembrete manual também para posts nativos), ambos **resolvidos** na mesma data com testes próprios. As fichas 19/20 seguem o retrato de `main@413c601`: os números de linha e as contagens de arquivos nelas são anteriores a esses PRs.
 
 O **Orbit CRM** é um CRM SaaS **multi-tenant** (um sistema, várias empresas) para agências, consultorias e prestadores de serviço que trabalham por projeto/hora. Cobre todo o ciclo de **entrega** (clientes → projetos → tarefas → horas) e os módulos **financeiro** (orçamento, fatura, pagamento, despesa, contrato), **comercial** (leads/funil), **atendimento** (tickets e base de conhecimento), **calendário**, **metas**, **relatórios**, **SEO**, **Social** e **portal do cliente**.
 
@@ -43,7 +43,7 @@ npm run seed:demo      # popula o tenant de demonstração
 
 | # | Arquivo | Conteúdo |
 |---|---|---|
-| — | [00-inventario](mapa/arquivos/00-inventario.md) | Todos os **412** arquivos de código: 326 fichas · 86 exceções |
+| — | [00-inventario](mapa/arquivos/00-inventario.md) | Todos os **418** arquivos de código: 326 fichas · 92 exceções |
 | 01 | [Arquitetura](mapa/01-arquitetura.md) | Diagrama geral · 18 módulos (retrato de `29aac19`; SEO, Social e publicação nativa nas fichas 19–21) · árvore de pastas · como rodar |
 | 02 | [Processos](mapa/02-processos.md) | **16 processos** ponta a ponta, com `sequenceDiagram` |
 | 03 | [Funcionalidades](mapa/03-funcionalidades.md) | **53** capacidades e lacunas (o que falta) |
