@@ -1,6 +1,6 @@
 # 21. Publicação nativa (OAuth e worker do Social: Instagram e LinkedIn)
 
-> 16 arquivos de código · 11 fichas completas · 5 em tabela de exceção (2 migrations e 3 testes).
+> 22 arquivos de código · 11 fichas completas · 11 em tabela de exceção (2 migrations e 9 testes).
 > Retrato de `main@5086092` (15/11/2026). Complementa o módulo [20 Social](20-social.md), que descreve o fluxo de post, aprovação, calendário e publicação **manual**. Spec: [`docs/specs/social-media.md`](../../specs/social-media.md); passo a passo de configuração: [`docs/social-native-setup.md`](../../social-native-setup.md).
 
 O modo nativo liga o Social às APIs do **Instagram** (conta Professional, via Instagram Login) e do **LinkedIn** (perfil pessoal e Página da empresa). A equipe conecta a conta por **OAuth** em `/app/social/contas`; os tokens ficam no **Supabase Vault** (nunca no navegador). Quando o post é **agendado** e o tenant está em `social_settings.publish_mode='provider'`, um worker chamado pelo **pg_cron a cada minuto** (`POST /api/social/publish`) publica cada destino nativo, grava o id externo e agrega o status do post (`publishing`, `published`, `partially_published` ou `failed`). As demais redes — e qualquer tenant em modo `manual` — continuam no fluxo manual do módulo [20](20-social.md): lembrete, cópia do texto e "Marcar como publicado".
@@ -105,7 +105,7 @@ sequenceDiagram
 ## Retry, backoff e status
 
 - `MAX_RETRIES = 4` (`route.ts:19`). O contador é `social_post_targets.attempts`, incrementado a cada erro.
-- Backoff em minutos `[1, 5, 15, 60]` (`src/server/social/backoff.ts:1`): `socialPublishNextAttemptAt(attempts)` usa o índice `attempts - 1`, saturando em 60 min (`:3`–`:13`). Testado em `tests/unit/social-native.test.ts:6`–`:29`.
+- Backoff em minutos `[1, 5, 15, 60]` (`src/server/social/backoff.ts:1`): `socialPublishNextAttemptAt(attempts)` usa o índice `attempts - 1`, saturando em 60 min (`:3`–`:13`). Testado em `tests/unit/social-native.test.ts:9`–`:32`.
 - Erros **4xx** do provedor (exceto **429**) são definitivos; 429, 5xx, rede e timeout retentam (`route.ts:334`–`:337`). Ao retentar: destino `pending`, `next_attempt_at` calculado, `locked_at=null` e evento `retried`; ao desistir: `failed`, `next_attempt_at=null` e evento `failed` (`:339`–`:363`).
 - O botão **Tentar novamente** (`src/app/app/social/[id]/social-post-actions.tsx:72`–`:79`) chama `retrySocialPostAction` (`src/server/actions/social.ts:456`): devolve destinos `failed`/`publishing` para `pending` com `attempts=0` e `next_attempt_at=now` (`:483`–`:497`), recoloca o post em `scheduled` (`:499`–`:507`) e grava o evento `retried` com `mode: "native"` (`:510`).
 
@@ -140,7 +140,7 @@ Os status do **post** usados pelo modo nativo (`publishing`, `published`, `parti
 - **Worker**: `CRON_SECRET` comparado com `timingSafeEqual` (`route.ts:21`); usa cliente admin (ignora RLS) apenas no fluxo do cron.
 - **Destino por cliente**: a regra de `src/lib/social-accounts.ts` é repetida no banco pela `0053` (três triggers `security definer`, erro `23514`), impedindo destino de outro cliente também por API direta. Ver [06](../06-problemas-e-dividas.md) #28.
 - **Configuração**: no código, só o callback grava `publish_mode` (como `provider`); um tenant que nunca conectou conta fica em `manual` (`src/server/queries/social.ts:96`–`:103`).
-- **Limitações conhecidas**: contas conectadas por OAuth nascem como **da agência** (`company_id: null`) e não há tela/action para vinculá-las a um cliente; o worker processa no máximo `SOCIAL_PUBLISH_BATCH_SIZE` destinos por minuto; não há cron de renovação de token (só na hora de publicar); e os providers/worker/rotas ainda não têm teste (#31 em [06](../06-problemas-e-dividas.md)).
+- **Limitações conhecidas**: contas conectadas por OAuth nascem como **da agência** (`company_id: null`) e não há tela/action para vinculá-las a um cliente; o worker processa no máximo `SOCIAL_PUBLISH_BATCH_SIZE` destinos por minuto; não há cron de renovação de token (só na hora de publicar); o fluxo completo do worker com banco/API reais não tem teste (os providers, tokens, OAuth e guardas têm unitários; #31 resolvido).
 
 ## Lembrete manual (cron das 09:00)
 
@@ -167,11 +167,17 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 |---|---|---|
 | `supabase/migrations/0053_social_targets_same_company.sql` | Três triggers `security definer`: destino de post (`:12`, `:42`), troca de cliente do post (`:49`, `:77`) e troca de cliente da conta em uso (`:83`, `:112`). Todos levantam `23514`; `company_id` nulo (agência) é sempre permitido. | Migração de integridade/segurança. |
 | `supabase/migrations/0054_social_native_publishing.sql` | Colunas de OAuth/token em `social_accounts` (`account_type`, `access_token_id`, `refresh_token_id`, `token_expires_at`, `scopes`, `last_synced_at`, `:1`–`:8`) e de retry em `social_post_targets` (`next_attempt_at`, `locked_at`, `metadata`, `:14`–`:17`); índice dos destinos vencidos (`:19`); RPCs de token no Vault (`:23`, `:91`, `:114`), claim (`:146`), reset (`:194`) e cron (`:217`); grants só para `service_role` (`:294`–`:318`). | Migração de schema + RPC + integração com Vault/pg_cron. |
-| `tests/unit/social-native.test.ts` | Backoff 1/5/15/60 e saturação (`:6`–`:29`), `splitScopes` (`:31`–`:43`) e `zonedTimeToUtc` (`:45`–`:61`). | Arquivo de teste. |
+| `tests/unit/social-native.test.ts` | Backoff 1/5/15/60 e saturação (`:9`–`:32`), `socialPublishIsFinalFailure` (`:34`–`:46`), `splitScopes` (`:48`–`:60`) e `zonedTimeToUtc` (`:62`–`:78`). | Arquivo de teste. |
 | `tests/unit/social-accounts.test.ts` | `isAccountAllowedForCompany` e `validatePostTargets` (`:10`–`:63`). | Arquivo de teste. |
 | `tests/unit/social-reminders.test.ts` | `needsManualPublishReminder`: sem destino, modo manual, só nativos ativos, destino sem integração, conta inativa e provider desconhecido (`:7`–`:45`). | Arquivo de teste (do lembrete do módulo 20, ajustado pelo modo nativo). |
+| `tests/unit/social-providers.test.ts` | Instagram e LinkedIn com `fetch` simulado: OAuth, erros, imagem obrigatória, container, upload e publicação (`:1`–`:343`). | Arquivo de teste. |
+| `tests/unit/social-tokens.test.ts` | Vault (gravar/ler/limpar) e `getValidTokens` (token válido, renovação, Instagram sem refresh e falha) (`:1`–`:212`). | Arquivo de teste. |
+| `tests/unit/social-oauth.test.ts` | `redirect_uri`, formato/validação do `state` em cookie e opções do cookie (`:1`–`:97`). | Arquivo de teste. |
+| `tests/unit/social-publish-route.test.ts` | Guardas do worker (503/401/skip), lote vazio e falha de claim (`:1`–`:120`). | Arquivo de teste. |
+| `tests/unit/social-connect-route.test.ts` | Sessão/papel/gate/provider, tipo de conta, redirect e cookie de `state` (`:1`–`:146`). | Arquivo de teste. |
+| `tests/unit/social-callback-route.test.ts` | Erro do provedor, gate, `state` divergente, limite de plano, upsert/tokens e `publish_mode` (`:1`–`:208`). | Arquivo de teste. |
 
-> Cobertura de RLS: `tests/rls/isolation.test.ts:2121` testa a regra de **mesmo cliente** nos destinos (`0053`). Não há teste de isolamento entre tenants para as RPCs de token/claim nem teste dos providers, do worker e das rotas OAuth (#23 e #31 em [06](../06-problemas-e-dividas.md)).
+> Cobertura de RLS: `tests/rls/isolation.test.ts:2121` testa a regra de **mesmo cliente** nos destinos (`0053`). Não há teste de isolamento entre tenants para as RPCs de token/claim ([06](../06-problemas-e-dividas.md) #23). Providers, tokens, OAuth, rotas de conexão/callback/publicação e guardas do worker têm teste unitário (#31 resolvido); o fluxo completo com banco/API reais não.
 
 ## Fichas do módulo
 
@@ -204,7 +210,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** contrato e utilidades comuns aos provedores nativos.
 **Processo:** define `SocialProviderId` (`:1`), `SocialAccountType` (`:3`), `OAuthTokenSet` (`:5`), `SocialProfile` (`:12`), `SocialPublishMedia/Input/Result` (`:20`–`:36`) e a interface `SocialProvider` (`:50`) com `isConfigured`, `supportsAccountType`, `getAuthUrl`, `exchangeCode`, `refreshTokens` e `publish`. `SocialProviderError` (`:63`) carrega o status HTTP (usado no retry). `readProviderResponse` (`:93`) faz o parse tolerante (JSON ou texto) e lança o erro com a mensagem do provedor; `secondsFromNow` (`:116`) e `splitScopes` (`:122`) convertem expiração e escopos.
 **Estado:** `implementado`.
-**Testes:** `splitScopes` em `tests/unit/social-native.test.ts:31`.
+**Testes:** `splitScopes` em `tests/unit/social-native.test.ts:48`.
 **Depende de:** nada.
 **Usado por:** §21.3–§21.8 e §21.11.
 **Bibliotecas externas:** nenhuma.
@@ -224,7 +230,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** montar a `redirect_uri`, criar e validar o `state` do OAuth.
 **Processo:** `getOAuthRedirectUri` (`:13`) usa `NEXT_PUBLIC_SITE_URL` (fallback `localhost:3000`) e monta `/api/social/callback/<provider>`; `createOAuthState` (`:21`) gera um `crypto.randomUUID()` e o payload `provider:tipo:tenant:usuário:state`; `readOAuthState` (`:34`) lê o cookie `orbit.social.oauth` (`:5`) e devolve `null` se provedor, `state`, tenant ou usuário não baterem (`:47`–`:57`); `oauthCookieOptions` (`:60`) define `httpOnly`, `secure` em produção, `sameSite=lax`, `path=/` e 600 s.
 **Estado:** `implementado`.
-**Testes:** sem teste.
+**Testes:** `tests/unit/social-oauth.test.ts` (redirect_uri, formato do `state`, leitura/recusa do cookie e opções).
 **Depende de:** `next/headers`, `src/lib/env.ts` e §21.2.
 **Usado por:** §21.9 e §21.10.
 **Bibliotecas externas:** `next/headers`.
@@ -234,7 +240,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** guardar/ler/limpar tokens no Vault e renová-los antes de publicar.
 **Processo:** `storeSocialTokens` (`:4`), `getSocialTokens` (`:18`) e `clearSocialTokens` (`:37`) delegam às RPCs da `0054` pelo cliente admin. `getValidTokens` (`:45`) compara `expiresAt` com agora, considera "perto de expirar" menos de 5 min (`:54`–`:55`), tenta renovar quando o provedor permite (`:56`) e regrava (`:60`–`:63`); em falha, devolve o token atual (`:64`–`:66`). Conta sem token lança "reconecte a conta" (`:50`–`:52`).
 **Estado:** `implementado`. Sem cron de renovação: só renova quando o worker vai publicar. A renovação silenciosa em falha deixa o erro para a publicação.
-**Testes:** sem teste.
+**Testes:** `tests/unit/social-tokens.test.ts` (gravar/ler/limpar, token válido, renovação, Instagram sem refresh e falha de renovação).
 **Depende de:** `src/lib/supabase/admin.ts`, §21.2, RPCs da `0054`.
 **Usado por:** §21.10 e §21.11.
 **Bibliotecas externas:** nenhuma.
@@ -244,7 +250,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** calcular o próximo horário de tentativa.
 **Processo:** a constante `SOCIAL_PUBLISH_BACKOFF_MINUTES` (`:1`) é `[1, 5, 15, 60]`; `socialPublishNextAttemptAt(attempts, now)` (`:3`) usa `attempts - 1` como índice, mínimo 0 e máximo 3, e devolve ISO em `now + minutos` (`:7`–`:12`).
 **Estado:** `implementado`.
-**Testes:** `tests/unit/social-native.test.ts:6`–`:29` (inclusive saturação).
+**Testes:** `tests/unit/social-native.test.ts:9`–`:32` (inclusive saturação) e `socialPublishIsFinalFailure` (`:34`–`:46`: 4xx×429×5xx×limite).
 **Depende de:** nada (puro).
 **Usado por:** §21.11.
 **Bibliotecas externas:** nenhuma.
@@ -254,7 +260,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** implementar OAuth e publicação do Instagram (Instagram Login).
 **Processo:** `SCOPES` (`:18`); `configured` exige App ID/Secret (`:27`); `getAuthUrl` (`:69`) monta a autorização; `exchangeCode` (`:80`) troca o código, converte para token longo (`:35`–`:43`, `:103`), lê `/me` com `user_id`, `username`, `account_type` e avatar (`:108`–`:127`) e devolve perfil `instagram` com `metadata.username`. `refreshTokens` (`:157`) usa `ig_refresh_token`. `publish` (`:176`) exige imagem, cria o container (`/<id>/media`), consulta `status_code` até `FINISHED` (10 tentativas de 2 s; `ERROR` aborta) (`:207`–`:216`) e publica (`/<id>/media_publish`) (`:218`–`:229`), devolvendo `container_id` na metadata.
 **Estado:** `implementado`. A Meta precisa baixar a imagem em URL pública: `localhost` não serve (ver `docs/social-native-setup.md` §4).
-**Testes:** sem teste (nem com `fetch` simulado).
+**Testes:** `tests/unit/social-providers.test.ts` com `fetch` simulado (troca de código, erro 400, exigência de imagem, container `FINISHED`/`ERROR` e publicação).
 **Depende de:** `src/lib/env.ts`, §21.2.
 **Usado por:** §21.3; conectado por §21.9/§21.10 e acionado por §21.11.
 **Bibliotecas externas:** `fetch`.
@@ -264,7 +270,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** implementar OAuth e publicação do LinkedIn (perfil e Página).
 **Processo:** escopos `MEMBER_SCOPES`/`ORGANIZATION_SCOPES` (`:20`–`:28`); `configured` exige client ID/secret (`:30`); `getAuthUrl` (`:111`) escolhe os escopos pelo tipo; `exchangeCode` (`:122`) troca o código e lê `/v2/userinfo` (`:145`); na Página, `fetchOrganization` (`:53`) usa `LINKEDIN_ORGANIZATION_URN` ou busca a primeira Página administrada em `organizationalEntityAcls` (`:61`–`:88`), e o `metadata.author_urn` guarda `urn:li:organization:*` ou `urn:li:person:*` (`:189`–`:196`). `refreshTokens` (`:200`) exige `refresh_token`. `publish` (`:236`) limita o texto a 3.000 caracteres, faz upload da imagem opcional pela Images API (`:247`–`:287`) e publica em `POST /rest/posts` (`:289`–`:317`), devolvendo o id dos headers (`:319`–`:322`).
 **Estado:** `implementado`. Publicar como Página exige o Marketing Developer Platform (escopos de organização); sem isso, o OAuth falha e a tela mostra a mensagem específica.
-**Testes:** sem teste.
+**Testes:** `tests/unit/social-providers.test.ts` com `fetch` simulado (perfil, Página fixa via `LINKEDIN_ORGANIZATION_URN`, limite de 3.000, upload de imagem e publicação só texto).
 **Depende de:** `src/lib/env.ts`, §21.2.
 **Usado por:** §21.3; conectado por §21.9/§21.10 e acionado por §21.11.
 **Bibliotecas externas:** `fetch`.
@@ -274,7 +280,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** iniciar o OAuth de um provedor.
 **Processo:** `GET` (`:23`) lê o provider da rota; exige sessão e `getActiveMembership` (`:28`–`:35`), `isManager` (`:36`), gate `socialNativeEnabled` (`:37`), provider existente e configurado (`:39`–`:41`). Define o tipo da conta (`instagram` sempre; LinkedIn por `?type=organization`, senão `member`, `:44`–`:54`), valida com `supportsAccountType`, cria o `state`/cookie (`src/server/social/oauth.ts:21`) e redireciona com o cookie (`:63`–`:65`). Erros voltam para `/app/social/contas?error=...` (`:17`–`:21`).
 **Estado:** `implementado`.
-**Testes:** sem teste.
+**Testes:** `tests/unit/social-connect-route.test.ts` (sessão, papel, gate, provider, tipo de conta, redirect e cookie).
 **Depende de:** `src/lib/{auth,env,tenant}.ts`, `src/server/permissions.ts`, §21.3, §21.4.
 **Usado por:** botões de §20.13 (`src/app/app/social/contas/page.tsx:132`–`:148`).
 **Bibliotecas externas:** `next/server`.
@@ -284,7 +290,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** concluir o OAuth: conta, tokens no Vault e `publish_mode`.
 **Processo:** `GET` (`:23`) trata `error` do provedor (`:33`–`:38`), gate (`:39`), sessão (`:43`) e provider configurado (`:48`–`:51`); exige `code` (`:52`) e valida o `state` contra o cookie **e** o tenant/usuário atuais (`:54`–`:59`). Troca o código (`:63`) e, se a conta é nova, aplica `checkPlanLimitWith(..., "social_accounts")` (`:79`–`:88`). Faz upsert em `social_accounts` (merge de `metadata`, `scopes`, `account_type`, `status=1`, `last_synced_at`, `connected_by`) (`:90`–`:132`), grava os tokens (`:134`) e faz upsert de `social_settings` com `publish_mode='provider'` (`:135`–`:142`). Registra `social.oauth.connected` e redireciona com `connected`; no erro, loga `social.oauth.failed` e devolve `?error=oauth` com `detail` para Página/tester (`:150`–`:165`).
 **Estado:** `implementado`. A conta é sempre criada como da agência (`company_id: null`).
-**Testes:** sem teste.
+**Testes:** `tests/unit/social-callback-route.test.ts` (erro do provedor, gate, `state` divergente, limite de plano, conta nova/existente, tokens e `publish_mode`).
 **Depende de:** `src/lib/{auth,env,logger,tenant}.ts`, `src/lib/supabase/admin.ts`, `src/server/plan-limits.ts`, §21.3–§21.5.
 **Usado por:** retorno do provedor no OAuth iniciado em §21.9.
 **Bibliotecas externas:** `next/server`.
@@ -294,7 +300,7 @@ O cron diário `GET /api/cron/reminders` continua chamando `runSocialPublishRemi
 **Propósito:** worker de publicação nativa chamado pelo pg_cron.
 **Processo:** constantes `MAX_RETRIES=4` (`:19`) e `safeEqual` (`:21`); `recordEvent` (`:33`) insere em `social_post_events`; `syncPostStatus` (`:49`) agrega os destinos no status do post; `syncStalePublishingPosts` (`:106`) corrige posts presos em `publishing`; `processTarget` (`:142`) relê destino/post/conta/mídia, trata sumiço e status inválido (`:179`–`:240`), valida provedor/conta (`:205`–`:240`), gera URLs assinadas de 24 h (`:244`–`:267`), exige imagem no Instagram (`:269`–`:286`), publica (`:288`–`:302`) e grava sucesso (`:309`–`:330`) ou falha/retry com backoff e evento (`:331`–`:364`). `POST` (`:367`) exige `CRON_SECRET` (`:368`–`:378`), respeita o gate (`:380`–`:382`), reseta destinos presos (`:385`), reivindica o lote (`:392`–`:400`), processa e agrega (`:405`–`:419`) e responde `{ ok, processed, published, failed, retried }`.
 **Estado:** `implementado`. Depende de `pg_cron` e `pg_net` habilitados e de `configure_social_publish_cron` rodado com a URL/segredo corretos (`0054:217`).
-**Testes:** sem teste das funções internas nem do handler.
+**Testes:** `tests/unit/social-publish-route.test.ts` cobre as guardas (503 sem segredo, 401 com segredo errado e skip desligado), lote vazio e falha de claim; `processTarget` com banco/API reais e o fluxo completo ainda não têm teste. A cobertura unitária de providers, tokens, OAuth e guardas do handler fecha o #31.
 **Depende de:** `src/lib/{env,logger}.ts`, `src/lib/supabase/admin.ts`, `src/lib/database.types.ts`, §21.3, §21.5, §21.6, §21.7, §21.8, RPCs da `0054`.
 **Usado por:** `pg_cron` (job `social-publish`, a cada minuto, criado pela `0054:277`).
 **Bibliotecas externas:** `next/server`, `node:crypto`.

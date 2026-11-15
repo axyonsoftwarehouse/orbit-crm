@@ -1,8 +1,8 @@
 ﻿# Inventário de arquivos de código
 
-> Fichas completas: **326** · Exceções em tabela: **86** · Total: **412** arquivos de código.
+> Fichas completas: **326** · Exceções em tabela: **92** · Total: **418** arquivos de código.
 >
-> Até o módulo 18, retrato de `main@29aac19`. Em 04/11/2026 (`main@413c601`) entraram os módulos **19 SEO** (19 fichas · 6 exceções) e **20 Social** (22 fichas · 6 exceções) e a linha da migration `0052` no módulo 01. Em 15/11/2026 (`main@5086092`), o PR #26 acrescentou a **publicação nativa** e a correção #32 acrescentou `tests/unit/social-reminders.test.ts`; o **módulo 21** cobre as migrations `0053`/`0054`, os arquivos de OAuth/worker/providers e seus testes (11 fichas · 5 exceções).
+> Até o módulo 18, retrato de `main@29aac19`. Em 04/11/2026 (`main@413c601`) entraram os módulos **19 SEO** (19 fichas · 6 exceções) e **20 Social** (22 fichas · 6 exceções) e a linha da migration `0052` no módulo 01. Em 15/11/2026 (`main@5086092`) entraram a **publicação nativa** (PR #26), a correção #32 (`tests/unit/social-reminders.test.ts`) e os testes do #31; o **módulo 21** cobre as migrations `0053`/`0054`, os arquivos de OAuth/worker/providers e seus testes (11 fichas · 11 exceções).
 
 > Gerado a partir das fichas em docs/mapa/arquivos/. Migrations, testes e primitivos de UI viram linhas de tabela de exceção nos respectivos módulos.
 
@@ -522,3 +522,9 @@
 | `tests/unit/social-native.test.ts` | tests | backoff, `splitScopes` e `zonedTimeToUtc`. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
 | `tests/unit/social-accounts.test.ts` | tests | `isAccountAllowedForCompany` e `validatePostTargets`. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
 | `tests/unit/social-reminders.test.ts` | tests | `needsManualPublishReminder` (lembrete só quando há destino manual; #32). | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-providers.test.ts` | tests | Instagram/LinkedIn com `fetch` simulado: OAuth, erros, imagem, container, upload e publicação. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-tokens.test.ts` | tests | RPCs do Vault e renovação em `getValidTokens`. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-oauth.test.ts` | tests | `redirect_uri`, `state` em cookie e opções do cookie. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-publish-route.test.ts` | tests | guardas do worker (503/401/skip), lote vazio e falha de claim. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-connect-route.test.ts` | tests | guardas e redirect do início do OAuth, com cookie de `state`. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
+| `tests/unit/social-callback-route.test.ts` | tests | retorno do OAuth: `state`, limite de plano, upsert, tokens e `publish_mode`. | tabela | Arquivo de teste | [21-publicacao-nativa.md](21-publicacao-nativa.md) §21 |
