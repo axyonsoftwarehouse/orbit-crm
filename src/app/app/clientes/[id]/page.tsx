@@ -13,7 +13,11 @@ import {
 } from "@/components/ui/table"
 import { TagPicker } from "@/components/app/tag-picker"
 import { CustomFieldsCard } from "@/components/app/custom-fields-view"
-import { getMemberships } from "@/lib/auth"
+import { getMemberships, getUser } from "@/lib/auth"
+import { createClient } from "@/lib/supabase/server"
+import { ClientAssistant } from "@/components/app/assistant/client-assistant"
+import { isAiConfigured } from "@/server/ai/model"
+import { listTeamMembers } from "@/server/queries/team"
 import { getActiveTenant } from "@/lib/tenant"
 import { getCompany, listContacts } from "@/server/queries/companies"
 import { isManager } from "@/server/permissions"
@@ -50,14 +54,32 @@ export default async function CompanyDetailPage({
   const company = await getCompany(active.tenantId, id)
   if (!company) notFound()
 
-  const [contacts, entityTags, allTags, customFields, customValues] =
-    await Promise.all([
-      listContacts(active.tenantId, company.id),
-      tagsForEntity(active.tenantId, "company", company.id),
-      listTags(active.tenantId),
-      listCustomFieldDefinitions(active.tenantId, "company"),
-      customFieldValuesForEntity(active.tenantId, "company", company.id),
-    ])
+  const supabase = await createClient()
+  const [
+    contacts,
+    entityTags,
+    allTags,
+    customFields,
+    customValues,
+    user,
+    teamMembers,
+    { data: companyProjects },
+  ] = await Promise.all([
+    listContacts(active.tenantId, company.id),
+    tagsForEntity(active.tenantId, "company", company.id),
+    listTags(active.tenantId),
+    listCustomFieldDefinitions(active.tenantId, "company"),
+    customFieldValuesForEntity(active.tenantId, "company", company.id),
+    getUser(),
+    listTeamMembers(active.tenantId),
+    supabase
+      .from("projects")
+      .select("id, name")
+      .eq("tenant_id", active.tenantId)
+      .eq("company_id", company.id)
+      .is("deleted_at", null)
+      .order("name"),
+  ])
 
   return (
     <div className="space-y-6">
@@ -190,6 +212,19 @@ export default async function CompanyDetailPage({
           </Table>
         </CardContent>
       </Card>
+
+      {user && (
+        <ClientAssistant
+          companyId={company.id}
+          enabled={isAiConfigured()}
+          projects={companyProjects ?? []}
+          members={teamMembers.map((member) => ({
+            user_id: member.user_id,
+            label: member.full_name || member.email || "Membro",
+          }))}
+          currentUserId={user.id}
+        />
+      )}
     </div>
   )
 }

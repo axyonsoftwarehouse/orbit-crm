@@ -32,9 +32,14 @@ export const assistantTaskSchema = proposeTaskInputSchema.extend({
 
 export type AssistantTaskInput = z.infer<typeof assistantTaskSchema>
 
-export type ProposeTaskOutput =
-  | { status: "created"; taskId: string }
-  | { status: "discarded" }
-  | { status: "error"; message: string }
+export const proposeTaskOutputSchema = z.discriminatedUnion("status", [
+  z.object({ status: z.literal("created"), taskId: z.string() }),
+  z.object({ status: z.literal("discarded") }),
+  z.object({ status: z.literal("error"), message: z.string() }),
+])
 
-export type DraftEmailOutput = { status: "shown" }
+export type ProposeTaskOutput = z.infer<typeof proposeTaskOutputSchema>
+
+export const draftEmailOutputSchema = z.object({ status: z.literal("shown") })
+
+export type DraftEmailOutput = z.infer<typeof draftEmailOutputSchema>

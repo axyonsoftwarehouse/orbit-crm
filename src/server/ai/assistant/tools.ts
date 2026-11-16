@@ -15,7 +15,9 @@ import {
 } from "@/lib/constants"
 import {
   draftEmailInputSchema,
+  draftEmailOutputSchema,
   proposeTaskInputSchema,
+  proposeTaskOutputSchema,
 } from "@/lib/ai/assistant-schemas"
 
 const ROW_LIMIT = 20
@@ -227,12 +229,14 @@ export function buildAssistantTools({ supabase, tenantId, companyId }: Ctx) {
       description:
         "Propõe uma tarefa num projeto deste cliente. O usuário revisa e confirma; o resultado diz se foi criada.",
       inputSchema: proposeTaskInputSchema,
+      outputSchema: proposeTaskOutputSchema,
     }),
 
     draftEmail: tool({
       description:
         "Mostra um rascunho de e-mail (destinatário, assunto, corpo) para o usuário copiar. Nada é enviado.",
       inputSchema: draftEmailInputSchema,
+      outputSchema: draftEmailOutputSchema,
     }),
   }
 }
