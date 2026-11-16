@@ -1,16 +1,25 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
+import { MockLanguageModelV4 } from "ai/test"
 import type { SeoAuditResult } from "@/server/seo/audit"
+import { textResult } from "./ai-test-utils"
 
-const envState = vi.hoisted(() => ({
-  apiKey: "test-key" as string | undefined,
+const modelState = vi.hoisted(() => ({
+  model: null as unknown,
+  missingKey: false,
 }))
 
-vi.mock("@/lib/env", () => ({
-  env: () => ({
-    OPENAI_API_KEY: envState.apiKey,
-    OPENAI_MODEL: "gpt-test",
-  }),
-}))
+vi.mock("@/server/ai/model", async () => {
+  class AiError extends Error {}
+  return {
+    AiError,
+    getChatModel: () => {
+      if (modelState.missingKey) {
+        throw new AiError("OPENROUTER_API_KEY não configurada.")
+      }
+      return modelState.model
+    },
+  }
+})
 
 import { generateSeoAiSummary, SeoAiError } from "@/server/seo/ai-summary"
 
@@ -49,39 +58,48 @@ function result(): SeoAuditResult {
 
 describe("SEO AI summary", () => {
   beforeEach(() => {
-    envState.apiKey = "test-key"
+    modelState.missingKey = false
+    modelState.model = new MockLanguageModelV4({
+      doGenerate: textResult("  Resumo gerado.  "),
+    })
   })
 
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
-
-  it("gera o resumo via OpenAI", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          choices: [{ message: { content: "Resumo gerado." } }],
-        }),
-        { status: 200 },
-      ),
-    )
-    vi.stubGlobal("fetch", fetchMock)
+  it("gera o resumo via OpenRouter", async () => {
+    const model = modelState.model as MockLanguageModelV4
 
     await expect(generateSeoAiSummary(result())).resolves.toBe("Resumo gerado.")
-    expect(fetchMock).toHaveBeenCalledWith(
-      "https://api.openai.com/v1/chat/completions",
-      expect.objectContaining({
-        method: "POST",
-        body: expect.stringContaining('"model":"gpt-test"'),
-      }),
+    const prompt = JSON.stringify(model.doGenerateCalls[0]?.prompt)
+    expect(prompt).toContain("Score: 75/100")
+    expect(prompt).toContain("A página não possui título.")
+  })
+
+  it("sem chave lança SeoAiError com a mensagem de configuração", async () => {
+    modelState.missingKey = true
+
+    const error = await generateSeoAiSummary(result()).catch((e) => e)
+    expect(error).toBeInstanceOf(SeoAiError)
+    expect(error.message).toContain("OPENROUTER_API_KEY")
+  })
+
+  it("erro do provedor vira mensagem genérica", async () => {
+    modelState.model = new MockLanguageModelV4({
+      doGenerate: async () => {
+        throw new Error("upstream 500")
+      },
+    })
+
+    await expect(generateSeoAiSummary(result())).rejects.toThrow(
+      new SeoAiError("O provedor de IA não conseguiu gerar o resumo."),
     )
   })
 
-  it("falha quando a chave não está configurada", async () => {
-    envState.apiKey = undefined
+  it("texto vazio vira erro", async () => {
+    modelState.model = new MockLanguageModelV4({
+      doGenerate: textResult("  "),
+    })
 
-    await expect(generateSeoAiSummary(result())).rejects.toBeInstanceOf(
-      SeoAiError,
+    await expect(generateSeoAiSummary(result())).rejects.toThrow(
+      new SeoAiError("O provedor de IA retornou um resumo vazio."),
     )
   })
 })
