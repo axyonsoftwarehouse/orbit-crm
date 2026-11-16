@@ -7,9 +7,9 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { checklistItemSchema, taskSchema } from "@/lib/validations/tasks"
 import { saveCustomFieldValues } from "@/server/custom-fields"
-import { checkPlanLimit } from "@/server/plan-limits"
 import { isManager } from "@/server/permissions"
 import { dbError } from "@/lib/db-error"
+import { insertTask } from "@/server/tasks/insert-task"
 
 export type TaskFormState = { error?: string; success?: string } | undefined
 
@@ -36,9 +36,6 @@ export async function createTaskAction(
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
 
-  const limit = await checkPlanLimit(active.tenantId, "tasks")
-  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
-
   const parsed = parseTask(formData)
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
@@ -46,30 +43,22 @@ export async function createTaskAction(
 
   const user = await getUser()
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("tasks")
-    .insert({
-      tenant_id: active.tenantId,
-      created_by: user?.id,
-      ...parsed.data,
-      date_finished: parsed.data.status === 5 ? new Date().toISOString() : null,
-    })
-    .select("id")
-    .single()
-
-  if (error) return dbError("tasks", error)
+  const result = await insertTask(
+    supabase,
+    active.tenantId,
+    user?.id,
+    parsed.data,
+  )
+  if ("error" in result) return result
 
   await saveCustomFieldValues(
     supabase,
     active.tenantId,
     "task",
-    data.id,
+    result.id,
     formData,
   )
 
-  revalidatePath("/app/tarefas")
-  revalidatePath("/app/projetos")
-  revalidatePath(`/app/projetos/${parsed.data.project_id}`)
   return { success: "Tarefa criada." }
 }
 
