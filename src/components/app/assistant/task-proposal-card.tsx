@@ -41,16 +41,23 @@ export function TaskProposalCard({
   async function confirm() {
     setPending(true)
     setError(null)
-    const result = await createAssistantTaskAction({
-      company_id: companyId,
-      project_id: projectId,
-      name,
-      description: input.description,
-      due_date: dueDate || undefined,
-      priority: input.priority ?? 2,
-      assignee_id: assigneeId,
-    })
-    setPending(false)
+    let result: Awaited<ReturnType<typeof createAssistantTaskAction>>
+    try {
+      result = await createAssistantTaskAction({
+        company_id: companyId,
+        project_id: projectId,
+        name,
+        description: input.description,
+        due_date: dueDate || undefined,
+        priority: input.priority ?? 2,
+        assignee_id: assigneeId,
+      })
+    } catch {
+      setError("Não foi possível criar a tarefa. Tente novamente.")
+      return
+    } finally {
+      setPending(false)
+    }
     if (result.ok) {
       onResolved({ status: "created", taskId: result.taskId })
     } else {

@@ -77,15 +77,21 @@ export async function isRateLimited(
 const AI_USER_LIMIT = 30
 const AI_WINDOW_SECONDS = 600
 
+export type AiRateLimitStatus = "allowed" | "limited" | "unavailable"
+
 /**
  * Limite de mensagens de IA por usuário. Falha fechado: é a única proteção
- * de custo da IA, então se o controle falhar a mensagem é recusada.
+ * de custo da IA, então se o controle falhar a mensagem é recusada
+ * ("unavailable").
  */
-export async function isAiRateLimited(userId: string): Promise<boolean> {
+export async function checkAiRateLimit(
+  userId: string,
+): Promise<AiRateLimitStatus> {
   const allowed = await callRateLimit(
     `ai:user:${userId}`,
     AI_USER_LIMIT,
     AI_WINDOW_SECONDS,
   )
-  return allowed !== true
+  if (allowed === null) return "unavailable"
+  return allowed ? "allowed" : "limited"
 }

@@ -22,10 +22,10 @@ import {
   type AssistantProject,
 } from "./task-proposal-card"
 
-const TASK_RESULT_TEXT: Record<ProposeTaskOutput["status"], string> = {
-  created: "Tarefa criada.",
-  discarded: "Proposta de tarefa descartada.",
-  error: "Não foi possível criar a tarefa.",
+function taskResultText(output: ProposeTaskOutput): string {
+  if (output.status === "created") return "Tarefa criada."
+  if (output.status === "discarded") return "Proposta de tarefa descartada."
+  return `Não foi possível criar a tarefa: ${output.message}`
 }
 
 function DraftShown({
@@ -142,7 +142,7 @@ export function ClientAssistant({
                         const output = part.output
                         return (
                           <p key={key} className="text-muted-foreground">
-                            {TASK_RESULT_TEXT[output.status]}
+                            {taskResultText(output)}
                           </p>
                         )
                       }

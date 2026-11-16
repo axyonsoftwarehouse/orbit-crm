@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event"
 const { actionMock, chatState } = vi.hoisted(() => ({
   actionMock: vi.fn(),
   chatState: {
+    messages: [] as unknown[],
     error: undefined as Error | undefined,
     regenerate: vi.fn(),
   },
@@ -16,7 +17,7 @@ vi.mock("@/server/actions/assistant", () => ({
 
 vi.mock("@ai-sdk/react", () => ({
   useChat: () => ({
-    messages: [],
+    messages: chatState.messages,
     status: chatState.error ? "error" : "ready",
     error: chatState.error,
     sendMessage: vi.fn(),
@@ -47,7 +48,9 @@ const taskProps = {
 }
 
 describe("TaskProposalCard", () => {
-  beforeEach(() => actionMock.mockReset())
+  beforeEach(() => {
+    actionMock.mockReset()
+  })
 
   it("Criar tarefa chama a action e resolve com created", async () => {
     actionMock.mockResolvedValue({ ok: true, taskId: "t9" })
@@ -84,6 +87,24 @@ describe("TaskProposalCard", () => {
       status: "error",
       message: "Responsável inválido.",
     })
+  })
+
+  it("falha de rede mantém o cartão e permite tentar de novo", async () => {
+    actionMock.mockImplementation(async () => {
+      throw new Error("network")
+    })
+    const onResolved = vi.fn()
+    render(<TaskProposalCard {...taskProps} onResolved={onResolved} />)
+
+    await userEvent.click(screen.getByRole("button", { name: "Criar tarefa" }))
+
+    expect(
+      await screen.findByText(
+        "Não foi possível criar a tarefa. Tente novamente.",
+      ),
+    ).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Criar tarefa" })).toBeEnabled()
+    expect(onResolved).not.toHaveBeenCalled()
   })
 
   it("Descartar resolve com discarded e não chama a action", async () => {
@@ -136,8 +157,34 @@ describe("ClientAssistant", () => {
   }
 
   beforeEach(() => {
+    chatState.messages = []
     chatState.error = undefined
     chatState.regenerate.mockReset()
+  })
+
+  it("resultado com erro mostra o motivo na conversa", () => {
+    chatState.messages = [
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-proposeTask",
+            toolCallId: "c1",
+            state: "output-available",
+            input: { project_id: PROJECT, name: "X", priority: 2 },
+            output: { status: "error", message: "Limite do plano atingido." },
+          },
+        ],
+      },
+    ]
+    render(<ClientAssistant {...props} enabled />)
+
+    expect(
+      screen.getByText(
+        "Não foi possível criar a tarefa: Limite do plano atingido.",
+      ),
+    ).toBeInTheDocument()
   })
 
   it("desabilitado mostra Assistente indisponível.", () => {

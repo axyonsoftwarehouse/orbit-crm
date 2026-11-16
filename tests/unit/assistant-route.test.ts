@@ -12,7 +12,7 @@ const state = vi.hoisted(() => ({
   } | null,
   company: { id: "c1", name: "Padaria" } as { id: string; name: string } | null,
   configured: true,
-  rateLimited: false,
+  rateLimit: "allowed" as "allowed" | "limited" | "unavailable",
   model: null as unknown,
 }))
 
@@ -36,7 +36,7 @@ vi.mock("@/server/ai/model", () => ({
   getChatModel: () => state.model,
 }))
 vi.mock("@/server/rate-limit", () => ({
-  isAiRateLimited: async () => state.rateLimited,
+  checkAiRateLimit: async () => state.rateLimit,
 }))
 vi.mock("@/server/ai/assistant/tools", () => ({
   buildAssistantTools: buildToolsMock,
@@ -88,7 +88,7 @@ describe("POST /api/ai/cliente", () => {
     state.user = { id: "u1" }
     state.membership = { tenantId: "t1", role: "member" }
     state.configured = true
-    state.rateLimited = false
+    state.rateLimit = "allowed"
     state.model = textStreamModel("Olá do assistente")
     getCompanyMock.mockReset()
     getCompanyMock.mockResolvedValue({ id: COMPANY, name: "Padaria" })
@@ -125,18 +125,80 @@ describe("POST /api/ai/cliente", () => {
     state.configured = false
     const res = await POST(request(validBody))
     expect(res.status).toBe(503)
-    await expect(res.json()).resolves.toEqual({
-      error: "Assistente indisponível.",
-    })
+    await expect(res.text()).resolves.toBe("Assistente indisponível.")
   })
 
   it("rate limit → 429", async () => {
-    state.rateLimited = true
+    state.rateLimit = "limited"
     const res = await POST(request(validBody))
     expect(res.status).toBe(429)
-    await expect(res.json()).resolves.toEqual({
-      error: "Muitas mensagens. Tente novamente em alguns minutos.",
-    })
+    await expect(res.text()).resolves.toBe(
+      "Muitas mensagens. Tente novamente em alguns minutos.",
+    )
+  })
+
+  it("falha do controle de limite → 503 temporariamente indisponível", async () => {
+    state.rateLimit = "unavailable"
+    const res = await POST(request(validBody))
+    expect(res.status).toBe(503)
+    await expect(res.text()).resolves.toBe(
+      "Assistente temporariamente indisponível.",
+    )
+  })
+
+  it("cartão de tarefa ignorado não quebra a conversa", async () => {
+    const messages = [
+      userMessage(1),
+      {
+        id: "a1",
+        role: "assistant",
+        parts: [
+          {
+            type: "tool-proposeTask",
+            toolCallId: "call-1",
+            state: "input-available",
+            input: { project_id: "p1", name: "X", priority: 2 },
+          },
+        ],
+      },
+      userMessage(2),
+    ]
+
+    const res = await POST(request({ companyId: COMPANY, messages }))
+
+    expect(res.status).toBe(200)
+    expect(await res.text()).toContain("Olá do assistente")
+  })
+
+  it("mensagem muito longa → 413 sem chamar o modelo", async () => {
+    const model = state.model as MockLanguageModelV4
+    const huge = {
+      id: "m1",
+      role: "user",
+      parts: [{ type: "text", text: "a".repeat(120_000) }],
+    }
+
+    const res = await POST(request({ companyId: COMPANY, messages: [huge] }))
+
+    expect(res.status).toBe(413)
+    await expect(res.text()).resolves.toBe("Mensagem muito longa.")
+    expect(model.doStreamCalls).toHaveLength(0)
+  })
+
+  it("partes malformadas → 400", async () => {
+    const res = await POST(
+      request({
+        companyId: COMPANY,
+        messages: [{ id: "m1", role: "user", parts: [null] }],
+      }),
+    )
+    expect(res.status).toBe(400)
+  })
+
+  it("limita os tokens de saída", async () => {
+    const model = state.model as MockLanguageModelV4
+    await (await POST(request(validBody))).text()
+    expect(model.doStreamCalls[0]!.maxOutputTokens).toBe(1000)
   })
 
   it("caso feliz → 200 com o texto do modelo", async () => {

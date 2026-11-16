@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/logger"
 import { getCompany } from "@/server/queries/companies"
 import { getChatModel, isAiConfigured } from "@/server/ai/model"
-import { isAiRateLimited } from "@/server/rate-limit"
+import { checkAiRateLimit } from "@/server/rate-limit"
 import { buildAssistantSystemPrompt } from "@/server/ai/assistant/prompt"
 import {
   buildAssistantTools,
@@ -17,6 +17,9 @@ export const maxDuration = 30
 
 const MAX_HISTORY = 20
 const MAX_STEPS = 6
+const MAX_OUTPUT_TOKENS = 1000
+/** Tamanho máximo do corpo (caracteres): limita o custo por requisição. */
+const MAX_BODY_CHARS = 100_000
 const ASSISTANT_ERROR = "Não foi possível gerar a resposta agora."
 
 const bodySchema = z.object({
@@ -34,30 +37,47 @@ const bodySchema = z.object({
     .min(1),
 })
 
-function json(status: number, error: string) {
-  return Response.json({ error }, { status })
+/** Texto puro: o `useChat` mostra o corpo da resposta como mensagem de erro. */
+function fail(status: number, message: string) {
+  return new Response(message, {
+    status,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  })
 }
 
 export async function POST(request: Request): Promise<Response> {
   const user = await getUser()
-  if (!user) return json(401, "Não autenticado.")
+  if (!user) return fail(401, "Não autenticado.")
 
   const active = await getActiveMembership()
-  if (!active) return json(403, "Nenhuma empresa ativa.")
+  if (!active) return fail(403, "Nenhuma empresa ativa.")
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null))
-  if (!parsed.success) return json(400, "Requisição inválida.")
+  const raw = await request.text().catch(() => "")
+  if (raw.length > MAX_BODY_CHARS) return fail(413, "Mensagem muito longa.")
+
+  let body: unknown = null
+  try {
+    body = JSON.parse(raw)
+  } catch {
+    body = null
+  }
+  const parsed = bodySchema.safeParse(body)
+  if (!parsed.success) return fail(400, "Requisição inválida.")
 
   const { companyId } = parsed.data
   const messages = parsed.data.messages as unknown as AssistantUIMessage[]
 
   const company = await getCompany(active.tenantId, companyId)
-  if (!company) return json(404, "Cliente não encontrado.")
+  if (!company) return fail(404, "Cliente não encontrado.")
 
-  if (!isAiConfigured()) return json(503, "Assistente indisponível.")
+  if (!isAiConfigured()) return fail(503, "Assistente indisponível.")
 
-  if (await isAiRateLimited(user.id)) {
-    return json(429, "Muitas mensagens. Tente novamente em alguns minutos.")
+  const rateLimit = await checkAiRateLimit(user.id)
+  if (rateLimit === "unavailable") {
+    return fail(503, "Assistente temporariamente indisponível.")
+  }
+  if (rateLimit === "limited") {
+    return fail(429, "Muitas mensagens. Tente novamente em alguns minutos.")
   }
 
   const profile = await getProfile()
@@ -67,6 +87,22 @@ export async function POST(request: Request): Promise<Response> {
     companyId,
   })
 
+  let modelMessages
+  try {
+    modelMessages = await convertToModelMessages(
+      messages.slice(-MAX_HISTORY),
+      // Um cartão de tarefa ignorado (o usuário seguiu conversando) deixa
+      // uma chamada sem resultado no histórico; sem isto a conversa quebra.
+      { tools, ignoreIncompleteToolCalls: true },
+    )
+  } catch (error) {
+    logger.warn("ai.assistant_invalid_messages", {
+      companyId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return fail(400, "Requisição inválida.")
+  }
+
   const result = streamText({
     model: getChatModel(),
     system: buildAssistantSystemPrompt({
@@ -74,12 +110,11 @@ export async function POST(request: Request): Promise<Response> {
       userName: profile?.full_name ?? null,
       today: new Date().toISOString().slice(0, 10),
     }),
-    messages: await convertToModelMessages(messages.slice(-MAX_HISTORY), {
-      tools,
-    }),
+    messages: modelMessages,
     tools,
     stopWhen: stepCountIs(MAX_STEPS),
     maxRetries: 1,
+    maxOutputTokens: MAX_OUTPUT_TOKENS,
   })
 
   return result.toUIMessageStreamResponse({
