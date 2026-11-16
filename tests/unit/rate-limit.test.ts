@@ -19,6 +19,7 @@ vi.mock("@/lib/logger", () => ({
 
 import {
   hashIdentifier,
+  checkAiRateLimit,
   isLoginRateLimited,
   isRateLimited,
 } from "@/server/rate-limit"
@@ -73,5 +74,33 @@ describe("rate limit", () => {
       p_limit: 5,
       p_window_seconds: 60,
     })
+  })
+  it("checkAiRateLimit usa o bucket do usuário", async () => {
+    rpcMock.mockResolvedValue({ data: true, error: null })
+
+    await expect(checkAiRateLimit("u1")).resolves.toBe("allowed")
+    expect(rpcMock).toHaveBeenCalledWith("check_rate_limit", {
+      p_bucket: "ai:user:u1",
+      p_limit: 30,
+      p_window_seconds: 600,
+    })
+  })
+
+  it("checkAiRateLimit indica limite estourado", async () => {
+    rpcMock.mockResolvedValue({ data: false, error: null })
+
+    await expect(checkAiRateLimit("u1")).resolves.toBe("limited")
+  })
+
+  it("checkAiRateLimit bloqueia (unavailable) quando a RPC falha", async () => {
+    rpcMock.mockResolvedValue({ data: null, error: { message: "x" } })
+
+    await expect(checkAiRateLimit("u1")).resolves.toBe("unavailable")
+  })
+
+  it("checkAiRateLimit bloqueia (unavailable) quando a RPC lança", async () => {
+    rpcMock.mockRejectedValue(new Error("boom"))
+
+    await expect(checkAiRateLimit("u1")).resolves.toBe("unavailable")
   })
 })

@@ -1,16 +1,25 @@
-import { env } from "@/lib/env"
+import { generateText } from "ai"
+import { AiError, getChatModel } from "@/server/ai/model"
 import type { SeoAuditResult } from "./audit"
 
 export class SeoAiError extends Error {}
 
+const SYSTEM_PROMPT =
+  "Você é um consultor sênior de SEO técnico e de conteúdo. Responda em português do Brasil, com foco em ações práticas e priorizadas."
+
 export async function generateSeoAiSummary(
   result: SeoAuditResult,
 ): Promise<string> {
-  const { OPENAI_API_KEY: apiKey, OPENAI_MODEL: model } = env()
-  if (!apiKey) {
-    throw new SeoAiError(
-      "OPENAI_API_KEY não configurada. Configure a chave para gerar o resumo.",
-    )
+  let model
+  try {
+    model = getChatModel()
+  } catch (error) {
+    if (error instanceof AiError) {
+      throw new SeoAiError(
+        "OPENROUTER_API_KEY não configurada. Configure a chave para gerar o resumo.",
+      )
+    }
+    throw error
   }
 
   const issues = result.checks
@@ -36,41 +45,23 @@ export async function generateSeoAiSummary(
     "Não invente dados que não estão no relatório. Seja direto e técnico, sem saudação.",
   ].join("\n")
 
-  let response: Response
+  let text: string
   try {
-    response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.3,
-        max_tokens: 450,
-        messages: [
-          {
-            role: "system",
-            content:
-              "Você é um consultor sênior de SEO técnico e de conteúdo. Responda em português do Brasil, com foco em ações práticas e priorizadas.",
-          },
-          { role: "user", content: prompt },
-        ],
-      }),
-      signal: AbortSignal.timeout(8_000),
+    const response = await generateText({
+      model,
+      system: SYSTEM_PROMPT,
+      prompt,
+      temperature: 0.3,
+      maxOutputTokens: 450,
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(8_000),
     })
+    text = response.text
   } catch {
-    throw new SeoAiError("Não foi possível conectar ao provedor de IA.")
-  }
-
-  if (!response.ok) {
     throw new SeoAiError("O provedor de IA não conseguiu gerar o resumo.")
   }
 
-  const data = (await response.json()) as {
-    choices?: { message?: { content?: string } }[]
-  }
-  const summary = data.choices?.[0]?.message?.content?.trim()
+  const summary = text.trim()
   if (!summary) {
     throw new SeoAiError("O provedor de IA retornou um resumo vazio.")
   }
