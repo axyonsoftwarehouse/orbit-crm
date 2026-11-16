@@ -52,6 +52,7 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   let invoiceBId = ""
   const storagePaths: string[] = []
   const brandingPaths: string[] = []
+  const socialMediaPaths: string[] = []
   let clientA: SupabaseClient
   let clientB: SupabaseClient
   let clientAdmin: SupabaseClient
@@ -367,6 +368,9 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     }
     if (brandingPaths.length > 0) {
       await admin.storage.from("branding").remove(brandingPaths)
+    }
+    if (socialMediaPaths.length > 0) {
+      await admin.storage.from("social_media").remove(socialMediaPaths)
     }
     if (tenantA && tenantB) {
       await admin.from("tenants").delete().in("id", [tenantA, tenantB])
@@ -2237,6 +2241,770 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
         .update({ company_id: null })
         .eq("id", accountXId)
       expect(error).toBeNull()
+    })
+  })
+
+  describe("SEO: isolamento entre tenants e portal", () => {
+    let siteAId = ""
+    let siteBId = ""
+    let auditAId = ""
+    let auditBId = ""
+
+    beforeAll(async () => {
+      const sites = await admin
+        .from("seo_sites")
+        .insert([
+          {
+            tenant_id: tenantA,
+            company_id: portalCompanyId,
+            label: `Site A ${suffix}`,
+            url: "https://a.example.com",
+          },
+          {
+            tenant_id: tenantB,
+            company_id: companyBId,
+            label: `Site B ${suffix}`,
+            url: "https://b.example.com",
+          },
+        ])
+        .select("id, tenant_id")
+      if (sites.error) throw sites.error
+      siteAId = sites.data.find((s) => s.tenant_id === tenantA)!.id
+      siteBId = sites.data.find((s) => s.tenant_id === tenantB)!.id
+
+      const finishedAt = new Date().toISOString()
+      const audits = await admin
+        .from("seo_audits")
+        .insert([
+          {
+            tenant_id: tenantA,
+            site_id: siteAId,
+            url: "https://a.example.com",
+            status: 2,
+            score: 91,
+            checks_total: 10,
+            issues_total: 1,
+            finished_at: finishedAt,
+          },
+          {
+            tenant_id: tenantB,
+            site_id: siteBId,
+            url: "https://b.example.com",
+            status: 2,
+            score: 42,
+            checks_total: 10,
+            issues_total: 6,
+            finished_at: finishedAt,
+          },
+        ])
+        .select("id, tenant_id")
+      if (audits.error) throw audits.error
+      auditAId = audits.data.find((a) => a.tenant_id === tenantA)!.id
+      auditBId = audits.data.find((a) => a.tenant_id === tenantB)!.id
+    })
+
+    it("A vê o próprio site e auditoria, e não os de B", async () => {
+      const sites = await clientA
+        .from("seo_sites")
+        .select("id")
+        .in("id", [siteAId, siteBId])
+      expect(sites.error).toBeNull()
+      expect(sites.data?.map((s) => s.id)).toEqual([siteAId])
+
+      const audits = await clientA
+        .from("seo_audits")
+        .select("id")
+        .in("id", [auditAId, auditBId])
+      expect(audits.error).toBeNull()
+      expect(audits.data?.map((a) => a.id)).toEqual([auditAId])
+    })
+
+    it("A não cria site em outro tenant", async () => {
+      const { error } = await clientA.from("seo_sites").insert({
+        tenant_id: tenantB,
+        label: "Intruso",
+        url: "https://intruso.example.com",
+      })
+      expect(error).not.toBeNull()
+    })
+
+    it("A não cria site no próprio tenant apontando para cliente de B", async () => {
+      const { error } = await clientA.from("seo_sites").insert({
+        tenant_id: tenantA,
+        company_id: companyBId,
+        label: "Cliente alheio",
+        url: "https://alheio.example.com",
+      })
+      expect(error).not.toBeNull()
+    })
+
+    it("A não cria auditoria para site de B", async () => {
+      const ownTenant = await clientA.from("seo_audits").insert({
+        tenant_id: tenantA,
+        site_id: siteBId,
+        url: "https://b.example.com",
+      })
+      expect(ownTenant.error).not.toBeNull()
+
+      const otherTenant = await clientA.from("seo_audits").insert({
+        tenant_id: tenantB,
+        site_id: siteBId,
+        url: "https://b.example.com",
+      })
+      expect(otherTenant.error).not.toBeNull()
+    })
+
+    it("A não altera nem apaga site e auditoria de B", async () => {
+      const updSite = await clientA
+        .from("seo_sites")
+        .update({ label: "Hackeado" })
+        .eq("id", siteBId)
+        .select("id")
+      expect(updSite.data ?? []).toEqual([])
+
+      const updAudit = await clientA
+        .from("seo_audits")
+        .update({ score: 100 })
+        .eq("id", auditBId)
+        .select("id")
+      expect(updAudit.data ?? []).toEqual([])
+
+      const delAudit = await clientA
+        .from("seo_audits")
+        .delete()
+        .eq("id", auditBId)
+        .select("id")
+      expect(delAudit.data ?? []).toEqual([])
+
+      const delSite = await clientA
+        .from("seo_sites")
+        .delete()
+        .eq("id", siteBId)
+        .select("id")
+      expect(delSite.data ?? []).toEqual([])
+
+      const site = await admin
+        .from("seo_sites")
+        .select("label")
+        .eq("id", siteBId)
+        .single()
+      expect(site.data?.label).toBe(`Site B ${suffix}`)
+
+      const audit = await admin
+        .from("seo_audits")
+        .select("score")
+        .eq("id", auditBId)
+        .single()
+      expect(audit.data?.score).toBe(42)
+    })
+
+    it("membro não apaga site do próprio tenant", async () => {
+      const deleted = await clientMember
+        .from("seo_sites")
+        .delete()
+        .eq("id", siteAId)
+        .select("id")
+      expect(deleted.data ?? []).toEqual([])
+
+      const row = await admin
+        .from("seo_sites")
+        .select("id")
+        .eq("id", siteAId)
+        .maybeSingle()
+      expect(row.data?.id).toBe(siteAId)
+    })
+
+    it("cliente do portal não lê seo_sites nem seo_audits diretamente", async () => {
+      const sites = await clientPortal.from("seo_sites").select("id")
+      expect(sites.data ?? []).toEqual([])
+
+      const audits = await clientPortal.from("seo_audits").select("id")
+      expect(audits.data ?? []).toEqual([])
+    })
+
+    it("portal lista só os sites da própria empresa", async () => {
+      const own = await clientPortal.rpc("portal_list_seo_sites", {
+        p_company: portalCompanyId,
+      })
+      expect(own.error).toBeNull()
+      expect(own.data?.map((s: { id: string }) => s.id)).toEqual([siteAId])
+      expect(own.data?.[0]?.score).toBe(91)
+
+      const otherTenant = await clientPortal.rpc("portal_list_seo_sites", {
+        p_company: companyBId,
+      })
+      expect(otherTenant.data ?? []).toEqual([])
+
+      const otherCompany = await clientPortal.rpc("portal_list_seo_sites", {
+        p_company: companyAId,
+      })
+      expect(otherCompany.data ?? []).toEqual([])
+    })
+
+    it("portal lê a auditoria do próprio site e não a de B", async () => {
+      const own = await clientPortal.rpc("portal_get_seo_audit", {
+        p_company: portalCompanyId,
+        p_site: siteAId,
+      })
+      expect(own.error).toBeNull()
+      expect(own.data?.[0]?.score).toBe(91)
+
+      const otherSite = await clientPortal.rpc("portal_get_seo_audit", {
+        p_company: portalCompanyId,
+        p_site: siteBId,
+      })
+      expect(otherSite.data ?? []).toEqual([])
+
+      const otherCompany = await clientPortal.rpc("portal_get_seo_audit", {
+        p_company: companyBId,
+        p_site: siteBId,
+      })
+      expect(otherCompany.data ?? []).toEqual([])
+    })
+
+    it("membro da equipe não usa as RPCs do portal como cliente", async () => {
+      const list = await clientB.rpc("portal_list_seo_sites", {
+        p_company: portalCompanyId,
+      })
+      expect(list.data ?? []).toEqual([])
+
+      const audit = await clientB.rpc("portal_get_seo_audit", {
+        p_company: portalCompanyId,
+        p_site: siteAId,
+      })
+      expect(audit.data ?? []).toEqual([])
+    })
+
+    it("anon não executa as RPCs de SEO do portal", async () => {
+      const anon = createClient(url!, anonKey!)
+      const list = await anon.rpc("portal_list_seo_sites", {
+        p_company: portalCompanyId,
+      })
+      expect(list.error?.code).toBe("42501")
+
+      const audit = await anon.rpc("portal_get_seo_audit", {
+        p_company: portalCompanyId,
+        p_site: siteAId,
+      })
+      expect(audit.error?.code).toBe("42501")
+    })
+  })
+
+  describe("Social: isolamento entre tenants e portal", () => {
+    let accountAId = ""
+    let accountBId = ""
+    let postAId = ""
+    let postBId = ""
+    let draftAId = ""
+    let targetAId = ""
+    let targetBId = ""
+    let eventBId = ""
+    let mediaBId = ""
+
+    beforeAll(async () => {
+      const settings = await admin.from("social_settings").upsert([
+        { tenant_id: tenantA, max_retries: 3 },
+        { tenant_id: tenantB, max_retries: 5 },
+      ])
+      if (settings.error) throw settings.error
+
+      const accounts = await admin
+        .from("social_accounts")
+        .insert([
+          {
+            tenant_id: tenantA,
+            company_id: portalCompanyId,
+            provider: "linkedin",
+            provider_account_id: `iso-a-${suffix}`,
+            display_name: "Conta isolada A",
+          },
+          {
+            tenant_id: tenantB,
+            company_id: companyBId,
+            provider: "linkedin",
+            provider_account_id: `iso-b-${suffix}`,
+            display_name: "Conta isolada B",
+          },
+        ])
+        .select("id, tenant_id")
+      if (accounts.error) throw accounts.error
+      accountAId = accounts.data.find((a) => a.tenant_id === tenantA)!.id
+      accountBId = accounts.data.find((a) => a.tenant_id === tenantB)!.id
+
+      const posts = await admin
+        .from("social_posts")
+        .insert([
+          {
+            tenant_id: tenantA,
+            company_id: portalCompanyId,
+            content: `Post A ${suffix}`,
+            status: "pending_approval",
+          },
+          {
+            tenant_id: tenantA,
+            company_id: portalCompanyId,
+            content: `Rascunho A ${suffix}`,
+            status: "draft",
+          },
+          {
+            tenant_id: tenantB,
+            company_id: companyBId,
+            content: `Post B ${suffix}`,
+            status: "pending_approval",
+          },
+        ])
+        .select("id, content")
+      if (posts.error) throw posts.error
+      const byContent = (prefix: string) =>
+        posts.data.find((p) => p.content.startsWith(prefix))!.id
+      postAId = byContent("Post A")
+      draftAId = byContent("Rascunho A")
+      postBId = byContent("Post B")
+
+      const targets = await admin
+        .from("social_post_targets")
+        .insert([
+          { tenant_id: tenantA, post_id: postAId, account_id: accountAId },
+          { tenant_id: tenantB, post_id: postBId, account_id: accountBId },
+        ])
+        .select("id, tenant_id")
+      if (targets.error) throw targets.error
+      targetAId = targets.data.find((t) => t.tenant_id === tenantA)!.id
+      targetBId = targets.data.find((t) => t.tenant_id === tenantB)!.id
+
+      const event = await admin
+        .from("social_post_events")
+        .insert({ tenant_id: tenantB, post_id: postBId, event: "created" })
+        .select("id")
+        .single()
+      if (event.error) throw event.error
+      eventBId = event.data.id
+
+      const media = await admin
+        .from("social_media")
+        .insert({
+          tenant_id: tenantB,
+          post_id: postBId,
+          storage_path: `${tenantB}/${postBId}/b.png`,
+          file_name: "b.png",
+        })
+        .select("id")
+        .single()
+      if (media.error) throw media.error
+      mediaBId = media.data.id
+    })
+
+    it("A não enxerga nenhuma tabela do Social de B", async () => {
+      const checks: Array<[string, string, string]> = [
+        ["social_accounts", "id", accountBId],
+        ["social_posts", "id", postBId],
+        ["social_post_targets", "id", targetBId],
+        ["social_post_events", "id", eventBId],
+        ["social_media", "id", mediaBId],
+        ["social_settings", "tenant_id", tenantB],
+      ]
+      for (const [table, column, value] of checks) {
+        const { data, error } = await clientA
+          .from(table)
+          .select(column)
+          .eq(column, value)
+        expect(error, table).toBeNull()
+        expect(data, table).toEqual([])
+      }
+    })
+
+    it("A enxerga os próprios registros do Social", async () => {
+      const posts = await clientA
+        .from("social_posts")
+        .select("id")
+        .in("id", [postAId, postBId])
+      expect(posts.data?.map((p) => p.id)).toEqual([postAId])
+
+      const targets = await clientA
+        .from("social_post_targets")
+        .select("id")
+        .in("id", [targetAId, targetBId])
+      expect(targets.data?.map((t) => t.id)).toEqual([targetAId])
+
+      const settings = await clientA.from("social_settings").select("tenant_id")
+      expect(settings.data?.map((s) => s.tenant_id)).toEqual([tenantA])
+    })
+
+    it("A não cria conta, post nem evento em outro tenant", async () => {
+      const account = await clientA.from("social_accounts").insert({
+        tenant_id: tenantB,
+        provider: "linkedin",
+        provider_account_id: `intruso-${suffix}`,
+        display_name: "Intrusa",
+      })
+      expect(account.error, "social_accounts").not.toBeNull()
+
+      const post = await clientA.from("social_posts").insert({
+        tenant_id: tenantB,
+        content: "Intruso",
+      })
+      expect(post.error, "social_posts").not.toBeNull()
+
+      const event = await clientA.from("social_post_events").insert({
+        tenant_id: tenantB,
+        post_id: postBId,
+        event: "approved",
+      })
+      expect(event.error, "social_post_events").not.toBeNull()
+    })
+
+    it("A não cria post no próprio tenant para cliente de B", async () => {
+      const { error } = await clientA.from("social_posts").insert({
+        tenant_id: tenantA,
+        company_id: companyBId,
+        content: "Cliente alheio",
+      })
+      expect(error).not.toBeNull()
+    })
+
+    it("A não usa conta nem post de B como destino", async () => {
+      const foreignAccount = await clientA.from("social_post_targets").insert({
+        tenant_id: tenantA,
+        post_id: postAId,
+        account_id: accountBId,
+      })
+      expect(foreignAccount.error).not.toBeNull()
+
+      const foreignPost = await clientA.from("social_post_targets").insert({
+        tenant_id: tenantA,
+        post_id: postBId,
+        account_id: accountAId,
+      })
+      expect(foreignPost.error).not.toBeNull()
+
+      const otherTenant = await clientA.from("social_post_targets").insert({
+        tenant_id: tenantB,
+        post_id: postBId,
+        account_id: accountBId,
+      })
+      expect(otherTenant.error).not.toBeNull()
+    })
+
+    it("A não registra mídia em post ou caminho de outro tenant", async () => {
+      const foreignPost = await clientA.from("social_media").insert({
+        tenant_id: tenantA,
+        post_id: postBId,
+        storage_path: `${tenantA}/${postBId}/x.png`,
+        file_name: "x.png",
+      })
+      expect(foreignPost.error).not.toBeNull()
+
+      const foreignPath = await clientA.from("social_media").insert({
+        tenant_id: tenantA,
+        post_id: postAId,
+        storage_path: `${tenantB}/${postAId}/x.png`,
+        file_name: "x.png",
+      })
+      expect(foreignPath.error).not.toBeNull()
+    })
+
+    it("A não altera nem apaga registros do Social de B", async () => {
+      const updates: Array<[string, string, string, Record<string, unknown>]> =
+        [
+          ["social_posts", "id", postBId, { status: "approved" }],
+          ["social_post_targets", "id", targetBId, { status: "published" }],
+          ["social_accounts", "id", accountBId, { display_name: "Hackeada" }],
+          ["social_settings", "tenant_id", tenantB, { max_retries: 0 }],
+        ]
+      for (const [table, column, value, patch] of updates) {
+        const { data } = await clientA
+          .from(table)
+          .update(patch)
+          .eq(column, value)
+          .select(column)
+        expect(data ?? [], table).toEqual([])
+      }
+
+      const deletes: Array<[string, string]> = [
+        ["social_media", mediaBId],
+        ["social_post_targets", targetBId],
+        ["social_posts", postBId],
+        ["social_accounts", accountBId],
+      ]
+      for (const [table, id] of deletes) {
+        const { data } = await clientA
+          .from(table)
+          .delete()
+          .eq("id", id)
+          .select("id")
+        expect(data ?? [], table).toEqual([])
+      }
+
+      const post = await admin
+        .from("social_posts")
+        .select("status")
+        .eq("id", postBId)
+        .single()
+      expect(post.data?.status).toBe("pending_approval")
+
+      const target = await admin
+        .from("social_post_targets")
+        .select("status")
+        .eq("id", targetBId)
+        .single()
+      expect(target.data?.status).toBe("pending")
+
+      const settings = await admin
+        .from("social_settings")
+        .select("max_retries")
+        .eq("tenant_id", tenantB)
+        .single()
+      expect(settings.data?.max_retries).toBe(5)
+
+      const media = await admin
+        .from("social_media")
+        .select("id")
+        .eq("id", mediaBId)
+        .maybeSingle()
+      expect(media.data?.id).toBe(mediaBId)
+    })
+
+    it("membro não cria conta nem altera configurações do Social", async () => {
+      const account = await clientMember.from("social_accounts").insert({
+        tenant_id: tenantA,
+        provider: "linkedin",
+        provider_account_id: `membro-${suffix}`,
+        display_name: "Conta do membro",
+      })
+      expect(account.error).not.toBeNull()
+
+      const settings = await clientMember
+        .from("social_settings")
+        .update({ approval_required: false })
+        .eq("tenant_id", tenantA)
+        .select("tenant_id")
+      expect(settings.data ?? []).toEqual([])
+    })
+
+    it("Storage social_media: A envia no próprio tenant e é barrado em outro", async () => {
+      const blob = new Blob(["orbit"], { type: "image/png" })
+
+      const ownPath = `${tenantA}/${postAId}/${randomUUID()}.png`
+      const own = await clientA.storage
+        .from("social_media")
+        .upload(ownPath, blob, { contentType: "image/png" })
+      if (!own.error) socialMediaPaths.push(ownPath)
+      expect(own.error).toBeNull()
+
+      const otherPath = `${tenantB}/${postBId}/${randomUUID()}.png`
+      const other = await clientA.storage
+        .from("social_media")
+        .upload(otherPath, blob, { contentType: "image/png" })
+      if (!other.error) socialMediaPaths.push(otherPath)
+      expect(other.error).not.toBeNull()
+    })
+
+    it("Storage social_media: A não gera URL de arquivo de outro tenant", async () => {
+      const path = `${tenantB}/${postBId}/${randomUUID()}-secret.png`
+      const uploaded = await admin.storage
+        .from("social_media")
+        .upload(path, new Blob(["secret"], { type: "image/png" }), {
+          contentType: "image/png",
+        })
+      if (!uploaded.error) socialMediaPaths.push(path)
+      expect(uploaded.error).toBeNull()
+
+      const signed = await clientA.storage
+        .from("social_media")
+        .createSignedUrl(path, 60)
+      expect(signed.error).not.toBeNull()
+    })
+
+    it("cliente do portal não lê as tabelas do Social diretamente", async () => {
+      for (const table of [
+        "social_accounts",
+        "social_posts",
+        "social_post_targets",
+        "social_post_events",
+        "social_media",
+        "social_settings",
+      ]) {
+        const { data } = await clientPortal.from(table).select("tenant_id")
+        expect(data ?? [], table).toEqual([])
+      }
+    })
+
+    it("portal lista só os posts da própria empresa, sem rascunhos", async () => {
+      const own = await clientPortal.rpc("portal_list_social_posts", {
+        p_company: portalCompanyId,
+      })
+      expect(own.error).toBeNull()
+      const ids = (own.data ?? []).map((p: { id: string }) => p.id)
+      expect(ids).toContain(postAId)
+      expect(ids).not.toContain(draftAId)
+      expect(ids).not.toContain(postBId)
+
+      const otherTenant = await clientPortal.rpc("portal_list_social_posts", {
+        p_company: companyBId,
+      })
+      expect(otherTenant.data ?? []).toEqual([])
+    })
+
+    it("portal lê o próprio post e não o de B nem rascunhos", async () => {
+      const own = await clientPortal.rpc("portal_get_social_post", {
+        p_company: portalCompanyId,
+        p_post: postAId,
+      })
+      expect(own.error).toBeNull()
+      expect(own.data?.[0]?.id).toBe(postAId)
+      expect(own.data?.[0]?.targets).toEqual([
+        {
+          provider: "linkedin",
+          display_name: "Conta isolada A",
+          status: "pending",
+        },
+      ])
+
+      const draft = await clientPortal.rpc("portal_get_social_post", {
+        p_company: portalCompanyId,
+        p_post: draftAId,
+      })
+      expect(draft.data ?? []).toEqual([])
+
+      const crossCompany = await clientPortal.rpc("portal_get_social_post", {
+        p_company: portalCompanyId,
+        p_post: postBId,
+      })
+      expect(crossCompany.data ?? []).toEqual([])
+
+      const otherTenant = await clientPortal.rpc("portal_get_social_post", {
+        p_company: companyBId,
+        p_post: postBId,
+      })
+      expect(otherTenant.data ?? []).toEqual([])
+    })
+
+    it("portal não responde post de outra empresa", async () => {
+      const crossCompany = await clientPortal.rpc(
+        "portal_respond_social_post",
+        { p_company: portalCompanyId, p_post: postBId, p_approve: true },
+      )
+      expect(crossCompany.data).toBe(false)
+
+      const otherTenant = await clientPortal.rpc("portal_respond_social_post", {
+        p_company: companyBId,
+        p_post: postBId,
+        p_approve: true,
+      })
+      expect(otherTenant.data).toBe(false)
+
+      const post = await admin
+        .from("social_posts")
+        .select("status")
+        .eq("id", postBId)
+        .single()
+      expect(post.data?.status).toBe("pending_approval")
+    })
+
+    it("membro da equipe não responde como cliente do portal", async () => {
+      const { data } = await clientA.rpc("portal_respond_social_post", {
+        p_company: portalCompanyId,
+        p_post: postAId,
+        p_approve: true,
+      })
+      expect(data).toBe(false)
+
+      const post = await admin
+        .from("social_posts")
+        .select("status")
+        .eq("id", postAId)
+        .single()
+      expect(post.data?.status).toBe("pending_approval")
+    })
+
+    it("anon não executa as RPCs do Social do portal", async () => {
+      const anon = createClient(url!, anonKey!)
+      const calls: Array<[string, Record<string, unknown>]> = [
+        ["portal_list_social_posts", { p_company: portalCompanyId }],
+        [
+          "portal_get_social_post",
+          { p_company: portalCompanyId, p_post: postAId },
+        ],
+        [
+          "portal_respond_social_post",
+          { p_company: portalCompanyId, p_post: postAId, p_approve: true },
+        ],
+      ]
+      for (const [fn, args] of calls) {
+        const { error } = await anon.rpc(fn, args)
+        expect(error?.code, fn).toBe("42501")
+      }
+    })
+
+    // configure_social_publish_cron fica de fora de propósito: se o grant
+    // regredir, chamá-la reagendaria o cron real do banco apontado.
+    it("RPCs de token e worker são exclusivas do service_role", async () => {
+      const anon = createClient(url!, anonKey!)
+      const calls: Array<[string, Record<string, unknown>]> = [
+        ["social_get_tokens", { p_account: accountAId }],
+        [
+          "social_store_tokens",
+          {
+            p_account: accountAId,
+            p_access_token: "token-falso",
+            p_refresh_token: null,
+            p_expires_at: null,
+          },
+        ],
+        ["social_clear_tokens", { p_account: accountAId }],
+        ["claim_social_publish_targets", { p_limit: 1 }],
+        ["reset_stale_social_targets", { p_minutes: 10 }],
+      ]
+      for (const [label, client] of [
+        ["owner", clientA],
+        ["portal", clientPortal],
+        ["anon", anon],
+      ] as const) {
+        for (const [fn, args] of calls) {
+          const { error } = await client.rpc(fn, args)
+          expect(error?.code, `${label}:${fn}`).toBe("42501")
+        }
+      }
+
+      const account = await admin
+        .from("social_accounts")
+        .select("access_token_id")
+        .eq("id", accountAId)
+        .single()
+      expect(account.data?.access_token_id).toBeNull()
+    })
+
+    it("portal aprova o post pendente da própria empresa", async () => {
+      const { data, error } = await clientPortal.rpc(
+        "portal_respond_social_post",
+        { p_company: portalCompanyId, p_post: postAId, p_approve: true },
+      )
+      expect(error).toBeNull()
+      expect(data).toBe(true)
+
+      const post = await admin
+        .from("social_posts")
+        .select("status, approved_by")
+        .eq("id", postAId)
+        .single()
+      expect(post.data?.status).toBe("approved")
+      expect(post.data?.approved_by).toBe(clientUserId)
+
+      const events = await admin
+        .from("social_post_events")
+        .select("event, actor_id")
+        .eq("post_id", postAId)
+      expect(events.data).toContainEqual({
+        event: "approved",
+        actor_id: clientUserId,
+      })
+
+      const again = await clientPortal.rpc("portal_respond_social_post", {
+        p_company: portalCompanyId,
+        p_post: postAId,
+        p_approve: false,
+      })
+      expect(again.data).toBe(false)
     })
   })
 
