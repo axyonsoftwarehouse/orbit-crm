@@ -38,11 +38,12 @@ export async function isLoginRateLimited(email: string): Promise<boolean> {
   )
 }
 
-export async function isRateLimited(
+/** Retorna `true` se dentro do limite, `false` se estourou, `null` se falhou. */
+async function callRateLimit(
   bucket: string,
   limit: number,
   windowSeconds: number,
-): Promise<boolean> {
+): Promise<boolean | null> {
   try {
     const admin = createAdminClient()
     const { data, error } = await admin.rpc("check_rate_limit", {
@@ -52,14 +53,39 @@ export async function isRateLimited(
     })
     if (error) {
       logger.error("rate_limit.failed", { bucket, error: error.message })
-      return false
+      return null
     }
-    return data === false
+    return data !== false
   } catch (error) {
     logger.error("rate_limit.exception", {
       bucket,
       error: error instanceof Error ? error.message : String(error),
     })
-    return false
+    return null
   }
+}
+
+/** Falha aberto: se o controle de limite falhar, libera. */
+export async function isRateLimited(
+  bucket: string,
+  limit: number,
+  windowSeconds: number,
+): Promise<boolean> {
+  return (await callRateLimit(bucket, limit, windowSeconds)) === false
+}
+
+const AI_USER_LIMIT = 30
+const AI_WINDOW_SECONDS = 600
+
+/**
+ * Limite de mensagens de IA por usuário. Falha fechado: é a única proteção
+ * de custo da IA, então se o controle falhar a mensagem é recusada.
+ */
+export async function isAiRateLimited(userId: string): Promise<boolean> {
+  const allowed = await callRateLimit(
+    `ai:user:${userId}`,
+    AI_USER_LIMIT,
+    AI_WINDOW_SECONDS,
+  )
+  return allowed !== true
 }
