@@ -10,6 +10,7 @@ type Result = { data: unknown; error: unknown }
  */
 export function createSupabaseMock(
   results: Record<string, Result | ((calls: Call[]) => Result)> = {},
+  rpcResults: Record<string, Result> = {},
 ) {
   const queries: { table: string; calls: Call[] }[] = []
 
@@ -25,7 +26,9 @@ export function createSupabaseMock(
       "select",
       "insert",
       "update",
+      "delete",
       "eq",
+      "gt",
       "neq",
       "in",
       "is",
@@ -46,7 +49,13 @@ export function createSupabaseMock(
     return chain
   }
 
-  const client = { from: vi.fn((table: string) => builder(table)) }
+  const client = {
+    from: vi.fn((table: string) => builder(table)),
+    rpc: vi.fn(
+      async (fn: string): Promise<Result> =>
+        rpcResults[fn] ?? { data: null, error: null },
+    ),
+  }
 
   function callsFor(table: string): Call[][] {
     return queries.filter((q) => q.table === table).map((q) => q.calls)
