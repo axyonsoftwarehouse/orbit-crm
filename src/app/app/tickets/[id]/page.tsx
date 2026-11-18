@@ -15,6 +15,9 @@ import { TICKET_STATUSES } from "@/lib/constants"
 import { formatDate } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
+import { isAiConfigured } from "@/server/ai/model"
+import { EntityAssistant } from "@/components/app/assistant/entity-assistant"
+import { TICKET_REPLY_FIELD_ID } from "@/components/app/assistant/constants"
 import { createClient } from "@/lib/supabase/server"
 import { getCompany, listCompanies } from "@/server/queries/companies"
 import { listProjects, listTenantMembers } from "@/server/queries/projects"
@@ -203,6 +206,7 @@ export default async function TicketDetailPage({
               <form action={addTicketReplyAction} className="space-y-2">
                 <input type="hidden" name="ticket_id" value={ticket.id} />
                 <Textarea
+                  id={TICKET_REPLY_FIELD_ID}
                   name="body"
                   rows={3}
                   placeholder="Escreva uma resposta..."
@@ -229,6 +233,14 @@ export default async function TicketDetailPage({
             tenantId={active.tenantId}
             entityType="ticket"
             entityId={ticket.id}
+          />
+
+          <EntityAssistant
+            api="/api/ai/ticket"
+            body={{ ticketId: ticket.id }}
+            enabled={isAiConfigured()}
+            intro="Peça um resumo do ticket, procure a solução na base de conhecimento ou gere um rascunho de resposta."
+            placeholder="Ex.: sugira uma resposta para o cliente"
           />
         </div>
 

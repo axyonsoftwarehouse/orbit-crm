@@ -28,7 +28,7 @@ import {
 } from "@/server/queries/time"
 import { InvoiceTimeButton } from "./invoice-time-button"
 import { PROJECT_BILLING_TYPES, type ProjectBillingType } from "@/lib/constants"
-import { getMemberships } from "@/lib/auth"
+import { getMemberships, getUser } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { getCompany, listCompanies } from "@/server/queries/companies"
 import {
@@ -38,6 +38,8 @@ import {
   listTenantMembers,
 } from "@/server/queries/projects"
 import { isManager } from "@/server/permissions"
+import { isAiConfigured } from "@/server/ai/model"
+import { EntityAssistant } from "@/components/app/assistant/entity-assistant"
 import {
   listMilestoneOptions,
   listMilestones,
@@ -108,6 +110,7 @@ export default async function ProjectDetailPage({
     projectCustomFields,
     projectCustomValues,
     taskCustomFields,
+    user,
   ] = await Promise.all([
     project.company_id
       ? getCompany(active.tenantId, project.company_id)
@@ -125,6 +128,7 @@ export default async function ProjectDetailPage({
     listCustomFieldDefinitions(active.tenantId, "project"),
     customFieldValuesForEntity(active.tenantId, "project", project.id),
     listCustomFieldDefinitions(active.tenantId, "task"),
+    getUser(),
   ])
 
   const taskDependencies = await listTaskDependencies(
@@ -454,6 +458,29 @@ export default async function ProjectDetailPage({
         fields={projectCustomFields}
         values={projectCustomValues}
       />
+
+      {user && (
+        <EntityAssistant
+          api="/api/ai/projeto"
+          body={{ projectId: project.id }}
+          enabled={isAiConfigured()}
+          intro="Peça um resumo do status, os riscos do projeto, uma tarefa nova ou um e-mail de atualização para o cliente."
+          placeholder="Ex.: como está o projeto e o que está atrasado?"
+          tasks={
+            company
+              ? {
+                  companyId: company.id,
+                  projects: [{ id: project.id, name: project.name }],
+                  members: tenantMembers.map((member) => ({
+                    user_id: member.user_id,
+                    label: member.full_name || "Membro",
+                  })),
+                  currentUserId: user.id,
+                }
+              : undefined
+          }
+        />
+      )}
 
       <CommentsSection
         tenantId={active.tenantId}
