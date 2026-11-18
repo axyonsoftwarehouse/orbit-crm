@@ -8,7 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
 import { AppSidebar } from "@/components/app/app-sidebar"
 import { ThemeToggle } from "@/components/app/theme-toggle"
-import { SearchDialog } from "@/components/app/search-dialog"
+import { CommandPalette } from "@/components/app/command-palette"
 import { NewMenu } from "@/components/app/new-menu"
 import { UserMenu } from "@/components/app/user-menu"
 import { NotificationsBell } from "@/components/app/notifications-bell"
@@ -104,7 +104,7 @@ export default async function AppLayout({
             {active.tenant.name}
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <SearchDialog />
+            <CommandPalette />
             <NewMenu />
             <NotificationsBell notifications={notifications} unread={unread} />
             <ThemeToggle />
