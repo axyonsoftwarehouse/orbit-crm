@@ -2,28 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import {
-  BarChart3,
-  BookOpen,
-  CalendarDays,
-  Clock,
-  FileSignature,
-  FileText,
-  FolderKanban,
-  History,
-  LayoutDashboard,
-  LifeBuoy,
-  ListChecks,
-  MessageSquare,
-  Receipt,
-  Search,
-  Settings,
-  ShieldCheck,
-  Target,
-  Trophy,
-  Users,
-  Wallet,
-} from "lucide-react"
+import { ShieldCheck } from "lucide-react"
 import {
   Sidebar,
   SidebarContent,
@@ -36,32 +15,7 @@ import {
 } from "@/components/ui/sidebar"
 import { TenantSwitcher } from "./tenant-switcher"
 import type { Membership } from "@/lib/auth"
-
-const NAV_ITEMS = [
-  { title: "Visão geral", href: "/app", icon: LayoutDashboard },
-  { title: "Clientes", href: "/app/clientes", icon: Users },
-  { title: "Leads", href: "/app/leads", icon: Target },
-  { title: "SEO", href: "/app/seo", icon: Search },
-  { title: "Social", href: "/app/social", icon: MessageSquare },
-  { title: "Projetos", href: "/app/projetos", icon: FolderKanban },
-  { title: "Tarefas", href: "/app/tarefas", icon: ListChecks },
-  { title: "Timesheet", href: "/app/timesheet", icon: Clock },
-  { title: "Calendário", href: "/app/calendario", icon: CalendarDays },
-  { title: "Orçamentos", href: "/app/orcamentos", icon: FileText },
-  { title: "Faturas", href: "/app/faturas", icon: Receipt },
-  { title: "Despesas", href: "/app/despesas", icon: Wallet },
-  { title: "Contratos", href: "/app/contratos", icon: FileSignature },
-  { title: "Relatórios", href: "/app/relatorios", icon: BarChart3 },
-  { title: "Atividades", href: "/app/atividades", icon: History },
-  { title: "Metas", href: "/app/metas", icon: Trophy },
-  { title: "Tickets", href: "/app/tickets", icon: LifeBuoy },
-  {
-    title: "Base de conhecimento",
-    href: "/app/base-conhecimento",
-    icon: BookOpen,
-  },
-  { title: "Configurações", href: "/app/configuracoes", icon: Settings },
-]
+import { NAV_ITEMS } from "./nav-items"
 
 export function AppSidebar({
   memberships,

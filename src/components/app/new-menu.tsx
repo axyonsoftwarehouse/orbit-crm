@@ -9,14 +9,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-
-const ITEMS = [
-  { href: "/app/clientes", label: "Cliente" },
-  { href: "/app/projetos", label: "Projeto" },
-  { href: "/app/tarefas", label: "Tarefa" },
-  { href: "/app/orcamentos", label: "Orçamento" },
-  { href: "/app/faturas", label: "Fatura" },
-]
+import { NEW_ITEMS } from "./nav-items"
 
 export function NewMenu() {
   return (
@@ -26,7 +19,7 @@ export function NewMenu() {
         Novo
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-40">
-        {ITEMS.map((item) => (
+        {NEW_ITEMS.map((item) => (
           <DropdownMenuItem key={item.href} render={<Link href={item.href} />}>
             {item.label}
           </DropdownMenuItem>

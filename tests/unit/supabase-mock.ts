@@ -29,6 +29,8 @@ export function createSupabaseMock(
       "delete",
       "eq",
       "gt",
+      "ilike",
+      "or",
       "neq",
       "in",
       "is",
