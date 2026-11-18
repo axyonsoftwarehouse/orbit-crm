@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs"
+
 type Level = "info" | "warn" | "error"
 
 function emit(
@@ -12,8 +14,10 @@ function emit(
     ...context,
   }
   const line = JSON.stringify(entry)
-  if (level === "error") console.error(line)
-  else if (level === "warn") console.warn(line)
+  if (level === "error") {
+    console.error(line)
+    Sentry.captureMessage(message, { level: "error", extra: context })
+  } else if (level === "warn") console.warn(line)
   else console.log(line)
 }
 
