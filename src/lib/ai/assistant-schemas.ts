@@ -43,3 +43,12 @@ export type ProposeTaskOutput = z.infer<typeof proposeTaskOutputSchema>
 export const draftEmailOutputSchema = z.object({ status: z.literal("shown") })
 
 export type DraftEmailOutput = z.infer<typeof draftEmailOutputSchema>
+
+/** Entrada da ferramenta `draftReply` (resposta de ticket; nada é publicado). */
+export const draftReplyInputSchema = z.object({
+  body: z.string().min(1).max(10000),
+})
+
+export type DraftReplyInput = z.infer<typeof draftReplyInputSchema>
+
+export const draftReplyOutputSchema = z.object({ status: z.literal("shown") })

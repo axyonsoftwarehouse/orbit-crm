@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
+import { isAiConfigured } from "@/server/ai/model"
+import { EntityAssistant } from "@/components/app/assistant/entity-assistant"
 import { listTenantMembers } from "@/server/queries/projects"
 import {
   getLead,
@@ -199,6 +201,14 @@ export default async function LeadDetailPage({
               </form>
             </CardContent>
           </Card>
+
+          <EntityAssistant
+            api="/api/ai/lead"
+            body={{ leadId: lead.id }}
+            enabled={isAiConfigured()}
+            intro="Peça um resumo da negociação, o próximo passo recomendado ou um e-mail de follow-up."
+            placeholder="Ex.: escreva um follow-up para este lead"
+          />
         </div>
 
         <div className="space-y-6">

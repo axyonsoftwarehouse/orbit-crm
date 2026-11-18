@@ -1,8 +1,6 @@
-import { tool, type InferUITools, type UIMessage } from "ai"
-import { z } from "zod"
+import { tool } from "ai"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "@/lib/database.types"
-import { logger } from "@/lib/logger"
 import {
   CONTRACT_STATUSES,
   ESTIMATE_STATUSES,
@@ -14,29 +12,18 @@ import {
   TICKET_STATUSES,
 } from "@/lib/constants"
 import {
-  draftEmailInputSchema,
-  draftEmailOutputSchema,
-  proposeTaskInputSchema,
-  proposeTaskOutputSchema,
-} from "@/lib/ai/assistant-schemas"
-
-const ROW_LIMIT = 20
-const QUERY_ERROR = { error: "Não foi possível consultar os dados." } as const
-const noInput = z.object({})
+  draftEmailTool,
+  failTool as fail,
+  label,
+  noInput,
+  proposeTaskTool,
+  ROW_LIMIT,
+} from "./common"
 
 type Ctx = {
   supabase: SupabaseClient<Database>
   tenantId: string
   companyId: string
-}
-
-function label(map: Record<number, { label: string }>, value: number | null) {
-  return value == null ? null : (map[value]?.label ?? String(value))
-}
-
-function fail(tool: string, error: { message?: string }) {
-  logger.error("ai.assistant_tool_failed", { tool, error: error.message })
-  return QUERY_ERROR
 }
 
 export function buildAssistantTools({ supabase, tenantId, companyId }: Ctx) {
@@ -225,26 +212,14 @@ export function buildAssistantTools({ supabase, tenantId, companyId }: Ctx) {
       },
     }),
 
-    proposeTask: tool({
-      description:
-        "Propõe uma tarefa num projeto deste cliente. O usuário revisa e confirma; o resultado diz se foi criada.",
-      inputSchema: proposeTaskInputSchema,
-      outputSchema: proposeTaskOutputSchema,
-    }),
+    proposeTask: proposeTaskTool(
+      "Propõe uma tarefa num projeto deste cliente. O usuário revisa e confirma; o resultado diz se foi criada.",
+    ),
 
-    draftEmail: tool({
-      description:
-        "Mostra um rascunho de e-mail (destinatário, assunto, corpo) para o usuário copiar. Nada é enviado.",
-      inputSchema: draftEmailInputSchema,
-      outputSchema: draftEmailOutputSchema,
-    }),
+    draftEmail: draftEmailTool(),
   }
 }
 
 export type AssistantTools = ReturnType<typeof buildAssistantTools>
 
-export type AssistantUIMessage = UIMessage<
-  unknown,
-  never,
-  InferUITools<AssistantTools>
->
+export type { AssistantUIMessage } from "./common"
