@@ -47,6 +47,25 @@ export type PlanLimitResult = {
   remaining?: number
 }
 
+async function planLimits(
+  supabase: SupabaseClient,
+  tenantId: string,
+): Promise<Record<string, number | null>> {
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("plan:plans(limits)")
+    .eq("id", tenantId)
+    .maybeSingle()
+
+  return (
+    (
+      tenant as {
+        plan: { limits: Record<string, number | null> } | null
+      } | null
+    )?.plan?.limits ?? {}
+  )
+}
+
 export function startOfMonthUtc(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
 }
@@ -65,19 +84,7 @@ export async function checkPlanLimitWith(
   const config = RESOURCES[resource]
   if (!config) return { ok: true }
 
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("plan:plans(limits)")
-    .eq("id", tenantId)
-    .maybeSingle()
-
-  const limits =
-    (
-      tenant as {
-        plan: { limits: Record<string, number | null> } | null
-      } | null
-    )?.plan?.limits ?? {}
-
+  const limits = await planLimits(supabase, tenantId)
   const limit = limits[resource]
   if (limit === null || limit === undefined) return { ok: true }
 
@@ -113,4 +120,45 @@ export async function checkPlanLimit(
 ): Promise<PlanLimitResult> {
   const supabase = await createClient()
   return checkPlanLimitWith(supabase, tenantId, resource)
+}
+
+const BYTES_PER_MB = 1024 * 1024
+
+/**
+ * Cota `storage_mb`: soma os bytes já guardados pelo tenant (anexos e mídias
+ * do Social, via RPC `tenant_storage_bytes`) mais o arquivo novo. `remaining`
+ * vem em bytes.
+ */
+export async function checkStorageLimitWith(
+  supabase: SupabaseClient,
+  tenantId: string,
+  incomingBytes: number,
+): Promise<PlanLimitResult> {
+  const limits = await planLimits(supabase, tenantId)
+  const limitMb = limits.storage_mb
+  if (limitMb === null || limitMb === undefined) return { ok: true }
+
+  const { data } = await supabase.rpc("tenant_storage_bytes", {
+    p_tenant: tenantId,
+  })
+  const used = Number(data ?? 0)
+  const limitBytes = limitMb * BYTES_PER_MB
+
+  if (used + incomingBytes > limitBytes) {
+    return {
+      ok: false,
+      remaining: 0,
+      message:
+        "Limite de armazenamento do plano atingido. Faça upgrade para continuar.",
+    }
+  }
+  return { ok: true, remaining: limitBytes - used - incomingBytes }
+}
+
+export async function checkStorageLimit(
+  tenantId: string,
+  incomingBytes: number,
+): Promise<PlanLimitResult> {
+  const supabase = await createClient()
+  return checkStorageLimitWith(supabase, tenantId, incomingBytes)
 }

@@ -2059,6 +2059,40 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
   })
 
+  it("tenant_storage_bytes soma só os arquivos do próprio tenant", async () => {
+    const before = await clientA.rpc("tenant_storage_bytes", {
+      p_tenant: tenantA,
+    })
+    expect(before.error).toBeNull()
+
+    const inserted = await admin.from("attachments").insert({
+      tenant_id: tenantA,
+      entity_type: "project",
+      entity_id: projectAId,
+      storage_path: `${tenantA}/quota-${suffix}.txt`,
+      file_name: "quota.txt",
+      size_bytes: 1500,
+    })
+    if (inserted.error) throw inserted.error
+
+    const after = await clientA.rpc("tenant_storage_bytes", {
+      p_tenant: tenantA,
+    })
+    expect(Number(after.data)).toBe(Number(before.data ?? 0) + 1500)
+
+    const other = await clientB.rpc("tenant_storage_bytes", {
+      p_tenant: tenantA,
+    })
+    expect(other.error).toBeNull()
+    expect(Number(other.data ?? 0)).toBe(0)
+
+    const anon = createClient(url!, anonKey!)
+    const anonRes = await anon.rpc("tenant_storage_bytes", {
+      p_tenant: tenantA,
+    })
+    expect(anonRes.error).not.toBeNull()
+  })
+
   it("social_settings.updated_at muda quando owner altera a configuração", async () => {
     const seeded = await admin
       .from("social_settings")

@@ -3169,6 +3169,7 @@ export type Database = {
       is_client_of_company: { Args: { p_company: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_tenant_member: { Args: { p_tenant: string }; Returns: boolean }
+      tenant_storage_bytes: { Args: { p_tenant: string }; Returns: number }
       next_document_number: {
         Args: { p_kind: string; p_tenant: string }
         Returns: number
