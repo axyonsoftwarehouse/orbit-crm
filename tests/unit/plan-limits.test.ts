@@ -101,6 +101,44 @@ describe("checkPlanLimitWith — Social", () => {
   })
 })
 
+describe("checkPlanLimitWith — tags, campos e marcos", () => {
+  it("conta todas as tags do tenant, sem filtro de exclusão", async () => {
+    const { client, countTables, countCalls } = fakeClient({ tags: 20 }, 20)
+    const result = await checkPlanLimitWith(client, "t1", "tags")
+
+    expect(result.ok).toBe(false)
+    expect(countTables).toEqual(["tags"])
+    expect(countCalls.some((c) => c.method === "is")).toBe(false)
+  })
+
+  it("conta definições de campos personalizados, sem filtro de exclusão", async () => {
+    const { client, countTables, countCalls } = fakeClient(
+      { custom_fields: 5 },
+      4,
+    )
+    const result = await checkPlanLimitWith(client, "t1", "custom_fields")
+
+    expect(result).toEqual({ ok: true, remaining: 1 })
+    expect(countTables).toEqual(["custom_field_definitions"])
+    expect(countCalls.some((c) => c.method === "is")).toBe(false)
+  })
+
+  it("conta marcos não excluídos do tenant", async () => {
+    const { client, countTables, countCalls } = fakeClient(
+      { milestones: 30 },
+      30,
+    )
+    const result = await checkPlanLimitWith(client, "t1", "milestones")
+
+    expect(result.ok).toBe(false)
+    expect(countTables).toEqual(["milestones"])
+    expect(countCalls).toContainEqual({
+      method: "is",
+      args: ["deleted_at", null],
+    })
+  })
+})
+
 describe("startOfMonthUtc", () => {
   it("volta para o dia 1 às 00:00 UTC", () => {
     expect(
@@ -121,6 +159,10 @@ describe("planSchema", () => {
       "seo_sites",
       "social_accounts",
       "social_posts_month",
+      "tags",
+      "custom_fields",
+      "milestones",
+      "storage_mb",
     ]) {
       expect(parsed.limits[key as keyof typeof parsed.limits]).toBe(5)
     }

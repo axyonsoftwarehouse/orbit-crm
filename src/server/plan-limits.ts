@@ -10,16 +10,23 @@ type ResourceTable =
   | "seo_sites"
   | "social_accounts"
   | "social_posts"
+  | "tags"
+  | "custom_field_definitions"
+  | "milestones"
 
 /**
  * Como cada chave de `plans.limits` é contada:
  * - `active`: linhas não excluídas (`deleted_at is null`) do tenant;
  * - `month`: linhas criadas desde o início do mês (UTC), inclusive as
- *   excluídas, para que excluir não devolva a cota do mês.
+ *   excluídas, para que excluir não devolva a cota do mês;
+ * - `all`: todas as linhas do tenant, para tabelas sem `deleted_at` (o filtro
+ *   falharia e a contagem viria vazia).
+ *
+ * `storage_mb` não está aqui: soma bytes, ver `checkStorageLimitWith`.
  */
 const RESOURCES: Record<
   string,
-  { table: ResourceTable; scope: "active" | "month" }
+  { table: ResourceTable; scope: "active" | "month" | "all" }
 > = {
   clients: { table: "companies", scope: "active" },
   projects: { table: "projects", scope: "active" },
@@ -29,6 +36,9 @@ const RESOURCES: Record<
   seo_sites: { table: "seo_sites", scope: "active" },
   social_accounts: { table: "social_accounts", scope: "active" },
   social_posts_month: { table: "social_posts", scope: "month" },
+  tags: { table: "tags", scope: "all" },
+  custom_fields: { table: "custom_field_definitions", scope: "all" },
+  milestones: { table: "milestones", scope: "active" },
 }
 
 export type PlanLimitResult = {
@@ -75,10 +85,11 @@ export async function checkPlanLimitWith(
     .from(config.table)
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", tenantId)
-  query =
-    config.scope === "month"
-      ? query.gte("created_at", startOfMonthUtc(now).toISOString())
-      : query.is("deleted_at", null)
+  if (config.scope === "month") {
+    query = query.gte("created_at", startOfMonthUtc(now).toISOString())
+  } else if (config.scope === "active") {
+    query = query.is("deleted_at", null)
+  }
 
   const { count } = await query
 

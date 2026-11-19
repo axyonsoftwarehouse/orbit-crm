@@ -16,6 +16,10 @@ export const PLAN_LIMIT_FIELDS = [
   { key: "seo_sites", label: "Sites SEO" },
   { key: "social_accounts", label: "Contas sociais" },
   { key: "social_posts_month", label: "Posts sociais/mês" },
+  { key: "tags", label: "Tags" },
+  { key: "custom_fields", label: "Campos personalizados" },
+  { key: "milestones", label: "Marcos" },
+  { key: "storage_mb", label: "Armazenamento (MB)" },
 ] as const
 
 export type PlanLimitKey = (typeof PLAN_LIMIT_FIELDS)[number]["key"]
