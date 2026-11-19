@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
 import { customFieldDefinitionSchema } from "@/lib/validations/custom-fields"
+import { checkPlanLimit } from "@/server/plan-limits"
 
 export type CustomFieldFormState =
   { error?: string; success?: string } | undefined
@@ -40,6 +41,9 @@ export async function createCustomFieldAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   }
+
+  const limit = await checkPlanLimit(active.tenantId, "custom_fields")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const supabase = await createClient()
   const { error } = await supabase

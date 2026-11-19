@@ -3,7 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }))
 
-import { checkPlanLimitWith, startOfMonthUtc } from "@/server/plan-limits"
+import {
+  checkPlanLimitWith,
+  checkStorageLimitWith,
+  startOfMonthUtc,
+} from "@/server/plan-limits"
 import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
 import { planSchema } from "@/lib/validations/plan"
 
@@ -101,6 +105,44 @@ describe("checkPlanLimitWith — Social", () => {
   })
 })
 
+describe("checkPlanLimitWith — tags, campos e marcos", () => {
+  it("conta todas as tags do tenant, sem filtro de exclusão", async () => {
+    const { client, countTables, countCalls } = fakeClient({ tags: 20 }, 20)
+    const result = await checkPlanLimitWith(client, "t1", "tags")
+
+    expect(result.ok).toBe(false)
+    expect(countTables).toEqual(["tags"])
+    expect(countCalls.some((c) => c.method === "is")).toBe(false)
+  })
+
+  it("conta definições de campos personalizados, sem filtro de exclusão", async () => {
+    const { client, countTables, countCalls } = fakeClient(
+      { custom_fields: 5 },
+      4,
+    )
+    const result = await checkPlanLimitWith(client, "t1", "custom_fields")
+
+    expect(result).toEqual({ ok: true, remaining: 1 })
+    expect(countTables).toEqual(["custom_field_definitions"])
+    expect(countCalls.some((c) => c.method === "is")).toBe(false)
+  })
+
+  it("conta marcos não excluídos do tenant", async () => {
+    const { client, countTables, countCalls } = fakeClient(
+      { milestones: 30 },
+      30,
+    )
+    const result = await checkPlanLimitWith(client, "t1", "milestones")
+
+    expect(result.ok).toBe(false)
+    expect(countTables).toEqual(["milestones"])
+    expect(countCalls).toContainEqual({
+      method: "is",
+      args: ["deleted_at", null],
+    })
+  })
+})
+
 describe("startOfMonthUtc", () => {
   it("volta para o dia 1 às 00:00 UTC", () => {
     expect(
@@ -121,8 +163,75 @@ describe("planSchema", () => {
       "seo_sites",
       "social_accounts",
       "social_posts_month",
+      "tags",
+      "custom_fields",
+      "milestones",
+      "storage_mb",
     ]) {
       expect(parsed.limits[key as keyof typeof parsed.limits]).toBe(5)
     }
+  })
+})
+
+function storageClient(
+  limits: Record<string, number | null>,
+  usedBytes: number | null,
+) {
+  const rpc = vi.fn(async () => ({ data: usedBytes, error: null }))
+  const client = {
+    from() {
+      const chain = {
+        select: () => chain,
+        eq: () => chain,
+        maybeSingle: async () => ({ data: { plan: { limits } } }),
+      }
+      return chain
+    },
+    rpc,
+  }
+  return { client: client as unknown as SupabaseClient, rpc }
+}
+
+const MB = 1024 * 1024
+
+describe("checkStorageLimitWith", () => {
+  it("sem storage_mb configurado, libera sem consultar o uso", async () => {
+    const { client, rpc } = storageClient({}, 999 * MB)
+    await expect(checkStorageLimitWith(client, "t1", 50 * MB)).resolves.toEqual(
+      { ok: true },
+    )
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it("bloqueia quando o arquivo novo passa do limite", async () => {
+    const { client, rpc } = storageClient({ storage_mb: 1000 }, 900 * MB)
+    const result = await checkStorageLimitWith(client, "t1", 200 * MB)
+
+    expect(result).toEqual({
+      ok: false,
+      remaining: 0,
+      message:
+        "Limite de armazenamento do plano atingido. Faça upgrade para continuar.",
+    })
+    expect(rpc).toHaveBeenCalledWith("tenant_storage_bytes", { p_tenant: "t1" })
+  })
+
+  it("libera quando cabe e devolve os bytes restantes", async () => {
+    const { client } = storageClient({ storage_mb: 1000 }, 900 * MB)
+    await expect(checkStorageLimitWith(client, "t1", 50 * MB)).resolves.toEqual(
+      { ok: true, remaining: 50 * MB },
+    )
+  })
+
+  it("tenant sem arquivos (RPC null) conta como 0", async () => {
+    const { client } = storageClient({ storage_mb: 1 }, null)
+    const result = await checkStorageLimitWith(client, "t1", MB)
+    expect(result.ok).toBe(true)
+  })
+
+  it("limite 0 bloqueia qualquer arquivo", async () => {
+    const { client } = storageClient({ storage_mb: 0 }, 0)
+    const result = await checkStorageLimitWith(client, "t1", 1)
+    expect(result.ok).toBe(false)
   })
 })

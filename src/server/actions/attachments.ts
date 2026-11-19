@@ -7,6 +7,7 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
 import { revalidateEntity } from "@/lib/revalidate"
+import { verifyUploadedFile } from "@/server/storage-quota"
 
 const ENTITY_TYPES = ["task", "project", "ticket"]
 
@@ -34,6 +35,15 @@ export async function registerAttachmentAction(
 
   const user = await getUser()
   const supabase = await createClient()
+
+  const verified = await verifyUploadedFile(supabase, {
+    bucket: "attachments",
+    table: "attachments",
+    path: input.storagePath,
+    tenantId: active.tenantId,
+  })
+  if ("error" in verified) return { error: verified.error }
+
   const { error } = await supabase.from("attachments").insert({
     tenant_id: active.tenantId,
     entity_type: input.entityType,
@@ -41,7 +51,7 @@ export async function registerAttachmentAction(
     storage_path: input.storagePath,
     file_name: input.fileName,
     mime_type: input.mimeType,
-    size_bytes: input.sizeBytes,
+    size_bytes: verified.size,
     uploaded_by: user?.id ?? null,
   })
 
