@@ -90,7 +90,7 @@ export default async function SocialPage({
           <SocialPostFormDialog
             companies={companyOptions}
             accounts={accounts}
-            defaultApproval={settings.approval_required}
+            approvalRequired={settings.approval_required}
           />
         </div>
       </div>

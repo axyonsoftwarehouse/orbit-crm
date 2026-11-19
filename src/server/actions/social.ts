@@ -21,6 +21,7 @@ import {
 } from "@/lib/validations/social"
 import { getPortalContact } from "@/server/queries/portal"
 import { validatePostTargets } from "@/lib/social-accounts"
+import { resolveRequiresApproval } from "@/lib/social-approval"
 
 export type SocialFormState = { error?: string; success?: string } | undefined
 
@@ -172,6 +173,12 @@ export async function createSocialPostAction(
     }
   }
 
+  const settings = await getSocialSettings(active.tenantId)
+  const requiresApproval = resolveRequiresApproval(
+    settings.approval_required,
+    parsed.data.requires_approval,
+  )
+
   const user = await getUser()
   const { data: post, error } = await supabase
     .from("social_posts")
@@ -179,8 +186,8 @@ export async function createSocialPostAction(
       tenant_id: active.tenantId,
       company_id: parsed.data.company_id,
       content: parsed.data.content,
-      requires_approval: parsed.data.requires_approval,
-      status: parsed.data.requires_approval ? "draft" : "approved",
+      requires_approval: requiresApproval,
+      status: requiresApproval ? "draft" : "approved",
       created_by: user?.id ?? null,
     })
     .select("id")
@@ -205,7 +212,7 @@ export async function createSocialPostAction(
   revalidatePath("/app/social")
   revalidatePath(`/app/social/${post.id}`)
   return {
-    success: parsed.data.requires_approval
+    success: requiresApproval
       ? "Post criado como rascunho."
       : "Post aprovado e pronto para agendar.",
   }
