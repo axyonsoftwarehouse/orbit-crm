@@ -8,6 +8,19 @@ export const ATTACHMENT_ENTITY_TABLES: Record<
   ticket: "tickets",
 }
 
+/**
+ * Tabela da entidade de um anexo, ou `null` se o tipo não aceita anexos.
+ * Usa `Object.hasOwn` para que chaves do protótipo ("constructor",
+ * "toString") não passem como tipo válido.
+ */
+export function attachmentEntityTable(
+  entityType: string,
+): "tasks" | "projects" | "tickets" | null {
+  return Object.hasOwn(ATTACHMENT_ENTITY_TABLES, entityType)
+    ? ATTACHMENT_ENTITY_TABLES[entityType]
+    : null
+}
+
 export const SOCIAL_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 
 export function sanitizeFileName(name: string): string {

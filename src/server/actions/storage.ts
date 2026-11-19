@@ -5,7 +5,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { logger } from "@/lib/logger"
 import { checkStorageLimit } from "@/server/plan-limits"
 import {
-  ATTACHMENT_ENTITY_TABLES,
+  attachmentEntityTable,
   SOCIAL_IMAGE_MAX_BYTES,
   storageObjectPath,
 } from "@/lib/storage-paths"
@@ -38,7 +38,7 @@ export async function createUploadUrlAction(
   let folder: string
 
   if (input.kind === "attachment") {
-    const table = ATTACHMENT_ENTITY_TABLES[input.entityType]
+    const table = attachmentEntityTable(input.entityType)
     if (!table) return { error: "Entidade inválida." }
     const { data: entity } = await supabase
       .from(table)

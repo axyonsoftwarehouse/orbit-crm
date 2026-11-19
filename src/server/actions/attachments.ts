@@ -8,9 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
 import { revalidateEntity } from "@/lib/revalidate"
 import { verifyUploadedFile } from "@/server/storage-quota"
-import { attachmentFolder } from "@/lib/storage-paths"
-
-const ENTITY_TYPES = ["task", "project", "ticket"]
+import { attachmentEntityTable, attachmentFolder } from "@/lib/storage-paths"
 
 export type RegisterAttachmentInput = {
   entityType: string
@@ -27,7 +25,7 @@ export async function registerAttachmentAction(
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
 
-  if (!ENTITY_TYPES.includes(input.entityType)) {
+  if (!attachmentEntityTable(input.entityType)) {
     return { error: "Entidade inválida." }
   }
   if (

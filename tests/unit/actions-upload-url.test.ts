@@ -102,11 +102,10 @@ describe("createUploadUrlAction", () => {
 
   it("anexo: tipo de entidade inválido é recusado", async () => {
     const { bucket } = setup()
-    const result = await createUploadUrlAction({
-      ...attachment,
-      entityType: "invoice",
-    })
-    expect(result).toEqual({ error: "Entidade inválida." })
+    for (const entityType of ["invoice", "constructor", "toString"]) {
+      const result = await createUploadUrlAction({ ...attachment, entityType })
+      expect(result, entityType).toEqual({ error: "Entidade inválida." })
+    }
     expect(bucket.createSignedUploadUrl).not.toHaveBeenCalled()
   })
 
