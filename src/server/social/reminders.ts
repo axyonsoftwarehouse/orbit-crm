@@ -3,6 +3,7 @@ import { logger } from "@/lib/logger"
 import { createNotification } from "@/server/notifications"
 import { sendTenantEmail } from "@/server/email"
 import { isNativeSocialProvider } from "@/server/social"
+import { resolveSocialRecipients } from "@/server/social/recipients"
 
 const APP_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -149,18 +150,11 @@ export async function runSocialPublishReminders(): Promise<SocialReminderResult>
         continue
       }
 
-      let recipients: string[] = []
-      if (post.created_by) {
-        recipients = [post.created_by]
-      } else {
-        const { data: admins } = await admin
-          .from("memberships")
-          .select("user_id")
-          .eq("tenant_id", post.tenant_id)
-          .eq("status", "active")
-          .in("role", ["owner", "admin"])
-        recipients = (admins ?? []).map((row) => row.user_id)
-      }
+      const recipients = await resolveSocialRecipients(
+        admin,
+        post.tenant_id,
+        post.created_by,
+      )
 
       const summary = excerpt(post.content)
       const scheduled = post.scheduled_at
