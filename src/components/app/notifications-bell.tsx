@@ -48,18 +48,17 @@ export function NotificationsBell({
   }, [])
 
   // Sem Realtime no navegador (a sessão fica em cookie httpOnly): consulta o
-  // servidor a cada 30 s com a aba visível e ao voltar para ela.
+  // servidor a cada 30 s com a aba visível e ao voltar para ela
+  // (visibilitychange já cobre a volta; focus duplicaria a consulta).
   useEffect(() => {
     const tick = () => {
       if (document.visibilityState === "visible") void refresh()
     }
     const interval = window.setInterval(tick, POLL_MS)
     document.addEventListener("visibilitychange", tick)
-    window.addEventListener("focus", tick)
     return () => {
       window.clearInterval(interval)
       document.removeEventListener("visibilitychange", tick)
-      window.removeEventListener("focus", tick)
     }
   }, [refresh])
 
