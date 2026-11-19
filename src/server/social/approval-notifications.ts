@@ -106,8 +106,22 @@ export async function notifyStaffPortalResponse(input: {
     if (!post) return { notifications, emails }
     const row = post as PostRow
 
-    let recipients: string[] = []
+    // O autor só é avisado se ainda for membro ativo do tenant; quem saiu não
+    // deve receber trecho do post nem a nota do cliente.
+    let authorActive = false
     if (row.created_by) {
+      const { data: membership } = await admin
+        .from("memberships")
+        .select("user_id")
+        .eq("tenant_id", row.tenant_id)
+        .eq("user_id", row.created_by)
+        .eq("status", "active")
+        .maybeSingle()
+      authorActive = Boolean(membership)
+    }
+
+    let recipients: string[] = []
+    if (row.created_by && authorActive) {
       recipients = [row.created_by]
     } else {
       const { data: admins } = await admin

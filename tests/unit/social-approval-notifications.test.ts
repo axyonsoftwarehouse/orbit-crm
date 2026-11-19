@@ -121,6 +121,7 @@ describe("notifyStaffPortalResponse", () => {
   it("avisa o autor no app e por e-mail quando o cliente aprova", async () => {
     const admin = createSupabaseMock({
       social_posts: post(),
+      memberships: { data: { user_id: AUTHOR }, error: null },
       profiles: {
         data: { email: "autor@agencia.test", notify_email: true },
         error: null,
@@ -179,9 +180,36 @@ describe("notifyStaffPortalResponse", () => {
     ).toEqual(["a1", "a2"])
   })
 
+  it("autor que saiu do tenant não é avisado; owner/admin recebem", async () => {
+    const admin = createSupabaseMock({
+      social_posts: post(),
+      memberships: (calls) =>
+        hasCall(calls, "eq", "user_id", AUTHOR)
+          ? { data: null, error: null }
+          : { data: [{ user_id: "a1" }], error: null },
+      profiles: { data: { email: null, notify_email: true }, error: null },
+    })
+    state.admin = admin.client
+
+    const result = await notifyStaffPortalResponse({
+      postId: POST,
+      companyId: COMPANY,
+      approved: true,
+    })
+
+    expect(result).toEqual({ notifications: 1, emails: 0 })
+    const [authorCheck] = admin.callsFor("memberships")
+    expect(hasCall(authorCheck, "eq", "user_id", AUTHOR)).toBe(true)
+    expect(hasCall(authorCheck, "eq", "status", "active")).toBe(true)
+    expect(
+      vi.mocked(createNotification).mock.calls.map(([, input]) => input.userId),
+    ).toEqual(["a1"])
+  })
+
   it("respeita notify_email desligado", async () => {
     state.admin = createSupabaseMock({
       social_posts: post(),
+      memberships: { data: { user_id: AUTHOR }, error: null },
       profiles: {
         data: { email: "autor@agencia.test", notify_email: false },
         error: null,
