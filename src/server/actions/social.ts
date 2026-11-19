@@ -42,6 +42,32 @@ async function recordEvent(
   })
 }
 
+export async function updateSocialSettingsAction(
+  _prevState: SocialFormState,
+  formData: FormData,
+): Promise<SocialFormState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+  if (!isManager(active.role)) {
+    return { error: "Apenas owner/admin podem alterar as configurações." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from("social_settings").upsert(
+    {
+      tenant_id: active.tenantId,
+      approval_required: formData.get("approval_required") === "on",
+    },
+    { onConflict: "tenant_id" },
+  )
+
+  if (error) return dbError("social_settings", error)
+
+  revalidatePath("/app/social")
+  revalidatePath("/app/social/configuracoes")
+  return { success: "Configurações salvas." }
+}
+
 export async function createSocialAccountAction(
   _prevState: SocialFormState,
   formData: FormData,
