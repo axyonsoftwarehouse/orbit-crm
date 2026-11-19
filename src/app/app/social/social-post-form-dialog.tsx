@@ -30,11 +30,11 @@ const fieldClass =
 export function SocialPostFormDialog({
   companies,
   accounts,
-  defaultApproval,
+  approvalRequired,
 }: {
   companies: { id: string; name: string }[]
   accounts: SocialAccount[]
-  defaultApproval: boolean
+  approvalRequired: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [companyId, setCompanyId] = useState("")
@@ -155,15 +155,22 @@ export function SocialPostFormDialog({
             )}
           </div>
 
-          <label className="flex items-center gap-2 text-sm">
-            <Input
-              type="checkbox"
-              name="requires_approval"
-              defaultChecked={defaultApproval}
-              className="size-4"
-            />
-            Exigir aprovação do cliente antes de publicar
-          </label>
+          {approvalRequired ? (
+            <p className="text-muted-foreground text-xs">
+              <input type="hidden" name="requires_approval" value="on" />
+              Aprovação do cliente obrigatória. Owner/admin podem mudar em
+              Social &gt; Configurações.
+            </p>
+          ) : (
+            <label className="flex items-center gap-2 text-sm">
+              <Input
+                type="checkbox"
+                name="requires_approval"
+                className="size-4"
+              />
+              Exigir aprovação do cliente antes de publicar
+            </label>
+          )}
 
           {hasInstagramTarget ? (
             <p className="text-muted-foreground text-xs">

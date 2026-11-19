@@ -84,7 +84,7 @@ export default async function SocialCalendarPage({
               name: company.name,
             }))}
             accounts={accounts}
-            defaultApproval={settings.approval_required}
+            approvalRequired={settings.approval_required}
           />
         </div>
       </div>

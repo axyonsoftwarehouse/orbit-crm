@@ -32,6 +32,20 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDefault> = {
     subject: "[Orbit CRM] Post para publicar: {{post}}",
     body: '<p>O post <strong>{{post}}</strong> está agendado para {{scheduled_at}}.</p><p>Abra o Orbit para copiar o conteúdo e publicar.</p><p><a href="{{url}}">Abrir post</a></p>',
   },
+  social_approval_requested: {
+    label: "Post aguardando aprovação (cliente)",
+    description:
+      "Enviado aos contatos do cliente com acesso ao portal quando um post entra em aprovação.",
+    subject: "[{{company}}] Post aguardando sua aprovação",
+    body: '<p>Há um post aguardando a sua aprovação:</p><p><strong>{{post}}</strong></p><p><a href="{{url}}">Revisar no portal</a></p>',
+  },
+  social_approval_response: {
+    label: "Resposta do cliente a um post",
+    description:
+      "Enviado ao autor do post (ou a owner/admin) quando o cliente aprova ou rejeita no portal.",
+    subject: "[Orbit CRM] Cliente {{decision}} o post: {{post}}",
+    body: '<p>O cliente <strong>{{decision}}</strong> o post <strong>{{post}}</strong>.</p><p>{{note}}</p><p><a href="{{url}}">Abrir post</a></p>',
+  },
 }
 
 export function renderTemplate(

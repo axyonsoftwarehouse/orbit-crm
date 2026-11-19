@@ -20,6 +20,7 @@ import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import { SOCIAL_POST_STATUSES } from "@/lib/constants"
+import { isManager } from "@/server/permissions"
 import { listCompanies } from "@/server/queries/companies"
 import {
   getSocialSettings,
@@ -87,10 +88,20 @@ export default async function SocialPage({
           >
             Contas
           </Button>
+          {isManager(active.role) ? (
+            <Button
+              variant="outline"
+              size="sm"
+              nativeButton={false}
+              render={<Link href="/app/social/configuracoes" />}
+            >
+              Configurações
+            </Button>
+          ) : null}
           <SocialPostFormDialog
             companies={companyOptions}
             accounts={accounts}
-            defaultApproval={settings.approval_required}
+            approvalRequired={settings.approval_required}
           />
         </div>
       </div>

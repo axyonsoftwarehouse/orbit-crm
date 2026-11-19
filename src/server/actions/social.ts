@@ -14,6 +14,10 @@ import { checkPlanLimit } from "@/server/plan-limits"
 import { getSocialSettings } from "@/server/queries/social"
 import { clearSocialTokens } from "@/server/social/tokens"
 import {
+  notifyPortalApprovalRequested,
+  notifyStaffPortalResponse,
+} from "@/server/social/approval-notifications"
+import {
   socialAccountSchema,
   socialPostResponseSchema,
   socialPostSchema,
@@ -21,6 +25,7 @@ import {
 } from "@/lib/validations/social"
 import { getPortalContact } from "@/server/queries/portal"
 import { validatePostTargets } from "@/lib/social-accounts"
+import { resolveRequiresApproval } from "@/lib/social-approval"
 
 export type SocialFormState = { error?: string; success?: string } | undefined
 
@@ -39,6 +44,32 @@ async function recordEvent(
     actor_id: actorId,
     metadata,
   })
+}
+
+export async function updateSocialSettingsAction(
+  _prevState: SocialFormState,
+  formData: FormData,
+): Promise<SocialFormState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+  if (!isManager(active.role)) {
+    return { error: "Apenas owner/admin podem alterar as configurações." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from("social_settings").upsert(
+    {
+      tenant_id: active.tenantId,
+      approval_required: formData.get("approval_required") === "on",
+    },
+    { onConflict: "tenant_id" },
+  )
+
+  if (error) return dbError("social_settings", error)
+
+  revalidatePath("/app/social")
+  revalidatePath("/app/social/configuracoes")
+  return { success: "Configurações salvas." }
 }
 
 export async function createSocialAccountAction(
@@ -172,6 +203,12 @@ export async function createSocialPostAction(
     }
   }
 
+  const settings = await getSocialSettings(active.tenantId)
+  const requiresApproval = resolveRequiresApproval(
+    settings.approval_required,
+    parsed.data.requires_approval,
+  )
+
   const user = await getUser()
   const { data: post, error } = await supabase
     .from("social_posts")
@@ -179,8 +216,8 @@ export async function createSocialPostAction(
       tenant_id: active.tenantId,
       company_id: parsed.data.company_id,
       content: parsed.data.content,
-      requires_approval: parsed.data.requires_approval,
-      status: parsed.data.requires_approval ? "draft" : "approved",
+      requires_approval: requiresApproval,
+      status: requiresApproval ? "draft" : "approved",
       created_by: user?.id ?? null,
     })
     .select("id")
@@ -205,7 +242,7 @@ export async function createSocialPostAction(
   revalidatePath("/app/social")
   revalidatePath(`/app/social/${post.id}`)
   return {
-    success: parsed.data.requires_approval
+    success: requiresApproval
       ? "Post criado como rascunho."
       : "Post aprovado e pronto para agendar.",
   }
@@ -243,6 +280,7 @@ export async function submitSocialPostAction(formData: FormData) {
   if (!updated?.length) redirect(`/app/social/${id}`)
 
   await recordEvent(active.tenantId, id, "submitted", user?.id ?? null)
+  await notifyPortalApprovalRequested({ tenantId: active.tenantId, postId: id })
   revalidatePath("/app/social")
   revalidatePath(`/app/social/${id}`)
   redirect(`/app/social/${id}`)
@@ -643,12 +681,21 @@ export async function respondPortalSocialPostAction(formData: FormData) {
   if (!parsed.success) redirect("/portal/social")
 
   const supabase = await createClient()
-  await supabase.rpc("portal_respond_social_post", {
+  const { data: responded } = await supabase.rpc("portal_respond_social_post", {
     p_company: contact.company_id,
     p_post: parsed.data.post_id,
     p_approve: parsed.data.approve,
     p_note: parsed.data.note ?? undefined,
   })
+
+  if (responded === true) {
+    await notifyStaffPortalResponse({
+      postId: parsed.data.post_id,
+      companyId: contact.company_id,
+      approved: parsed.data.approve,
+      note: parsed.data.note ?? null,
+    })
+  }
 
   revalidatePath("/portal/social")
   revalidatePath(`/portal/social/${parsed.data.post_id}`)
