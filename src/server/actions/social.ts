@@ -14,6 +14,10 @@ import { checkPlanLimit } from "@/server/plan-limits"
 import { getSocialSettings } from "@/server/queries/social"
 import { clearSocialTokens } from "@/server/social/tokens"
 import {
+  notifyPortalApprovalRequested,
+  notifyStaffPortalResponse,
+} from "@/server/social/approval-notifications"
+import {
   socialAccountSchema,
   socialPostResponseSchema,
   socialPostSchema,
@@ -276,6 +280,7 @@ export async function submitSocialPostAction(formData: FormData) {
   if (!updated?.length) redirect(`/app/social/${id}`)
 
   await recordEvent(active.tenantId, id, "submitted", user?.id ?? null)
+  await notifyPortalApprovalRequested({ tenantId: active.tenantId, postId: id })
   revalidatePath("/app/social")
   revalidatePath(`/app/social/${id}`)
   redirect(`/app/social/${id}`)
@@ -676,12 +681,21 @@ export async function respondPortalSocialPostAction(formData: FormData) {
   if (!parsed.success) redirect("/portal/social")
 
   const supabase = await createClient()
-  await supabase.rpc("portal_respond_social_post", {
+  const { data: responded } = await supabase.rpc("portal_respond_social_post", {
     p_company: contact.company_id,
     p_post: parsed.data.post_id,
     p_approve: parsed.data.approve,
     p_note: parsed.data.note ?? undefined,
   })
+
+  if (responded === true) {
+    await notifyStaffPortalResponse({
+      postId: parsed.data.post_id,
+      companyId: contact.company_id,
+      approved: parsed.data.approve,
+      note: parsed.data.note ?? null,
+    })
+  }
 
   revalidatePath("/portal/social")
   revalidatePath(`/portal/social/${parsed.data.post_id}`)
