@@ -15,7 +15,7 @@ vi.mock("@/server/email", () => ({
   sendTenantEmail: vi.fn(async () => ({ sent: true })),
 }))
 vi.mock("@/server/notifications", () => ({
-  createNotification: vi.fn(async () => undefined),
+  createNotification: vi.fn(async () => true),
 }))
 vi.mock("@/lib/logger", () => ({
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -45,7 +45,8 @@ beforeEach(() => {
   process.env.NEXT_PUBLIC_SITE_URL = "https://crm.test"
   vi.mocked(sendTenantEmail).mockReset()
   vi.mocked(sendTenantEmail).mockResolvedValue({ sent: true })
-  vi.mocked(createNotification).mockClear()
+  vi.mocked(createNotification).mockReset()
+  vi.mocked(createNotification).mockResolvedValue(true)
   vi.mocked(logger.error).mockClear()
 })
 
@@ -87,6 +88,48 @@ describe("notifyPortalApprovalRequested", () => {
     expect(calls[0][1].templateKey).toBe("social_approval_requested")
     expect(calls[0][1].vars.url).toBe(`https://crm.test/portal/social/${POST}`)
     expect(calls[0][1].vars.company).toBe("Padaria Sol")
+  })
+
+  it("não manda dois e-mails para o mesmo endereço", async () => {
+    state.admin = createSupabaseMock({
+      social_posts: post(),
+      contacts: {
+        data: [{ email: "Ana@Cliente.test" }, { email: "ana@cliente.test " }],
+        error: null,
+      },
+    }).client
+
+    const result = await notifyPortalApprovalRequested({
+      tenantId: TENANT,
+      postId: POST,
+    })
+
+    expect(result).toEqual({ emails: 1 })
+    expect(
+      vi.mocked(sendTenantEmail).mock.calls.map(([, params]) => params.to),
+    ).toEqual(["ana@cliente.test"])
+  })
+
+  it("um envio que falha não impede os outros", async () => {
+    state.admin = createSupabaseMock({
+      social_posts: post(),
+      contacts: {
+        data: [{ email: "ana@cliente.test" }, { email: "bia@cliente.test" }],
+        error: null,
+      },
+    }).client
+    vi.mocked(sendTenantEmail)
+      .mockRejectedValueOnce(new Error("smtp"))
+      .mockResolvedValueOnce({ sent: true })
+
+    const result = await notifyPortalApprovalRequested({
+      tenantId: TENANT,
+      postId: POST,
+    })
+
+    expect(result).toEqual({ emails: 1 })
+    expect(sendTenantEmail).toHaveBeenCalledTimes(2)
+    expect(logger.error).toHaveBeenCalled()
   })
 
   it("não envia nada quando o post não existe", async () => {
@@ -204,6 +247,23 @@ describe("notifyStaffPortalResponse", () => {
     expect(
       vi.mocked(createNotification).mock.calls.map(([, input]) => input.userId),
     ).toEqual(["a1"])
+  })
+
+  it("não conta notificação cujo insert falhou", async () => {
+    state.admin = createSupabaseMock({
+      social_posts: post(),
+      memberships: { data: { user_id: AUTHOR }, error: null },
+      profiles: { data: { email: null, notify_email: true }, error: null },
+    }).client
+    vi.mocked(createNotification).mockResolvedValue(false)
+
+    const result = await notifyStaffPortalResponse({
+      postId: POST,
+      companyId: COMPANY,
+      approved: true,
+    })
+
+    expect(result).toEqual({ notifications: 0, emails: 0 })
   })
 
   it("respeita notify_email desligado", async () => {

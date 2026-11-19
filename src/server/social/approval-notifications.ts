@@ -2,12 +2,17 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { logger } from "@/lib/logger"
 import { createNotification } from "@/server/notifications"
 import { sendTenantEmail } from "@/server/email"
+import {
+  resolveSocialRecipients,
+  uniqueEmails,
+} from "@/server/social/recipients"
 
 /**
  * Avisos do fluxo de aprovação do Social. Usam o client admin porque avisam
  * outras pessoas (a policy de `notifications` só deixa criar para si mesmo, e
  * o portal não lê `memberships`/`profiles` da equipe). São best-effort: uma
- * falha é logada e nunca desfaz a transição do post.
+ * falha é logada e nunca desfaz a transição do post. Os envios rodam em
+ * paralelo, e a falha de um não impede os outros.
  */
 
 function appUrl() {
@@ -20,6 +25,24 @@ function appUrl() {
 function excerpt(content: string, length = 80) {
   const value = content.replace(/\s+/g, " ").trim()
   return value.length > length ? `${value.slice(0, length)}…` : value
+}
+
+function logFailures(
+  event: string,
+  postId: string,
+  results: PromiseSettledResult<unknown>[],
+) {
+  for (const result of results) {
+    if (result.status === "rejected") {
+      logger.error(event, {
+        postId,
+        error:
+          result.reason instanceof Error
+            ? result.reason.message
+            : String(result.reason),
+      })
+    }
+  }
 }
 
 type PostRow = {
@@ -67,17 +90,24 @@ export async function notifyPortalApprovalRequested(input: {
       company: (company as { name?: string } | null)?.name ?? "",
       url: `${appUrl()}/portal/social/${row.id}`,
     }
+    const recipients = uniqueEmails(
+      ((contacts ?? []) as { email: string | null }[]).map((c) => c.email),
+    )
 
-    for (const contact of (contacts ?? []) as { email: string | null }[]) {
-      if (!contact.email) continue
-      const result = await sendTenantEmail(admin, {
-        tenantId: row.tenant_id,
-        templateKey: "social_approval_requested",
-        to: contact.email,
-        vars,
-      })
-      if (result.sent) emails++
-    }
+    const results = await Promise.allSettled(
+      recipients.map((to) =>
+        sendTenantEmail(admin, {
+          tenantId: row.tenant_id,
+          templateKey: "social_approval_requested",
+          to,
+          vars,
+        }),
+      ),
+    )
+    emails = results.filter(
+      (result) => result.status === "fulfilled" && result.value.sent,
+    ).length
+    logFailures("social.approval_requested_notify_failed", row.id, results)
   } catch (error) {
     logger.error("social.approval_requested_notify_failed", {
       postId: input.postId,
@@ -106,73 +136,53 @@ export async function notifyStaffPortalResponse(input: {
     if (!post) return { notifications, emails }
     const row = post as PostRow
 
-    // O autor só é avisado se ainda for membro ativo do tenant; quem saiu não
-    // deve receber trecho do post nem a nota do cliente.
-    let authorActive = false
-    if (row.created_by) {
-      const { data: membership } = await admin
-        .from("memberships")
-        .select("user_id")
-        .eq("tenant_id", row.tenant_id)
-        .eq("user_id", row.created_by)
-        .eq("status", "active")
-        .maybeSingle()
-      authorActive = Boolean(membership)
-    }
-
-    let recipients: string[] = []
-    if (row.created_by && authorActive) {
-      recipients = [row.created_by]
-    } else {
-      const { data: admins } = await admin
-        .from("memberships")
-        .select("user_id")
-        .eq("tenant_id", row.tenant_id)
-        .eq("status", "active")
-        .in("role", ["owner", "admin"])
-      recipients = ((admins ?? []) as { user_id: string }[]).map(
-        (item) => item.user_id,
-      )
-    }
+    const recipients = await resolveSocialRecipients(
+      admin,
+      row.tenant_id,
+      row.created_by,
+    )
 
     const summary = excerpt(row.content)
     const decision = input.approved ? "aprovou" : "rejeitou"
     const note = input.note?.trim() ?? ""
     const path = `/app/social/${row.id}`
 
-    for (const userId of recipients) {
-      await createNotification(admin, {
-        tenantId: row.tenant_id,
-        userId,
-        type: "social_approval_response",
-        title: input.approved
-          ? `Cliente aprovou o post: ${summary}`
-          : `Cliente rejeitou o post: ${summary}`,
-        body: note || null,
-        url: path,
-      })
-      notifications++
-
-      const { data: profile } = await admin
-        .from("profiles")
-        .select("email, notify_email")
-        .eq("id", userId)
-        .maybeSingle()
-      const prefs = profile as {
-        email: string | null
-        notify_email: boolean
-      } | null
-
-      if (prefs?.email && prefs.notify_email) {
-        const result = await sendTenantEmail(admin, {
+    const results = await Promise.allSettled(
+      recipients.map(async (userId) => {
+        const notified = await createNotification(admin, {
           tenantId: row.tenant_id,
-          templateKey: "social_approval_response",
-          to: prefs.email,
-          vars: { post: summary, decision, note, url: `${appUrl()}${path}` },
+          userId,
+          type: "social_approval_response",
+          title: input.approved
+            ? `Cliente aprovou o post: ${summary}`
+            : `Cliente rejeitou o post: ${summary}`,
+          body: note || null,
+          url: path,
         })
-        if (result.sent) emails++
-      }
-    }
+        if (notified) notifications++
+
+        const { data: profile } = await admin
+          .from("profiles")
+          .select("email, notify_email")
+          .eq("id", userId)
+          .maybeSingle()
+        const prefs = profile as {
+          email: string | null
+          notify_email: boolean
+        } | null
+
+        if (prefs?.email && prefs.notify_email) {
+          const result = await sendTenantEmail(admin, {
+            tenantId: row.tenant_id,
+            templateKey: "social_approval_response",
+            to: prefs.email,
+            vars: { post: summary, decision, note, url: `${appUrl()}${path}` },
+          })
+          if (result.sent) emails++
+        }
+      }),
+    )
+    logFailures("social.approval_response_notify_failed", row.id, results)
   } catch (error) {
     logger.error("social.approval_response_notify_failed", {
       postId: input.postId,
