@@ -3006,6 +3006,47 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       })
       expect(again.data).toBe(false)
     })
+
+    it("respostas simultâneas do portal: só uma vence e gera um evento", async () => {
+      const created = await admin
+        .from("social_posts")
+        .insert({
+          tenant_id: tenantA,
+          company_id: portalCompanyId,
+          content: `Corrida ${suffix}`,
+          status: "pending_approval",
+        })
+        .select("id")
+        .single()
+      if (created.error) throw created.error
+      const raceId = created.data.id
+
+      const results = await Promise.all(
+        [true, false, true, false, true, false].map((approve) =>
+          clientPortal.rpc("portal_respond_social_post", {
+            p_company: portalCompanyId,
+            p_post: raceId,
+            p_approve: approve,
+          }),
+        ),
+      )
+      for (const result of results) expect(result.error).toBeNull()
+      expect(results.filter((result) => result.data === true)).toHaveLength(1)
+
+      const events = await admin
+        .from("social_post_events")
+        .select("event")
+        .eq("post_id", raceId)
+        .in("event", ["approved", "rejected"])
+      expect(events.data).toHaveLength(1)
+
+      const post = await admin
+        .from("social_posts")
+        .select("status")
+        .eq("id", raceId)
+        .single()
+      expect(post.data?.status).toBe(events.data?.[0]?.event)
+    })
   })
 
   it("profiles.email é preenchido ao criar usuário", async () => {
