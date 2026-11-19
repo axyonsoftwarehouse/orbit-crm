@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Paperclip } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { registerAttachmentAction } from "@/server/actions/attachments"
+import { checkStorageQuotaAction } from "@/server/actions/storage"
 
 function sanitize(name: string) {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120)
@@ -29,6 +30,9 @@ export function AttachmentUploader({
 
     setIsUploading(true)
     try {
+      const quota = await checkStorageQuotaAction(file.size)
+      if (quota.error) throw new Error(quota.error)
+
       const supabase = createClient()
       const path = `${tenantId}/${entityType}/${entityId}/${crypto.randomUUID()}-${sanitize(file.name)}`
 

@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
 import { tagSchema } from "@/lib/validations/tags"
+import { checkPlanLimit } from "@/server/plan-limits"
 import type { TaggedEntityType } from "@/server/queries/tags"
 
 export type TagFormState = { error?: string; success?: string } | undefined
@@ -53,6 +54,9 @@ export async function createTagAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   }
+
+  const limit = await checkPlanLimit(active.tenantId, "tags")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const supabase = await createClient()
   const { error } = await supabase
@@ -171,6 +175,9 @@ export async function createTagForEntityAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   }
+
+  const limit = await checkPlanLimit(active.tenantId, "tags")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const supabase = await createClient()
   const { data, error } = await supabase

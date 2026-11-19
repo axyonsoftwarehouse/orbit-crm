@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { milestoneSchema } from "@/lib/validations/milestones"
+import { checkPlanLimit } from "@/server/plan-limits"
 
 export type MilestoneFormState =
   { error?: string; success?: string } | undefined
@@ -35,6 +36,9 @@ export async function createMilestoneAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   }
+
+  const limit = await checkPlanLimit(active.tenantId, "milestones")
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const user = await getUser()
   const supabase = await createClient()

@@ -11,6 +11,7 @@ import { socialNativeEnabled } from "@/lib/env"
 import { zonedTimeToUtc } from "@/lib/timezone"
 import { isManager } from "@/server/permissions"
 import { checkPlanLimit } from "@/server/plan-limits"
+import { verifyUploadedFile } from "@/server/storage-quota"
 import { getSocialSettings } from "@/server/queries/social"
 import { clearSocialTokens } from "@/server/social/tokens"
 import {
@@ -622,6 +623,13 @@ export async function registerSocialMediaAction(input: {
 
   if (!post) return { error: "Post inválido." }
 
+  const verified = await verifyUploadedFile(supabase, {
+    bucket: "social_media",
+    path: input.storagePath,
+    tenantId: active.tenantId,
+  })
+  if ("error" in verified) return { error: verified.error }
+
   const user = await getUser()
   const { error } = await supabase.from("social_media").insert({
     tenant_id: active.tenantId,
@@ -629,7 +637,7 @@ export async function registerSocialMediaAction(input: {
     storage_path: input.storagePath,
     file_name: input.fileName,
     mime_type: input.mimeType,
-    size_bytes: input.sizeBytes,
+    size_bytes: verified.size,
     created_by: user?.id ?? null,
   })
 
