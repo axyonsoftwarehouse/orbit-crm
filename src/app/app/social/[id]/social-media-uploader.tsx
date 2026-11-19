@@ -4,21 +4,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { ImagePlus } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { uploadWithSignedUrl } from "@/lib/upload-client"
+import { SOCIAL_IMAGE_MAX_BYTES } from "@/lib/storage-paths"
 import { registerSocialMediaAction } from "@/server/actions/social"
-import { checkStorageQuotaAction } from "@/server/actions/storage"
 
-function sanitize(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100)
-}
-
-export function SocialMediaUploader({
-  tenantId,
-  postId,
-}: {
-  tenantId: string
-  postId: string
-}) {
+export function SocialMediaUploader({ postId }: { postId: string }) {
   const [isUploading, setIsUploading] = useState(false)
   const router = useRouter()
 
@@ -31,7 +21,7 @@ export function SocialMediaUploader({
       event.target.value = ""
       return
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > SOCIAL_IMAGE_MAX_BYTES) {
       toast.error("A imagem deve ter no máximo 10 MB.")
       event.target.value = ""
       return
@@ -39,19 +29,10 @@ export function SocialMediaUploader({
 
     setIsUploading(true)
     try {
-      const quota = await checkStorageQuotaAction(file.size)
-      if (quota.error) throw new Error(quota.error)
-
-      const supabase = createClient()
-      const path = `${tenantId}/social/${postId}/${crypto.randomUUID()}-${sanitize(file.name)}`
-
-      const { error: uploadError } = await supabase.storage
-        .from("social_media")
-        .upload(path, file, {
-          contentType: file.type,
-          upsert: false,
-        })
-      if (uploadError) throw uploadError
+      const path = await uploadWithSignedUrl(
+        { kind: "social_media", postId },
+        file,
+      )
 
       const result = await registerSocialMediaAction({
         postId,

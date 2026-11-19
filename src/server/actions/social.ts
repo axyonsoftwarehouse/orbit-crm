@@ -12,6 +12,7 @@ import { zonedTimeToUtc } from "@/lib/timezone"
 import { isManager } from "@/server/permissions"
 import { checkPlanLimit } from "@/server/plan-limits"
 import { verifyUploadedFile } from "@/server/storage-quota"
+import { socialMediaFolder } from "@/lib/storage-paths"
 import { getSocialSettings } from "@/server/queries/social"
 import { clearSocialTokens } from "@/server/social/tokens"
 import {
@@ -608,7 +609,11 @@ export async function registerSocialMediaAction(input: {
 }): Promise<{ error?: string }> {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
-  if (!input.storagePath.startsWith(`${active.tenantId}/`)) {
+  if (
+    !input.storagePath.startsWith(
+      socialMediaFolder(active.tenantId, input.postId),
+    )
+  ) {
     return { error: "Caminho de arquivo inválido." }
   }
 

@@ -192,6 +192,38 @@ describe("cota de armazenamento no registro de arquivos", () => {
     expect(inserted(mock, "attachments")).toBe(false)
   })
 
+  it("anexo: caminho de outra entidade é recusado", async () => {
+    const mock = createSupabaseMock()
+    state.supabase = mock.client
+    const { bucket } = withStorage(mock, { data: { size: 5000 }, error: null })
+
+    const result = await registerAttachmentAction({
+      ...attachment,
+      storagePath: `${TENANT}/project/outro-projeto/a.pdf`,
+    })
+    expect(result).toEqual({ error: "Caminho de arquivo inválido." })
+    expect(bucket.info).not.toHaveBeenCalled()
+    expect(inserted(mock, "attachments")).toBe(false)
+  })
+
+  it("mídia do Social: caminho de outro post é recusado", async () => {
+    const mock = createSupabaseMock({
+      social_posts: { data: { id: POST }, error: null },
+    })
+    state.supabase = mock.client
+    const { bucket } = withStorage(mock, { data: { size: 7000 }, error: null })
+
+    const result = await registerSocialMediaAction({
+      postId: POST,
+      storagePath: `${TENANT}/social/outro-post/img.png`,
+      fileName: "img.png",
+      mimeType: "image/png",
+      sizeBytes: 1,
+    })
+    expect(result).toEqual({ error: "Caminho de arquivo inválido." })
+    expect(bucket.info).not.toHaveBeenCalled()
+  })
+
   it("anexo: sem conseguir ler o objeto, não registra", async () => {
     const mock = createSupabaseMock()
     state.supabase = mock.client

@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
 import { revalidateEntity } from "@/lib/revalidate"
 import { verifyUploadedFile } from "@/server/storage-quota"
+import { attachmentFolder } from "@/lib/storage-paths"
 
 const ENTITY_TYPES = ["task", "project", "ticket"]
 
@@ -29,7 +30,11 @@ export async function registerAttachmentAction(
   if (!ENTITY_TYPES.includes(input.entityType)) {
     return { error: "Entidade inválida." }
   }
-  if (!input.storagePath.startsWith(`${active.tenantId}/`)) {
+  if (
+    !input.storagePath.startsWith(
+      attachmentFolder(active.tenantId, input.entityType, input.entityId),
+    )
+  ) {
     return { error: "Caminho de arquivo inválido." }
   }
 
