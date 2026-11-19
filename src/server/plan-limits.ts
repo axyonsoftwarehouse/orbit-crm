@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
+import { logger } from "@/lib/logger"
 
 type ResourceTable =
   | "companies"
@@ -138,9 +139,14 @@ export async function checkStorageLimitWith(
   const limitMb = limits.storage_mb
   if (limitMb === null || limitMb === undefined) return { ok: true }
 
-  const { data } = await supabase.rpc("tenant_storage_bytes", {
+  const { data, error } = await supabase.rpc("tenant_storage_bytes", {
     p_tenant: tenantId,
   })
+  // Falha aberta (conta 0) para não travar uploads se o RPC sumir, mas loga
+  // para não passar despercebido.
+  if (error) {
+    logger.error("plan_limits.storage_usage_failed", { error: error.message })
+  }
   const used = Number(data ?? 0)
   const limitBytes = limitMb * BYTES_PER_MB
 

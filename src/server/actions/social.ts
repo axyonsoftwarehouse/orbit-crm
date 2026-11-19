@@ -625,6 +625,7 @@ export async function registerSocialMediaAction(input: {
 
   const verified = await verifyUploadedFile(supabase, {
     bucket: "social_media",
+    table: "social_media",
     path: input.storagePath,
     tenantId: active.tenantId,
   })

@@ -38,6 +38,7 @@ export async function registerAttachmentAction(
 
   const verified = await verifyUploadedFile(supabase, {
     bucket: "attachments",
+    table: "attachments",
     path: input.storagePath,
     tenantId: active.tenantId,
   })

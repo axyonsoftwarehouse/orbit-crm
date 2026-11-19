@@ -154,8 +154,10 @@ describe("cota de armazenamento no registro de arquivos", () => {
     await expect(registerAttachmentAction(attachment)).resolves.toEqual({})
     expect(storage.from).toHaveBeenCalledWith("attachments")
     expect(checkStorageLimit).toHaveBeenCalledWith(TENANT, 5000)
-    const [calls] = mock.callsFor("attachments")
-    const insert = calls.find((call) => call.method === "insert")
+    const insert = mock
+      .callsFor("attachments")
+      .flat()
+      .find((call) => call.method === "insert")
     expect(insert?.args[0]).toMatchObject({ size_bytes: 5000 })
   })
 
@@ -169,6 +171,24 @@ describe("cota de armazenamento no registro de arquivos", () => {
       error: STORAGE_MESSAGE,
     })
     expect(bucket.remove).toHaveBeenCalledWith([attachment.storagePath])
+    expect(inserted(mock, "attachments")).toBe(false)
+  })
+
+  it("anexo: caminho já registrado não é removido nem registrado de novo", async () => {
+    state.storage = { ok: false, message: STORAGE_MESSAGE }
+    const mock = createSupabaseMock({
+      attachments: (calls) =>
+        calls.some((call) => call.method === "insert")
+          ? { data: null, error: null }
+          : { data: { id: "existente" }, error: null },
+    })
+    state.supabase = mock.client
+    const { bucket } = withStorage(mock, { data: { size: 5000 }, error: null })
+
+    const result = await registerAttachmentAction(attachment)
+    expect(result.error).toBeTruthy()
+    expect(bucket.remove).not.toHaveBeenCalled()
+    expect(bucket.info).not.toHaveBeenCalled()
     expect(inserted(mock, "attachments")).toBe(false)
   })
 
@@ -225,8 +245,10 @@ describe("cota de armazenamento no registro de arquivos", () => {
         sizeBytes: 1,
       }),
     ).resolves.toEqual({})
-    const [calls] = mock.callsFor("social_media")
-    const insert = calls.find((call) => call.method === "insert")
+    const insert = mock
+      .callsFor("social_media")
+      .flat()
+      .find((call) => call.method === "insert")
     expect(insert?.args[0]).toMatchObject({ size_bytes: 7000 })
   })
 })

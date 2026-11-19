@@ -7,11 +7,28 @@ import { checkStorageLimit } from "@/server/plan-limits"
  * real do objeto (o informado pelo navegador não é confiável) e aplica a cota
  * `storage_mb` do plano. Se estourar, remove o objeto para não deixar arquivo
  * órfão ocupando espaço.
+ *
+ * Um caminho que já tem linha registrada é recusado antes de tudo: sem isso,
+ * reenviar o caminho de um arquivo existente com a cota estourada apagaria o
+ * arquivo de verdade e deixaria o registro apontando para o nada.
  */
 export async function verifyUploadedFile(
   supabase: SupabaseClient,
-  params: { bucket: string; path: string; tenantId: string },
+  params: {
+    bucket: string
+    table: "attachments" | "social_media"
+    path: string
+    tenantId: string
+  },
 ): Promise<{ size: number } | { error: string }> {
+  const { data: existing } = await supabase
+    .from(params.table)
+    .select("id")
+    .eq("tenant_id", params.tenantId)
+    .eq("storage_path", params.path)
+    .maybeSingle()
+  if (existing) return { error: "Este arquivo já foi registrado." }
+
   const bucket = supabase.storage.from(params.bucket)
   const { data, error } = await bucket.info(params.path)
   if (error || !data || typeof data.size !== "number") {
