@@ -31,12 +31,14 @@
 ### Task 1: Aprovação obrigatória na criação do post
 
 **Files:**
+
 - Create: `src/lib/social-approval.ts`
 - Modify: `src/server/actions/social.ts` (`createSocialPostAction`)
 - Modify: `src/app/app/social/social-post-form-dialog.tsx` (prop `approvalRequired` no lugar de `defaultApproval`), `src/app/app/social/page.tsx`, `src/app/app/social/calendario/page.tsx`
 - Test: `tests/unit/social-approval.test.ts`
 
 **Interfaces:**
+
 - Produces: `resolveRequiresApproval(settingRequired: boolean, requested: boolean): boolean`
 
 - [ ] **Step 1: Testes** `resolveRequiresApproval(true, false) === true`, `(true, true) === true`, `(false, false) === false`, `(false, true) === true`.
@@ -48,6 +50,7 @@
 ### Task 2: Tela de configurações do Social
 
 **Files:**
+
 - Modify: `src/server/actions/social.ts` (nova `updateSocialSettingsAction`)
 - Create: `src/app/app/social/configuracoes/page.tsx`, `src/app/app/social/configuracoes/social-settings-form.tsx`
 - Modify: `src/app/app/social/page.tsx` (botão "Configurações" só se `isManager`)
@@ -55,6 +58,7 @@
 - Test: `tests/unit/actions-social.test.ts`
 
 **Interfaces:**
+
 - Produces: `updateSocialSettingsAction(prev: SocialFormState, formData: FormData): Promise<SocialFormState>`; campo `approval_required` = checkbox `"on"`.
 
 - [ ] **Step 1: Testes** (padrão de `actions-team.test.ts`): `member` → `{ error }` e nenhum `upsert` em `social_settings`; `admin` com `approval_required=on` → `upsert({ tenant_id: TENANT, approval_required: true }, { onConflict: "tenant_id" })` e `{ success }`; sem o campo → `approval_required: false`.
@@ -66,14 +70,16 @@
 ### Task 3: Avisos de aprovação
 
 **Files:**
+
 - Modify: `src/lib/email-templates.ts` (templates `social_approval_requested`, vars `post`, `company`, `url`; e `social_approval_response`, vars `post`, `decision`, `note`, `url`)
 - Create: `src/server/social/approval-notifications.ts`
 - Test: `tests/unit/social-approval-notifications.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `notifyPortalApprovalRequested(input: { tenantId: string; postId: string }): Promise<{ emails: number }>`
-  - `notifyStaffPortalResponse(input: { postId: string; approved: boolean; note?: string | null }): Promise<{ notifications: number; emails: number }>`
+  - `notifyStaffPortalResponse(input: { postId: string; companyId: string; approved: boolean; note?: string | null }): Promise<{ notifications: number; emails: number }>`
 - Ambos usam `createAdminClient()`, `sendTenantEmail`, `createNotification`; base de URL igual a `src/server/social/reminders.ts`. Resumo do post com até 80 caracteres.
 
 - [ ] **Step 1: Testes:**
@@ -88,11 +94,13 @@
 ### Task 4: Ligar os avisos às actions e atualizar o mapa
 
 **Files:**
+
 - Modify: `src/server/actions/social.ts` (`submitSocialPostAction`, `respondPortalSocialPostAction`)
 - Modify: `docs/mapa/06-problemas-e-dividas.md` (#29 resolvido; #20 resolvido no PR #35)
 - Test: `tests/unit/actions-social.test.ts`
 
 **Interfaces:**
+
 - Consumes: as duas funções da Task 3.
 
 - [ ] **Step 1: Testes** (mock de `@/server/social/approval-notifications`): envio com update de 1 linha → `notifyPortalApprovalRequested({ tenantId, postId })`; update de 0 linhas → não chama; portal com RPC `{ data: true }` → `notifyStaffPortalResponse({ postId, approved, note })`; `{ data: false }` → não chama.

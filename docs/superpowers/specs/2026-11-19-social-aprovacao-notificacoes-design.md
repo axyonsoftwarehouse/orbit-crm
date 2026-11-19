@@ -58,7 +58,7 @@ não lê `memberships`/`profiles` da equipe. É o mesmo padrão dos lembretes.
 ## Desenho
 
 - `src/lib/social-approval.ts` (puro): `resolveRequiresApproval(settingRequired,
-  requested)`.
+requested)`.
 - `src/server/social/approval-notifications.ts` (server-only, admin client):
   - `notifyPortalApprovalRequested({ tenantId, postId })`: busca o post (conteúdo,
     `company_id`) e os contatos com portal e manda o template
@@ -71,7 +71,7 @@ não lê `memberships`/`profiles` da equipe. É o mesmo padrão dos lembretes.
   Assim os dois aparecem para personalização em Configurações > E-mails.
 - `createSocialPostAction` lê `getSocialSettings` e usa `resolveRequiresApproval`.
 - `updateSocialSettingsAction` (`isManager`, upsert de `{ tenant_id,
-  approval_required }`), revalida `/app/social`.
+approval_required }`), revalida `/app/social`.
 - Página `/app/social/configuracoes` com formulário de chave no padrão de
   `notification-prefs-form.tsx`. O botão "Configurações" na página do Social só
   aparece para owner/admin.
