@@ -208,6 +208,8 @@ flowchart LR
 **O que renderiza e quais actions chama:** card de credenciais demo. Não chama actions; manipula o DOM do formulário de login.
 
 ### `src/components/app/placeholder.tsx`
+
+> **Removido em 19/11/2026** (item #10 do mapa: sem uso). Ficha mantida como histórico.
 **Propósito:** Placeholder de tela "em construção" com título e descrição.
 **Processo:** Componente puro (sem hooks) que recebe `title` e `description` e renderiza um cabeçalho e um bloco tracejado "Em construção — previsto para a Fase 1.".
 **Estado:** `implementado` (mas sem uso no código atual — busca por `Placeholder` só encontra a própria definição).
@@ -340,7 +342,7 @@ flowchart LR
 | §08.7 | `src/components/app/new-menu.tsx` | Botão "Novo" com atalhos de criação. |
 | §08.8 | `src/components/app/search-dialog.tsx` | Busca global por clientes, projetos e tarefas. |
 | §08.9 | `src/components/app/demo-credentials.tsx` | Credenciais demo nas telas de login. |
-| §08.10 | `src/components/app/placeholder.tsx` | Tela "em construção" (sem uso atual). |
+| §08.10 | `src/components/app/placeholder.tsx` | Tela "em construção" — **removido em 19/11/2026** (item #10 do mapa). |
 | §08.11 | `src/components/app/stat-card.tsx` | Card de KPI com ícone, valor e rótulo. |
 | §08.12 | `src/components/app/pagination.tsx` | Paginação por query string. |
 | §08.13 | `src/components/app/status-pill.tsx` | Badge de status colorido. |

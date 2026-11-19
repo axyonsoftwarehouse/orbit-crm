@@ -87,15 +87,17 @@ export async function getKbArticle(
     .is("deleted_at", null)
     .maybeSingle()
 
-  if (data) {
-    await supabase
-      .from("kb_articles")
-      .update({ views: (data.views ?? 0) + 1 })
-      .eq("id", id)
-      .eq("tenant_id", tenantId)
-  }
-
   return (data as KbArticle | null) ?? null
+}
+
+/**
+ * Conta uma visualização do artigo. Incremento atômico no banco (RPC
+ * `increment_kb_article_views`, sujeito ao RLS), sem mexer em `updated_at`.
+ * Chamado explicitamente pela página, fora da leitura.
+ */
+export async function recordKbArticleView(id: string): Promise<void> {
+  const supabase = await createClient()
+  await supabase.rpc("increment_kb_article_views", { p_article: id })
 }
 
 export async function listFaqs(tenantId: string): Promise<Faq[]> {

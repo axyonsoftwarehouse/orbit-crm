@@ -23,7 +23,7 @@ export default async function PortalEstimateDetailPage({
 
   const items = await listDocumentItems(contact.tenant_id, "estimate", id)
   const currency = estimate.currency
-  const canRespond = estimate.status === 1 || estimate.status === 2
+  const canRespond = estimate.status === 2
 
   return (
     <div className="space-y-6">
