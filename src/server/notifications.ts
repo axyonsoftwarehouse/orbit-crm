@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
 
 export type CreateNotificationInput = {
   tenantId: string
@@ -9,11 +10,12 @@ export type CreateNotificationInput = {
   type?: string
 }
 
+/** Cria a notificação; devolve `false` (e loga) se o insert falhar. */
 export async function createNotification(
   supabase: SupabaseClient,
   input: CreateNotificationInput,
-) {
-  await supabase.from("notifications").insert({
+): Promise<boolean> {
+  const { error } = await supabase.from("notifications").insert({
     tenant_id: input.tenantId,
     user_id: input.userId,
     title: input.title,
@@ -21,4 +23,13 @@ export async function createNotification(
     url: input.url ?? null,
     type: input.type ?? "info",
   })
+
+  if (error) {
+    logger.error("notifications.insert_failed", {
+      type: input.type ?? "info",
+      error: error.message,
+    })
+    return false
+  }
+  return true
 }
