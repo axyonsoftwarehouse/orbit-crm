@@ -40,6 +40,7 @@
 **Files:** Create `supabase/migrations/0057_tenant_storage_bytes.sql`; modify `src/server/plan-limits.ts`, `src/lib/database.types.ts` (Functions: `tenant_storage_bytes: { Args: { p_tenant: string }; Returns: number }`); create `src/server/actions/storage.ts`. Tests: `tests/unit/plan-limits.test.ts`, `tests/unit/actions-storage.test.ts`, `tests/rls/isolation.test.ts`.
 
 **Produces:**
+
 - `checkStorageLimitWith(supabase, tenantId, incomingBytes: number): Promise<PlanLimitResult>` e `checkStorageLimit(tenantId, incomingBytes)`.
 - `checkStorageQuotaAction(sizeBytes: number): Promise<{ error?: string }>`.
 - SQL `tenant_storage_bytes(p_tenant uuid) returns bigint`, `security invoker`, soma `size_bytes` de `attachments` + `social_media` do tenant (coalesce 0); execute só para `authenticated`/`service_role`.
