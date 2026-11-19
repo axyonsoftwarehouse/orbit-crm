@@ -1908,6 +1908,186 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     expect(data ?? []).toEqual([])
   })
 
+  describe("Portal: resposta a orçamento (client_respond_estimate)", () => {
+    let nextNumber = 900
+
+    async function estimate(status: number) {
+      nextNumber -= 1
+      const created = await admin
+        .from("estimates")
+        .insert({
+          tenant_id: tenantA,
+          company_id: portalCompanyId,
+          number: nextNumber,
+          prefix: "EST-",
+          formatted_number: `EST-R${nextNumber}-${suffix}`,
+          status,
+          date: new Date().toISOString().slice(0, 10),
+          total: 100,
+        })
+        .select("id")
+        .single()
+      if (created.error) throw created.error
+      return created.data.id as string
+    }
+
+    async function statusOf(id: string) {
+      const { data } = await admin
+        .from("estimates")
+        .select("status")
+        .eq("id", id)
+        .single()
+      return data?.status
+    }
+
+    it("cliente aceita orçamento enviado", async () => {
+      const id = await estimate(2)
+      const { error } = await clientPortal.rpc("client_respond_estimate", {
+        p_estimate: id,
+        p_accept: true,
+      })
+      expect(error).toBeNull()
+      expect(await statusOf(id)).toBe(4)
+    })
+
+    it("cliente não muda a resposta de orçamento já aceito", async () => {
+      const id = await estimate(4)
+      const { error } = await clientPortal.rpc("client_respond_estimate", {
+        p_estimate: id,
+        p_accept: false,
+      })
+      expect(error).not.toBeNull()
+      expect(await statusOf(id)).toBe(4)
+    })
+
+    it("cliente não aceita orçamento expirado nem rascunho", async () => {
+      for (const status of [5, 1, 3]) {
+        const id = await estimate(status)
+        const { error } = await clientPortal.rpc("client_respond_estimate", {
+          p_estimate: id,
+          p_accept: true,
+        })
+        expect(error, `status ${status}`).not.toBeNull()
+        expect(await statusOf(id)).toBe(status)
+      }
+    })
+
+    it("outro tenant e anon não respondem orçamento do cliente", async () => {
+      const id = await estimate(2)
+      const anon = createClient(url!, anonKey!)
+      for (const [label, client] of [
+        ["tenantB", clientB],
+        ["anon", anon],
+      ] as const) {
+        const { error } = await client.rpc("client_respond_estimate", {
+          p_estimate: id,
+          p_accept: true,
+        })
+        expect(error, label).not.toBeNull()
+      }
+      expect(await statusOf(id)).toBe(2)
+    })
+  })
+
+  describe("Base de conhecimento: contador de visualizações", () => {
+    let articleId = ""
+    const frozen = "2026-01-01T00:00:00+00:00"
+
+    beforeAll(async () => {
+      const created = await admin
+        .from("kb_articles")
+        .insert({
+          tenant_id: tenantA,
+          title: `Artigo ${suffix}`,
+          slug: `artigo-${suffix}`,
+          content: "Conteúdo",
+          is_published: true,
+        })
+        .select("id")
+        .single()
+      if (created.error) throw created.error
+      articleId = created.data.id
+      const frozenRes = await admin
+        .from("kb_articles")
+        .update({ updated_at: frozen })
+        .eq("id", articleId)
+      if (frozenRes.error) throw frozenRes.error
+    })
+
+    async function article() {
+      const { data } = await admin
+        .from("kb_articles")
+        .select("views, updated_at")
+        .eq("id", articleId)
+        .single()
+      return data!
+    }
+
+    it("conta visualizações simultâneas sem perder nenhuma", async () => {
+      const before = await article()
+      const results = await Promise.all(
+        Array.from({ length: 5 }, () =>
+          clientA.rpc("increment_kb_article_views", { p_article: articleId }),
+        ),
+      )
+      for (const result of results) expect(result.error).toBeNull()
+      expect((await article()).views).toBe(before.views + 5)
+    })
+
+    it("visualização não altera updated_at", async () => {
+      await clientA.rpc("increment_kb_article_views", { p_article: articleId })
+      expect(new Date((await article()).updated_at).toISOString()).toBe(
+        new Date(frozen).toISOString(),
+      )
+    })
+
+    it("editar o artigo continua atualizando updated_at", async () => {
+      const { error } = await clientA
+        .from("kb_articles")
+        .update({ title: `Artigo editado ${suffix}` })
+        .eq("id", articleId)
+      expect(error).toBeNull()
+      expect(new Date((await article()).updated_at).toISOString()).not.toBe(
+        new Date(frozen).toISOString(),
+      )
+    })
+
+    it("outro tenant não incrementa o artigo", async () => {
+      const before = await article()
+      await clientB.rpc("increment_kb_article_views", { p_article: articleId })
+      expect((await article()).views).toBe(before.views)
+    })
+  })
+
+  it("social_settings.updated_at muda quando owner altera a configuração", async () => {
+    const seeded = await admin
+      .from("social_settings")
+      .upsert({ tenant_id: tenantA, approval_required: true })
+      .select("updated_at")
+      .single()
+    if (seeded.error) throw seeded.error
+    const before = new Date(seeded.data.updated_at).getTime()
+
+    const { error } = await clientA
+      .from("social_settings")
+      .update({ approval_required: false })
+      .eq("tenant_id", tenantA)
+    expect(error).toBeNull()
+
+    const { data } = await admin
+      .from("social_settings")
+      .select("approval_required, updated_at")
+      .eq("tenant_id", tenantA)
+      .single()
+    expect(data?.approval_required).toBe(false)
+    expect(new Date(data!.updated_at).getTime()).toBeGreaterThan(before)
+
+    await admin
+      .from("social_settings")
+      .update({ approval_required: true })
+      .eq("tenant_id", tenantA)
+  })
+
   it("Portal lê projetos da empresa via RPC e não direto na tabela", async () => {
     const direct = await clientPortal.from("projects").select("id")
     expect(direct.data ?? []).toEqual([])

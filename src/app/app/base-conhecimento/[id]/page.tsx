@@ -6,7 +6,11 @@ import { Badge } from "@/components/ui/badge"
 import { formatDate } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
-import { getKbArticle, listKbCategories } from "@/server/queries/kb"
+import {
+  getKbArticle,
+  listKbCategories,
+  recordKbArticleView,
+} from "@/server/queries/kb"
 import { ArticleFormDialog } from "../article-form-dialog"
 import { DeleteArticleIcon } from "../delete-icons"
 
@@ -22,6 +26,7 @@ export default async function ArticlePage({
 
   const article = await getKbArticle(active.tenantId, id)
   if (!article) notFound()
+  await recordKbArticleView(article.id)
 
   const categories = await listKbCategories(active.tenantId)
   const categoryName =

@@ -3161,6 +3161,10 @@ export type Database = {
         Args: { p_roles: string[]; p_tenant: string }
         Returns: boolean
       }
+      increment_kb_article_views: {
+        Args: { p_article: string }
+        Returns: undefined
+      }
       is_authenticated_staff: { Args: never; Returns: boolean }
       is_client_of_company: { Args: { p_company: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
