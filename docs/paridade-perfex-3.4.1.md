@@ -387,6 +387,9 @@ para ❌/🟡.
 - **Equivalência não é identidade.** Onde marquei ✅, o fluxo existe nos dois, mas
   o modelo de dados e a UX são diferentes (ex.: comentários polimórficos vs.
   tabelas por entidade).
+- **Addons de terceiros.** O catálogo de 261 arquivos do `Perfex CRM.rar` foi
+  indexado à parte em [`perfex-addons.md`](perfex-addons.md), com o cruzamento de
+  cada lacuna deste relatório com os addons que a cobrem.
 - **Contagem de linhas.** A tabela de status conta 61 ✅, 28 🟡, 64 ❌, 5 ➖ e 4 ⭐;
   itens agrupados (ex.: "gateways") contam como uma linha e vários recursos.
 - **Tamanho das lacunas varia.** "Notas de crédito" e "newsfeed" pesam igual na
