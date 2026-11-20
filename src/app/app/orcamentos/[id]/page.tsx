@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, FileDown } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -18,7 +18,12 @@ import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { createClient } from "@/lib/supabase/server"
 import { getTenantFinanceSettings } from "@/server/documents"
-import { getCompany, listCompanies } from "@/server/queries/companies"
+import {
+  getCompany,
+  listCompanies,
+  listContacts,
+} from "@/server/queries/companies"
+import { SendDocumentDialog } from "@/components/app/send-document-dialog"
 import { listProjects } from "@/server/queries/projects"
 import { getEstimate, listDocumentItems } from "@/server/queries/documents"
 import {
@@ -45,15 +50,19 @@ export default async function EstimateDetailPage({
   if (!estimate) notFound()
 
   const supabase = await createClient()
-  const [items, company, companies, projects, settings] = await Promise.all([
-    listDocumentItems(active.tenantId, "estimate", estimate.id),
-    estimate.company_id
-      ? getCompany(active.tenantId, estimate.company_id)
-      : Promise.resolve(null),
-    listCompanies(active.tenantId),
-    listProjects(active.tenantId),
-    getTenantFinanceSettings(supabase, active.tenantId),
-  ])
+  const [items, company, contacts, companies, projects, settings] =
+    await Promise.all([
+      listDocumentItems(active.tenantId, "estimate", estimate.id),
+      estimate.company_id
+        ? getCompany(active.tenantId, estimate.company_id)
+        : Promise.resolve(null),
+      estimate.company_id
+        ? listContacts(active.tenantId, estimate.company_id)
+        : Promise.resolve([]),
+      listCompanies(active.tenantId),
+      listProjects(active.tenantId),
+      getTenantFinanceSettings(supabase, active.tenantId),
+    ])
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }))
   const projectOptions = projects.map((p) => ({ id: p.id, name: p.name }))
@@ -77,6 +86,28 @@ export default async function EstimateDetailPage({
           <EstimateStatusBadge status={estimate.status} />
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {estimate.company_id ? (
+            <SendDocumentDialog
+              kind="estimate"
+              documentId={estimate.id}
+              contacts={contacts.map((contact) => ({
+                id: contact.id,
+                name: [contact.first_name, contact.last_name]
+                  .filter(Boolean)
+                  .join(" "),
+                email: contact.email,
+                isPrimary: contact.is_primary,
+              }))}
+            />
+          ) : null}
+          <Button
+            variant="outline"
+            nativeButton={false}
+            render={<a href={`/app/orcamentos/${estimate.id}/pdf`} />}
+          >
+            <FileDown className="size-4" />
+            PDF
+          </Button>
           <EstimateFormDialog
             estimate={estimate}
             items={items}

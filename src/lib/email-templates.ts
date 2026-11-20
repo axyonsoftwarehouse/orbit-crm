@@ -32,6 +32,20 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDefault> = {
     subject: "[Orbit CRM] Post para publicar: {{post}}",
     body: '<p>O post <strong>{{post}}</strong> está agendado para {{scheduled_at}}.</p><p>Abra o Orbit para copiar o conteúdo e publicar.</p><p><a href="{{url}}">Abrir post</a></p>',
   },
+  estimate_sent: {
+    label: "Orçamento enviado ao cliente",
+    description:
+      'Enviado aos contatos escolhidos ao clicar em "Enviar ao cliente" no orçamento. O PDF vai anexo.',
+    subject: "Orçamento {{number}} · {{tenant}}",
+    body: '<p>Olá,</p><p><strong>{{tenant}}</strong> enviou o orçamento <strong>{{number}}</strong> no valor de <strong>{{total}}</strong>, válido até {{date}}.</p><p>{{message}}</p><p><a href="{{link}}">Ver e responder o orçamento</a></p><p>O PDF segue em anexo.</p>',
+  },
+  invoice_sent: {
+    label: "Fatura enviada ao cliente",
+    description:
+      'Enviada aos contatos escolhidos ao clicar em "Enviar ao cliente" na fatura. O PDF vai anexo.',
+    subject: "Fatura {{number}} · {{tenant}}",
+    body: '<p>Olá,</p><p><strong>{{tenant}}</strong> enviou a fatura <strong>{{number}}</strong> no valor de <strong>{{total}}</strong>, com vencimento em {{date}}.</p><p>{{message}}</p><p><a href="{{link}}">Ver a fatura</a></p><p>O PDF segue em anexo.</p>',
+  },
   social_approval_requested: {
     label: "Post aguardando aprovação (cliente)",
     description:
