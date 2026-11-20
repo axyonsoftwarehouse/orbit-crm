@@ -1,6 +1,5 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { todayIso } from "@/lib/format"
 import { resolveDocumentLink } from "@/server/document-sharing/links"
@@ -69,6 +68,5 @@ export async function respondPublicEstimateAction(
     .update({ responded_at: new Date().toISOString() })
     .eq("id", link.id)
 
-  revalidatePath(`/d/${token}`)
   return { status: next }
 }

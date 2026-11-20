@@ -27,6 +27,8 @@ const KIND = {
     /** Rascunho → Enviado */
     statusFrom: 1,
     statusTo: 2,
+    /** Só rascunho ou enviado (não respondido nem vencido). */
+    sendable: [1, 2],
   },
   invoice: {
     table: "invoices",
@@ -36,6 +38,8 @@ const KIND = {
     /** Rascunho → Em aberto */
     statusFrom: 6,
     statusTo: 1,
+    /** Qualquer uma, menos cancelada (5). */
+    sendable: [1, 2, 3, 6],
   },
 } as const
 
@@ -93,6 +97,9 @@ export async function sendDocumentAction(input: {
   if (!row.company_id) {
     return { error: "Defina o cliente do documento antes de enviar." }
   }
+  if (!(config.sendable as readonly number[]).includes(row.status)) {
+    return { error: "Este documento não pode mais ser enviado." }
+  }
 
   const { data: contactRows } = await supabase
     .from("contacts")
@@ -118,6 +125,8 @@ export async function sendDocumentAction(input: {
   const user = await getUser()
   const dateValue =
     (input.kind === "estimate" ? row.expiry_date : row.due_date) ?? null
+
+  const pdf = Buffer.from(await renderDocumentPdf(view)).toString("base64")
   const link = await createDocumentLink(supabase, {
     tenantId: active.tenantId,
     kind: input.kind,
@@ -126,8 +135,6 @@ export async function sendDocumentAction(input: {
     userId: user?.id ?? null,
   })
   if ("error" in link) return { error: link.error }
-
-  const pdf = Buffer.from(await renderDocumentPdf(view)).toString("base64")
   const { data: tenant } = await supabase
     .from("tenants")
     .select("name")

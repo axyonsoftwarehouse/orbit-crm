@@ -9,6 +9,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { formatDate, formatMoney, todayIso } from "@/lib/format"
 import { resolveDocumentLink } from "@/server/document-sharing/links"
 import { loadDocument } from "@/server/document-sharing/load"
+import { getClientIp, isRateLimited } from "@/server/rate-limit"
 import { RespondButtons } from "./respond-buttons"
 
 export const dynamic = "force-dynamic"
@@ -19,16 +20,18 @@ export const metadata: Metadata = {
   referrer: "no-referrer",
 }
 
-function Invalid() {
+function Invalid({
+  title = "Link inválido ou expirado",
+  detail = "Peça um novo envio do documento a quem enviou.",
+}: {
+  title?: string
+  detail?: string
+}) {
   return (
     <div className="bg-muted/30 flex min-h-svh items-center justify-center p-6">
       <div className="bg-card max-w-md space-y-2 rounded-2xl border p-6 text-center shadow-sm">
-        <h1 className="font-heading text-lg font-semibold">
-          Link inválido ou expirado
-        </h1>
-        <p className="text-muted-foreground text-sm">
-          Peça um novo envio do documento a quem enviou.
-        </p>
+        <h1 className="font-heading text-lg font-semibold">{title}</h1>
+        <p className="text-muted-foreground text-sm">{detail}</p>
       </div>
     </div>
   )
@@ -39,6 +42,16 @@ export default async function PublicDocumentPage({
 }: {
   params: Promise<{ token: string }>
 }) {
+  const ip = await getClientIp()
+  if (await isRateLimited(`doc:view:${ip}`, 60, 600)) {
+    return (
+      <Invalid
+        title="Muitas requisições"
+        detail="Aguarde alguns minutos e abra o link de novo."
+      />
+    )
+  }
+
   const { token } = await params
   const admin = createAdminClient()
   const link = await resolveDocumentLink(admin, token)

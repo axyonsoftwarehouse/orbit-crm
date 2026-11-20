@@ -31,7 +31,10 @@ export async function sendTenantEmail(
     vars,
   )
   const htmlVars = Object.fromEntries(
-    Object.entries(vars).map(([key, value]) => [key, escapeHtml(value)]),
+    Object.entries(vars).map(([key, value]) => [
+      key,
+      escapeHtml(value).replace(/\r?\n/g, "<br>"),
+    ]),
   )
   const html = renderTemplate(custom?.body ?? fallback?.body ?? "", htmlVars)
 

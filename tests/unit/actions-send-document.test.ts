@@ -190,6 +190,33 @@ describe("sendDocumentAction", () => {
     expect(revoked).toBe(true)
   })
 
+  it("orçamento já respondido ou vencido e fatura cancelada não são enviados", async () => {
+    for (const status of [3, 4, 5]) {
+      setup([{ id: C1, email: "ana@cliente.test" }], { ...estimate, status })
+      const result = await sendDocumentAction({
+        kind: "estimate",
+        id: EST,
+        contactIds: [C1],
+      })
+      expect(result.error, `status ${status}`).toBe(
+        "Este documento não pode mais ser enviado.",
+      )
+    }
+    setup(
+      [{ id: C1, email: "ana@cliente.test" }],
+      { ...estimate, status: 5, due_date: null },
+      "invoices",
+    )
+    const invoice = await sendDocumentAction({
+      kind: "invoice",
+      id: EST,
+      contactIds: [C1],
+    })
+    expect(invoice.error).toBe("Este documento não pode mais ser enviado.")
+    expect(sendTenantEmail).not.toHaveBeenCalled()
+    expect(createDocumentLink).not.toHaveBeenCalled()
+  })
+
   it("documento sem cliente não é enviado", async () => {
     setup([], { ...estimate, company_id: null })
     const result = await sendDocumentAction({
