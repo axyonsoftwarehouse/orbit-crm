@@ -390,6 +390,9 @@ para ❌/🟡.
 - **Addons de terceiros.** O catálogo de 261 arquivos do `Perfex CRM.rar` foi
   indexado à parte em [`perfex-addons.md`](perfex-addons.md), com o cruzamento de
   cada lacuna deste relatório com os addons que a cobrem.
+- **Especificações de porte.** As lacunas P0 têm comportamento traduzido em
+  [`perfex/00-visao-geral.md`](perfex/00-visao-geral.md): notas de crédito,
+  fatura recorrente, catálogo de itens e propostas.
 - **Contagem de linhas.** A tabela de status conta 61 ✅, 28 🟡, 64 ❌, 5 ➖ e 4 ⭐;
   itens agrupados (ex.: "gateways") contam como uma linha e vários recursos.
 - **Tamanho das lacunas varia.** "Notas de crédito" e "newsfeed" pesam igual na
