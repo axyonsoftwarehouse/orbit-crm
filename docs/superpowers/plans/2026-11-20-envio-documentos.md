@@ -30,7 +30,7 @@
 
 ### Task 1: Links de documento (migration + tokens)
 
-**Files:** Create `supabase/migrations/0058_document_links.sql`, `src/server/documents/links.ts`; modify `src/lib/database.types.ts`; tests `tests/unit/document-links.test.ts`, `tests/rls/isolation.test.ts`.
+**Files:** Create `supabase/migrations/0058_document_links.sql`, `src/server/document-sharing/links.ts`; modify `src/lib/database.types.ts`; tests `tests/unit/document-links.test.ts`, `tests/rls/isolation.test.ts`.
 
 **Produces:**
 - `generateLinkToken(): { token: string; hash: string }`, `hashLinkToken(token: string): string`
@@ -43,7 +43,7 @@
 
 ### Task 2: Dados do documento e PDF
 
-**Files:** Create `src/server/documents/load.ts`, `src/server/documents/pdf.ts`, `src/app/app/orcamentos/[id]/pdf/route.ts`, `src/app/app/faturas/[id]/pdf/route.ts`; test `tests/unit/document-pdf.test.ts`.
+**Files:** Create `src/server/document-sharing/load.ts`, `src/server/document-sharing/pdf.ts`, `src/app/app/orcamentos/[id]/pdf/route.ts`, `src/app/app/faturas/[id]/pdf/route.ts`; test `tests/unit/document-pdf.test.ts`.
 
 **Produces:**
 - `type DocumentView = { kind; id; number; status; date; dueOrExpiry: string | null; currency; subtotal; discountTotal; totalTax; adjustment; total; paid: number; clientNote; terms; items: DocumentItem[]; company: { name; vat; address; city; state; zip; country } | null; tenant: { name; logoUrl: string | null; primaryColor: string | null } }`
