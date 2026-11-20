@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { sendEmail } from "@/lib/email"
+import { sendEmail, type EmailAttachment } from "@/lib/email"
 import {
   EMAIL_TEMPLATES,
   escapeHtml,
@@ -13,9 +13,10 @@ export async function sendTenantEmail(
     templateKey: string
     to: string
     vars: Record<string, string>
+    attachments?: EmailAttachment[]
   },
-): Promise<{ sent: boolean }> {
-  const { tenantId, templateKey, to, vars } = params
+): Promise<{ sent: boolean; skipped?: boolean }> {
+  const { tenantId, templateKey, to, vars, attachments } = params
 
   const { data: custom } = await supabase
     .from("email_templates")
@@ -30,11 +31,14 @@ export async function sendTenantEmail(
     vars,
   )
   const htmlVars = Object.fromEntries(
-    Object.entries(vars).map(([key, value]) => [key, escapeHtml(value)]),
+    Object.entries(vars).map(([key, value]) => [
+      key,
+      escapeHtml(value).replace(/\r?\n/g, "<br>"),
+    ]),
   )
   const html = renderTemplate(custom?.body ?? fallback?.body ?? "", htmlVars)
 
-  const result = await sendEmail({ to, subject, html })
+  const result = await sendEmail({ to, subject, html, attachments })
   const status = result.sent ? "sent" : result.skipped ? "skipped" : "error"
 
   await supabase.from("email_log").insert({
@@ -46,5 +50,5 @@ export async function sendTenantEmail(
     error: result.error ?? null,
   })
 
-  return { sent: result.sent }
+  return { sent: result.sent, skipped: result.skipped }
 }

@@ -1,15 +1,23 @@
 import { env } from "@/lib/env"
 
+export type EmailAttachment = {
+  filename: string
+  /** Conteúdo em base64. */
+  content: string
+}
+
 type SendEmailInput = {
   to: string
   subject: string
   html: string
+  attachments?: EmailAttachment[]
 }
 
 export async function sendEmail({
   to,
   subject,
   html,
+  attachments,
 }: SendEmailInput): Promise<{
   sent: boolean
   skipped?: boolean
@@ -30,7 +38,13 @@ export async function sendEmail({
         Authorization: `Bearer ${key}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ from, to, subject, html }),
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html,
+        ...(attachments?.length ? { attachments } : {}),
+      }),
     })
 
     if (!response.ok) {

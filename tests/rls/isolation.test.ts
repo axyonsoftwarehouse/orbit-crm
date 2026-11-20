@@ -2059,6 +2059,52 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
   })
 
+  it("document_links: só o próprio tenant lê e cria; anon não acessa", async () => {
+    const hash = `hash-${suffix}`
+    const created = await clientA
+      .from("document_links")
+      .insert({
+        tenant_id: tenantA,
+        rel_type: "estimate",
+        rel_id: projectAId,
+        token_hash: hash,
+        expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+      })
+      .select("id")
+      .single()
+    expect(created.error).toBeNull()
+
+    const own = await clientA
+      .from("document_links")
+      .select("id")
+      .eq("token_hash", hash)
+    expect(own.data).toHaveLength(1)
+
+    const other = await clientB
+      .from("document_links")
+      .select("id")
+      .eq("token_hash", hash)
+    expect(other.data ?? []).toHaveLength(0)
+
+    const crossInsert = await clientB.from("document_links").insert({
+      tenant_id: tenantA,
+      rel_type: "estimate",
+      rel_id: projectAId,
+      token_hash: `${hash}-b`,
+      expires_at: new Date(Date.now() + 86_400_000).toISOString(),
+    })
+    expect(crossInsert.error).not.toBeNull()
+
+    const anon = createClient(url!, anonKey!)
+    const anonRead = await anon
+      .from("document_links")
+      .select("id")
+      .eq("token_hash", hash)
+    expect(anonRead.data ?? []).toHaveLength(0)
+
+    await admin.from("document_links").delete().eq("token_hash", hash)
+  })
+
   it("URL assinada de upload: só o próprio tenant assina e o token não sobrescreve", async () => {
     const path = `${tenantA}/project/${projectAId}/assinado-${suffix}.txt`
 
