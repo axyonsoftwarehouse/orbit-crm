@@ -9,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
-import { formatMoney } from "@/lib/format"
+import { formatDate, formatMoney } from "@/lib/format"
 import { createClient } from "@/lib/supabase/server"
 import { CreateTenantForm } from "./create-tenant-form"
 import { EditTenantDialog } from "./edit-tenant-dialog"
@@ -161,7 +161,7 @@ export default async function PlatformPage() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {new Date(tenant.created_at).toLocaleDateString("pt-BR")}
+                      {formatDate(tenant.created_at)}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">

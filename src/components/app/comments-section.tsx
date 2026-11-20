@@ -6,13 +6,7 @@ import { getUser } from "@/lib/auth"
 import { listComments } from "@/server/queries/comments"
 import { addCommentAction } from "@/server/actions/comments"
 import { DeleteCommentButton } from "./delete-comment-button"
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  })
-}
+import { formatDateTime } from "@/lib/format"
 
 export async function CommentsSection({
   tenantId,

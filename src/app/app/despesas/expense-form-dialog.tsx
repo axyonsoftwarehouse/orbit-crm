@@ -22,6 +22,7 @@ import {
   type ExpenseFormState,
 } from "@/server/actions/expenses"
 import type { Expense } from "@/server/queries/expenses"
+import { todayIso } from "@/lib/format"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -53,7 +54,7 @@ export function ExpenseFormDialog({
     }
   }, [state])
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayIso()
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

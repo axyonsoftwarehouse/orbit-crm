@@ -13,6 +13,7 @@ import {
 } from "@/server/queries/calendar"
 import { EventFormDialog } from "./event-form-dialog"
 import { DeleteEventButton } from "./delete-event-button"
+import { formatDateTime, todayIso } from "@/lib/format"
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
 
@@ -26,8 +27,8 @@ export default async function CalendarioPage({
   searchParams: Promise<{ month?: string }>
 }) {
   const { month } = await searchParams
-  const now = new Date()
-  const fallback = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  const today = todayIso()
+  const fallback = today.slice(0, 7)
   const [year, m] = (month ?? fallback).split("-").map(Number)
 
   const firstDay = new Date(year, m - 1, 1)
@@ -64,7 +65,7 @@ export default async function CalendarioPage({
     days.push(new Date(day))
   }
 
-  const todayYmd = ymd(now)
+  const todayYmd = today
   const monthLabel = firstDay.toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
@@ -225,7 +226,7 @@ export default async function CalendarioPage({
                 <div>
                   <p className="text-sm font-medium">{event.title}</p>
                   <p className="text-muted-foreground text-xs">
-                    {new Date(event.start_at).toLocaleString("pt-BR", {
+                    {formatDateTime(event.start_at, {
                       dateStyle: "short",
                       timeStyle: "short",
                     })}

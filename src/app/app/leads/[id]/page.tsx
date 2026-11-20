@@ -8,7 +8,7 @@ import { StatusPill } from "@/components/app/status-pill"
 import { TagPicker } from "@/components/app/tag-picker"
 import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { Badge } from "@/components/ui/badge"
-import { formatDate, formatMoney } from "@/lib/format"
+import { formatDate, formatDateTime, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { isAiConfigured } from "@/server/ai/model"
@@ -170,12 +170,7 @@ export default async function LeadDetailPage({
                         <span className="text-foreground font-medium">
                           {activity.author_name ?? "Sistema"}
                         </span>
-                        <span>
-                          {new Date(activity.created_at).toLocaleString(
-                            "pt-BR",
-                            { dateStyle: "short", timeStyle: "short" },
-                          )}
-                        </span>
+                        <span>{formatDateTime(activity.created_at)}</span>
                       </div>
                       <p className="whitespace-pre-wrap">
                         {activity.description}

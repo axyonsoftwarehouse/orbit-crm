@@ -17,7 +17,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { DocumentItemsEditor } from "@/components/app/document-items-editor"
 import { computeTotals, type LineItemInput } from "@/lib/documents/totals"
-import { formatMoney } from "@/lib/format"
+import { formatMoney, todayIso } from "@/lib/format"
 import {
   createInvoiceAction,
   updateInvoiceAction,
@@ -183,9 +183,7 @@ export function InvoiceFormDialog({
                 id="inv-date"
                 name="date"
                 type="date"
-                defaultValue={
-                  invoice?.date ?? new Date().toISOString().slice(0, 10)
-                }
+                defaultValue={invoice?.date ?? todayIso()}
                 required
               />
             </div>

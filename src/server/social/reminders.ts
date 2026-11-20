@@ -4,6 +4,7 @@ import { createNotification } from "@/server/notifications"
 import { sendTenantEmail } from "@/server/email"
 import { isNativeSocialProvider } from "@/server/social"
 import { resolveSocialRecipients } from "@/server/social/recipients"
+import { formatDateTime } from "@/lib/format"
 
 const APP_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -158,7 +159,7 @@ export async function runSocialPublishReminders(): Promise<SocialReminderResult>
 
       const summary = excerpt(post.content)
       const scheduled = post.scheduled_at
-        ? new Date(post.scheduled_at).toLocaleString("pt-BR")
+        ? formatDateTime(post.scheduled_at)
         : "sem data"
 
       for (const userId of recipients) {

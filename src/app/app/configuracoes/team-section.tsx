@@ -4,6 +4,7 @@ import type { TeamInvitation, TeamMember } from "@/server/queries/team"
 import { InviteMemberDialog } from "./invite-member-dialog"
 import { MemberRowActions } from "./member-row-actions"
 import { RevokeInvitationButton } from "./revoke-invitation-button"
+import { formatDate } from "@/lib/format"
 
 function initials(name: string | null, email: string | null) {
   const source = name ?? email ?? "?"
@@ -85,10 +86,7 @@ export function TeamSection({
                 <div>
                   <p className="text-sm">{invitation.email}</p>
                   <p className="text-muted-foreground text-xs">
-                    Expira em{" "}
-                    {new Date(invitation.expires_at).toLocaleDateString(
-                      "pt-BR",
-                    )}
+                    Expira em {formatDate(invitation.expires_at)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

@@ -6,7 +6,7 @@ import {
   SocialProviderBadge,
   SocialStatusBadge,
 } from "@/components/app/social-bits"
-import { formatDate } from "@/lib/format"
+import { formatDate, formatDateTime } from "@/lib/format"
 import { SOCIAL_EVENT_LABELS } from "@/lib/constants"
 import { socialNativeEnabled } from "@/lib/env"
 import { getMemberships } from "@/lib/auth"
@@ -27,15 +27,6 @@ const TARGET_STATUS_LABELS: Record<string, string> = {
   publishing: "Publicando",
   published: "Publicado",
   failed: "Falhou",
-}
-
-function formatDateTime(value: string | null, timeZone: string) {
-  if (!value) return "—"
-  return new Date(value).toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-    timeZone,
-  })
 }
 
 export default async function SocialPostDetailPage({
@@ -89,7 +80,11 @@ export default async function SocialPostDetailPage({
           </div>
           <p className="text-muted-foreground text-sm">
             {post.company?.name ?? "Sem cliente"} · criado em{" "}
-            {formatDateTime(post.created_at, settings.default_timezone)}
+            {formatDateTime(
+              post.created_at,
+              undefined,
+              settings.default_timezone,
+            )}
           </p>
         </div>
       </div>
@@ -197,12 +192,20 @@ export default async function SocialPostDetailPage({
               <CalendarClock className="text-muted-foreground size-4" />
               <span>
                 Agendado:{" "}
-                {formatDateTime(post.scheduled_at, settings.default_timezone)}
+                {formatDateTime(
+                  post.scheduled_at,
+                  undefined,
+                  settings.default_timezone,
+                )}
               </span>
             </div>
             <p className="text-muted-foreground">
               Publicado:{" "}
-              {formatDateTime(post.published_at, settings.default_timezone)}
+              {formatDateTime(
+                post.published_at,
+                undefined,
+                settings.default_timezone,
+              )}
             </p>
             {post.rejection_note ? (
               <p className="text-destructive">
@@ -235,7 +238,11 @@ export default async function SocialPostDetailPage({
               >
                 <span>{SOCIAL_EVENT_LABELS[event.event] ?? event.event}</span>
                 <span className="text-muted-foreground text-xs">
-                  {formatDateTime(event.created_at, settings.default_timezone)}
+                  {formatDateTime(
+                    event.created_at,
+                    undefined,
+                    settings.default_timezone,
+                  )}
                 </span>
               </div>
             ))

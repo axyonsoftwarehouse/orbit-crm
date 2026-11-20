@@ -8,6 +8,7 @@ import {
   SeoSeverityBadge,
 } from "@/components/app/seo-bits"
 import { getPortalContact, getPortalSeoAudit } from "@/server/queries/portal"
+import { formatDateTime } from "@/lib/format"
 
 const CATEGORIES = [
   "Conteúdo",
@@ -16,14 +17,6 @@ const CATEGORIES = [
   "Segurança",
   "Social",
 ] as const
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—"
-  return new Date(value).toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  })
-}
 
 export default async function PortalSeoDetailPage({
   params,

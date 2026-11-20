@@ -16,6 +16,7 @@ import {
   summarizeTimeEntries,
 } from "@/server/queries/time"
 import { DeleteTimeEntryButton } from "./delete-time-entry-button"
+import { formatDate } from "@/lib/format"
 
 function currency(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -124,7 +125,7 @@ export async function TimeEntriesTable({
                 return (
                   <TableRow key={entry.id}>
                     <TableCell className="text-muted-foreground">
-                      {new Date(entry.started_at).toLocaleDateString("pt-BR")}
+                      {formatDate(entry.started_at)}
                     </TableCell>
                     {showUser ? (
                       <TableCell>{entry.user_name ?? "—"}</TableCell>

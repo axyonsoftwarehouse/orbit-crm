@@ -15,6 +15,7 @@ import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import { listActivityPage } from "@/server/queries/activity"
+import { formatDateTime } from "@/lib/format"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 rounded-lg border px-2 text-sm outline-none focus-visible:ring-3"
@@ -140,7 +141,7 @@ export default async function AtividadesPage({
                 return (
                   <TableRow key={row.id}>
                     <TableCell className="text-muted-foreground">
-                      {new Date(row.created_at).toLocaleString("pt-BR", {
+                      {formatDateTime(row.created_at, {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}

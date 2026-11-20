@@ -16,6 +16,7 @@ import {
   parseDocumentForm,
   replaceDocumentItems,
 } from "@/server/documents"
+import { addDaysIso, todayIso } from "@/lib/format"
 
 export type InvoiceFormState = { error?: string; success?: string } | undefined
 
@@ -304,8 +305,6 @@ export async function invoiceBillableTimeAction(formData: FormData) {
   if (numberError || number === null) return
 
   const totals = computeTotals(items, { discount_type: "before_tax" })
-  const dueDate = new Date()
-  dueDate.setDate(dueDate.getDate() + 30)
 
   const { data: invoice, error } = await supabase
     .from("invoices")
@@ -318,8 +317,8 @@ export async function invoiceBillableTimeAction(formData: FormData) {
       status: 1,
       company_id: project?.company_id ?? null,
       project_id: projectId,
-      date: new Date().toISOString().slice(0, 10),
-      due_date: dueDate.toISOString().slice(0, 10),
+      date: todayIso(),
+      due_date: addDaysIso(todayIso(), 30),
       currency: settings.currency,
       subtotal: totals.subtotal,
       total_tax: totals.total_tax,

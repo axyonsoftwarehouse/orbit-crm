@@ -32,6 +32,7 @@ import {
 } from "@/server/actions/tasks"
 import { TaskFormDialog } from "../task-form-dialog"
 import { DeleteTaskButton } from "../delete-task-button"
+import { formatDate } from "@/lib/format"
 
 function DetailRow({ label, value }: { label: string; value: string | null }) {
   return (
@@ -42,8 +43,8 @@ function DetailRow({ label, value }: { label: string; value: string | null }) {
   )
 }
 
-function formatDate(value: string | null) {
-  return value ? new Date(value).toLocaleDateString("pt-BR") : null
+function dateOrNull(value: string | null) {
+  return value ? formatDate(value) : null
 }
 
 export default async function TaskDetailPage({
@@ -152,11 +153,11 @@ export default async function TaskDetailPage({
               </div>
               <DetailRow label="Responsável" value={assigneeName} />
               <DetailRow label="Marco" value={milestoneName} />
-              <DetailRow label="Início" value={formatDate(task.start_date)} />
-              <DetailRow label="Prazo" value={formatDate(task.due_date)} />
+              <DetailRow label="Início" value={dateOrNull(task.start_date)} />
+              <DetailRow label="Prazo" value={dateOrNull(task.due_date)} />
               <DetailRow
                 label="Concluída em"
-                value={formatDate(task.date_finished)}
+                value={dateOrNull(task.date_finished)}
               />
               <DetailRow
                 label="Faturável"

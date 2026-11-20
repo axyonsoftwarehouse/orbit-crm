@@ -23,7 +23,7 @@ import {
   SeoScoreBadge,
   SeoSeverityBadge,
 } from "@/components/app/seo-bits"
-import { formatDate } from "@/lib/format"
+import { formatDate, formatDateTime } from "@/lib/format"
 import { SEO_CHECK_INTERVAL_LABELS } from "@/lib/constants"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
@@ -45,14 +45,6 @@ const CATEGORIES = [
   "Segurança",
   "Social",
 ] as const
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—"
-  return new Date(value).toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  })
-}
 
 export default async function SeoDetailPage({
   params,

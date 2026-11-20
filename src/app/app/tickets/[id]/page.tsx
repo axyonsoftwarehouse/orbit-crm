@@ -12,7 +12,7 @@ import {
 import { AttachmentsSection } from "@/components/app/attachments-section"
 import { TagPicker } from "@/components/app/tag-picker"
 import { TICKET_STATUSES } from "@/lib/constants"
-import { formatDate } from "@/lib/format"
+import { formatDate, formatDateTime } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { isAiConfigured } from "@/server/ai/model"
@@ -187,7 +187,7 @@ export default async function TicketDetailPage({
                               "Usuário"}
                           </span>{" "}
                           ·{" "}
-                          {new Date(reply.created_at).toLocaleString("pt-BR", {
+                          {formatDateTime(reply.created_at, {
                             dateStyle: "short",
                             timeStyle: "short",
                           })}

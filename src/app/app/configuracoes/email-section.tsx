@@ -3,6 +3,7 @@ import { EMAIL_TEMPLATES } from "@/lib/email-templates"
 import type { EmailLogRow, EmailTemplateRow } from "@/server/queries/email"
 import { EmailTemplateDialog } from "./email-template-dialog"
 import { ResetEmailTemplateButton } from "./reset-email-template-button"
+import { formatDateTime } from "@/lib/format"
 
 function extractVariables(text: string) {
   const matches = text.matchAll(/\{\{(\w+)\}\}/g)
@@ -107,7 +108,7 @@ export function EmailSection({
                     {STATUS_LABEL[row.status] ?? row.status}
                   </Badge>
                   <span className="text-muted-foreground text-xs">
-                    {new Date(row.created_at).toLocaleString("pt-BR", {
+                    {formatDateTime(row.created_at, {
                       dateStyle: "short",
                       timeStyle: "short",
                     })}

@@ -19,6 +19,7 @@ import {
   recordPaymentAction,
   type InvoiceFormState,
 } from "@/server/actions/invoices"
+import { todayIso } from "@/lib/format"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -76,7 +77,7 @@ export function RecordPaymentDialog({
                 id="pay-date"
                 name="payment_date"
                 type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={todayIso()}
                 required
               />
             </div>

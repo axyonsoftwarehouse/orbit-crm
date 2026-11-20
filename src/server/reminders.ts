@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createNotification } from "@/server/notifications"
 import { sendTenantEmail } from "@/server/email"
+import { addDaysIso, todayIso } from "@/lib/format"
 
 const APP_URL =
   process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ??
@@ -14,11 +15,8 @@ export async function runReminders(): Promise<{
   const admin = createAdminClient()
   const { data: tenants } = await admin.from("tenants").select("id, name")
 
-  const today = new Date()
-  const todayStr = today.toISOString().slice(0, 10)
-  const inTwoDays = new Date(Date.now() + 2 * 86_400_000)
-    .toISOString()
-    .slice(0, 10)
+  const todayStr = todayIso()
+  const inTwoDays = addDaysIso(todayStr, 2)
 
   let notifications = 0
   let emails = 0

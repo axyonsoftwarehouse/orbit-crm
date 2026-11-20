@@ -16,6 +16,7 @@ import { listTimeEntries, formatDuration } from "@/server/queries/time"
 import { getReportData } from "@/server/queries/reports"
 import { listSeoAuditsForExport } from "@/server/queries/seo"
 import { listSocialPostsForExport } from "@/server/queries/social"
+import { formatDate, formatDateTime, todayIso } from "@/lib/format"
 
 function csvResponse(filename: string, csv: string) {
   return new Response(`\uFEFF${csv}`, {
@@ -39,7 +40,7 @@ export async function GET(
   const { entity } = await params
   const tenantId = active.tenantId
   const search = request.nextUrl.searchParams
-  const stamp = new Date().toISOString().slice(0, 10)
+  const stamp = todayIso()
 
   switch (entity) {
     case "clientes": {
@@ -160,7 +161,7 @@ export async function GET(
         rows.map((row) => [
           row.site_label,
           row.url,
-          new Date(row.created_at).toLocaleString("pt-BR"),
+          formatDateTime(row.created_at),
           statusLabels[row.status] ?? String(row.status),
           row.score,
           row.checks_total,
@@ -198,13 +199,9 @@ export async function GET(
             .join(", "),
           SOCIAL_POST_STATUSES[row.status as keyof typeof SOCIAL_POST_STATUSES]
             ?.label ?? row.status,
-          row.scheduled_at
-            ? new Date(row.scheduled_at).toLocaleString("pt-BR")
-            : null,
-          row.published_at
-            ? new Date(row.published_at).toLocaleString("pt-BR")
-            : null,
-          new Date(row.created_at).toLocaleString("pt-BR"),
+          row.scheduled_at ? formatDateTime(row.scheduled_at) : null,
+          row.published_at ? formatDateTime(row.published_at) : null,
+          formatDateTime(row.created_at),
         ]),
       )
       return csvResponse(`social-${stamp}.csv`, csv)
@@ -236,7 +233,7 @@ export async function GET(
               ? Number(((seconds / 3600) * Number(row.rate)).toFixed(2))
               : null
           return [
-            new Date(row.started_at).toLocaleDateString("pt-BR"),
+            formatDate(row.started_at),
             row.user_name,
             row.project?.name ?? null,
             row.task?.name ?? null,
