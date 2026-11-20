@@ -73,12 +73,15 @@ describe("SEO AI summary", () => {
     expect(prompt).toContain("A página não possui título.")
   })
 
-  it("sem chave lança SeoAiError com a mensagem de configuração", async () => {
+  it("sem chave lança SeoAiError com mensagem para o usuário, sem citar a variável", async () => {
     modelState.missingKey = true
 
     const error = await generateSeoAiSummary(result()).catch((e) => e)
     expect(error).toBeInstanceOf(SeoAiError)
-    expect(error.message).toContain("OPENROUTER_API_KEY")
+    expect(error.message).toBe(
+      "O resumo com IA não está disponível no momento.",
+    )
+    expect(error.message).not.toContain("OPENROUTER_API_KEY")
   })
 
   it("erro do provedor vira mensagem genérica", async () => {

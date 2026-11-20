@@ -14,6 +14,7 @@ import { isManager } from "@/server/permissions"
 import { runSeoAudit, type SeoAuditResult } from "@/server/seo/audit"
 import { generateSeoAiSummary } from "@/server/seo/ai-summary"
 import { nextAuditAt } from "@/server/seo/scheduling"
+import { userMessage } from "@/lib/errors"
 
 export type SeoSiteFormState = { error?: string; success?: string } | undefined
 export type SeoAiSummaryState = { error?: string; success?: string } | undefined
@@ -112,9 +113,11 @@ export async function runSeoAuditAction(formData: FormData) {
       .eq("id", audit.id)
       .eq("tenant_id", active.tenantId)
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Falha ao executar a auditoria."
-    logger.error("seo.audit_failed", { siteId: site.id, error: message })
+    const message = userMessage(error, "Não foi possível executar a auditoria.")
+    logger.error("seo.audit_failed", {
+      siteId: site.id,
+      error: error instanceof Error ? error.message : String(error),
+    })
     await supabase
       .from("seo_audits")
       .update({
@@ -204,10 +207,11 @@ export async function generateSeoAiSummaryAction(
     revalidatePath(`/app/seo/${siteId}`)
     return { success: "Resumo com IA gerado." }
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Falha ao gerar o resumo."
-    logger.error("seo.ai_summary_failed", { auditId, error: message })
-    return { error: message }
+    logger.error("seo.ai_summary_failed", {
+      auditId,
+      error: error instanceof Error ? error.message : String(error),
+    })
+    return { error: userMessage(error, "Não foi possível gerar o resumo.") }
   }
 }
 

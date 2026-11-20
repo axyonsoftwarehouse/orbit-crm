@@ -7,6 +7,7 @@ import { ImagePlus } from "lucide-react"
 import { uploadWithSignedUrl } from "@/lib/upload-client"
 import { SOCIAL_IMAGE_MAX_BYTES } from "@/lib/storage-paths"
 import { registerSocialMediaAction } from "@/server/actions/social"
+import { UserFacingError, userMessage } from "@/lib/errors"
 
 export function SocialMediaUploader({ postId }: { postId: string }) {
   const [isUploading, setIsUploading] = useState(false)
@@ -41,13 +42,16 @@ export function SocialMediaUploader({ postId }: { postId: string }) {
         mimeType: file.type,
         sizeBytes: file.size,
       })
-      if (result?.error) throw new Error(result.error)
+      if (result?.error) throw new UserFacingError(result.error)
 
       toast.success("Imagem enviada.")
       router.refresh()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Falha ao enviar a imagem.",
+        userMessage(
+          error,
+          "Não foi possível enviar a imagem. Tente novamente.",
+        ),
       )
     } finally {
       setIsUploading(false)

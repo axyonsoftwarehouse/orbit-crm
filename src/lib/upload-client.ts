@@ -5,6 +5,7 @@ import {
   createUploadUrlAction,
   type UploadUrlInput,
 } from "@/server/actions/storage"
+import { UserFacingError } from "@/lib/errors"
 
 type UploadTarget =
   | { kind: "attachment"; entityType: string; entityId: string }
@@ -26,7 +27,7 @@ export async function uploadWithSignedUrl(
     mimeType,
     sizeBytes: file.size,
   } as UploadUrlInput)
-  if ("error" in prepared) throw new Error(prepared.error)
+  if ("error" in prepared) throw new UserFacingError(prepared.error)
 
   const supabase = createClient()
   const { error } = await supabase.storage
@@ -36,7 +37,9 @@ export async function uploadWithSignedUrl(
     })
   if (error) {
     console.error("upload_failed", error)
-    throw new Error("Não foi possível enviar o arquivo. Tente novamente.")
+    throw new UserFacingError(
+      "Não foi possível enviar o arquivo. Tente novamente.",
+    )
   }
 
   return prepared.path

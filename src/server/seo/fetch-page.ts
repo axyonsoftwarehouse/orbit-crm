@@ -1,12 +1,13 @@
 ﻿import { lookup } from "node:dns/promises"
 import { isIP } from "node:net"
+import { UserFacingError } from "@/lib/errors"
 
 const MAX_BYTES = 2_000_000
 const MAX_REDIRECTS = 5
 const TIMEOUT_MS = 8_000
 const USER_AGENT = "OrbitCRM-SEO/0.1 (+https://orbitcrm.app)"
 
-export class SeoFetchError extends Error {}
+export class SeoFetchError extends UserFacingError {}
 
 export type FetchedPage = {
   finalUrl: string

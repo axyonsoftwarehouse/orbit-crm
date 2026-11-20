@@ -173,7 +173,13 @@ export default async function SocialPostDetailPage({
                     </div>
                     {target.error ? (
                       <div className="text-destructive max-w-56 text-xs">
-                        {target.error}
+                        Falha ao publicar nesta rede.
+                        <details className="text-muted-foreground mt-0.5">
+                          <summary className="cursor-pointer">
+                            Detalhes técnicos
+                          </summary>
+                          <span className="break-words">{target.error}</span>
+                        </details>
                       </div>
                     ) : null}
                   </div>
