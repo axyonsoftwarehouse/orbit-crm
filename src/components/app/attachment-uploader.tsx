@@ -6,6 +6,7 @@ import { toast } from "sonner"
 import { Paperclip } from "lucide-react"
 import { uploadWithSignedUrl } from "@/lib/upload-client"
 import { registerAttachmentAction } from "@/server/actions/attachments"
+import { UserFacingError, userMessage } from "@/lib/errors"
 
 export function AttachmentUploader({
   entityType,
@@ -36,13 +37,13 @@ export function AttachmentUploader({
         mimeType: file.type || null,
         sizeBytes: file.size,
       })
-      if (result?.error) throw new Error(result.error)
+      if (result?.error) throw new UserFacingError(result.error)
 
       toast.success("Anexo enviado.")
       router.refresh()
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Falha ao enviar o anexo.",
+        userMessage(error, "Não foi possível enviar o anexo. Tente novamente."),
       )
     } finally {
       setIsUploading(false)

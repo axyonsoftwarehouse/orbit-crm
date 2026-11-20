@@ -30,8 +30,13 @@ export default function GlobalError({
         <div style={{ maxWidth: 360, textAlign: "center" }}>
           <h1 style={{ fontSize: 18, fontWeight: 600 }}>Algo deu errado</h1>
           <p style={{ color: "#666", fontSize: 14 }}>
-            {error.message || "Erro inesperado."}
+            Não foi possível carregar a página. Tente novamente em instantes.
           </p>
+          {error.digest ? (
+            <p style={{ color: "#888", fontSize: 12 }}>
+              Código do erro: {error.digest}
+            </p>
+          ) : null}
           <button
             type="button"
             onClick={() => reset()}

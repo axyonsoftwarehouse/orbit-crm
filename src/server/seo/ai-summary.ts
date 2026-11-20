@@ -1,8 +1,10 @@
 import { generateText } from "ai"
 import { AiError, getChatModel } from "@/server/ai/model"
 import type { SeoAuditResult } from "./audit"
+import { UserFacingError } from "@/lib/errors"
+import { logger } from "@/lib/logger"
 
-export class SeoAiError extends Error {}
+export class SeoAiError extends UserFacingError {}
 
 const SYSTEM_PROMPT =
   "Você é um consultor sênior de SEO técnico e de conteúdo. Responda em português do Brasil, com foco em ações práticas e priorizadas."
@@ -15,9 +17,8 @@ export async function generateSeoAiSummary(
     model = getChatModel()
   } catch (error) {
     if (error instanceof AiError) {
-      throw new SeoAiError(
-        "OPENROUTER_API_KEY não configurada. Configure a chave para gerar o resumo.",
-      )
+      logger.warn("seo.ai_summary_unavailable", { error: error.message })
+      throw new SeoAiError("O resumo com IA não está disponível no momento.")
     }
     throw error
   }

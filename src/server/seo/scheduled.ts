@@ -3,6 +3,7 @@ import type { Json } from "@/lib/database.types"
 import { logger } from "@/lib/logger"
 import { runSeoAudit } from "./audit"
 import { nextAuditAt } from "./scheduling"
+import { userMessage } from "@/lib/errors"
 
 type DueSite = {
   id: string
@@ -86,10 +87,9 @@ export async function runScheduledSeoAudits(
 
         return site.id
       } catch (error) {
-        const message = error instanceof Error ? error.message : "audit_failed"
         logger.error("seo.scheduled_audit_failed", {
           siteId: site.id,
-          error: message,
+          error: error instanceof Error ? error.message : String(error),
         })
 
         if (auditId) {
@@ -97,7 +97,10 @@ export async function runScheduledSeoAudits(
             .from("seo_audits")
             .update({
               status: 3,
-              error: message,
+              error: userMessage(
+                error,
+                "Não foi possível executar a auditoria.",
+              ),
               finished_at: new Date().toISOString(),
             })
             .eq("id", auditId)
