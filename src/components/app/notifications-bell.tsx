@@ -1,10 +1,8 @@
 "use client"
 
-import { useEffect, useTransition } from "react"
+import { useCallback, useEffect, useState, useTransition } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Bell } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,47 +11,56 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
+  getNotificationsAction,
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from "@/server/actions/notifications"
 import type { NotificationRow } from "@/server/queries/notifications"
 
+/** Intervalo da consulta do sino enquanto a aba está visível. */
+const POLL_MS = 30_000
+
 export function NotificationsBell({
-  notifications,
-  unread,
+  notifications: initialNotifications,
+  unread: initialUnread,
 }: {
   notifications: NotificationRow[]
   unread: number
 }) {
   const [, startTransition] = useTransition()
-  const router = useRouter()
+  const [notifications, setNotifications] = useState(initialNotifications)
+  const [unread, setUnread] = useState(initialUnread)
 
+  // O layout do servidor pode mandar dados novos (ex.: depois de router.refresh).
   useEffect(() => {
-    const supabase = createClient()
-    let channel: ReturnType<typeof supabase.channel> | null = null
+    setNotifications(initialNotifications)
+    setUnread(initialUnread)
+  }, [initialNotifications, initialUnread])
 
-    supabase.auth.getUser().then(({ data }) => {
-      const userId = data.user?.id
-      if (!userId) return
-      channel = supabase
-        .channel(`notifications-${userId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${userId}`,
-          },
-          () => router.refresh(),
-        )
-        .subscribe()
-    })
-
-    return () => {
-      if (channel) supabase.removeChannel(channel)
+  const refresh = useCallback(async () => {
+    try {
+      const next = await getNotificationsAction()
+      setNotifications(next.notifications)
+      setUnread(next.unread)
+    } catch {
+      // Falha de rede: mantém o que já está na tela e tenta no próximo ciclo.
     }
-  }, [router])
+  }, [])
+
+  // Sem Realtime no navegador (a sessão fica em cookie httpOnly): consulta o
+  // servidor a cada 30 s com a aba visível e ao voltar para ela
+  // (visibilitychange já cobre a volta; focus duplicaria a consulta).
+  useEffect(() => {
+    const tick = () => {
+      if (document.visibilityState === "visible") void refresh()
+    }
+    const interval = window.setInterval(tick, POLL_MS)
+    document.addEventListener("visibilitychange", tick)
+    return () => {
+      window.clearInterval(interval)
+      document.removeEventListener("visibilitychange", tick)
+    }
+  }, [refresh])
 
   return (
     <DropdownMenu>
@@ -81,7 +88,10 @@ export function NotificationsBell({
               type="button"
               className="text-primary text-xs hover:underline"
               onClick={() =>
-                startTransition(() => markAllNotificationsReadAction())
+                startTransition(async () => {
+                  await markAllNotificationsReadAction()
+                  await refresh()
+                })
               }
             >
               Marcar lidas
@@ -99,9 +109,10 @@ export function NotificationsBell({
               key={notification.id}
               render={<Link href={notification.url ?? "#"} />}
               onClick={() =>
-                startTransition(() =>
-                  markNotificationReadAction({ id: notification.id }),
-                )
+                startTransition(async () => {
+                  await markNotificationReadAction({ id: notification.id })
+                  await refresh()
+                })
               }
               className="flex-col items-start gap-0.5"
             >

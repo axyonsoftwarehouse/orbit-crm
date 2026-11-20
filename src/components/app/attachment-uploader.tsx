@@ -4,20 +4,13 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 import { Paperclip } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { uploadWithSignedUrl } from "@/lib/upload-client"
 import { registerAttachmentAction } from "@/server/actions/attachments"
-import { checkStorageQuotaAction } from "@/server/actions/storage"
-
-function sanitize(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120)
-}
 
 export function AttachmentUploader({
-  tenantId,
   entityType,
   entityId,
 }: {
-  tenantId: string
   entityType: string
   entityId: string
 }) {
@@ -30,19 +23,10 @@ export function AttachmentUploader({
 
     setIsUploading(true)
     try {
-      const quota = await checkStorageQuotaAction(file.size)
-      if (quota.error) throw new Error(quota.error)
-
-      const supabase = createClient()
-      const path = `${tenantId}/${entityType}/${entityId}/${crypto.randomUUID()}-${sanitize(file.name)}`
-
-      const { error: uploadError } = await supabase.storage
-        .from("attachments")
-        .upload(path, file, {
-          contentType: file.type || "application/octet-stream",
-          upsert: false,
-        })
-      if (uploadError) throw uploadError
+      const path = await uploadWithSignedUrl(
+        { kind: "attachment", entityType, entityId },
+        file,
+      )
 
       const result = await registerAttachmentAction({
         entityType,

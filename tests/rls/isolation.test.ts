@@ -2059,6 +2059,45 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     })
   })
 
+  it("URL assinada de upload: só o próprio tenant assina e o token não sobrescreve", async () => {
+    const path = `${tenantA}/project/${projectAId}/assinado-${suffix}.txt`
+
+    const other = await clientB.storage
+      .from("attachments")
+      .createSignedUploadUrl(path)
+    expect(other.error).not.toBeNull()
+
+    const anon = createClient(url!, anonKey!)
+    const anonRes = await anon.storage
+      .from("attachments")
+      .createSignedUploadUrl(path)
+    expect(anonRes.error).not.toBeNull()
+
+    const signed = await clientA.storage
+      .from("attachments")
+      .createSignedUploadUrl(path)
+    expect(signed.error).toBeNull()
+
+    const body = new Blob(["primeira versão"], { type: "text/plain" })
+    const first = await anon.storage
+      .from("attachments")
+      .uploadToSignedUrl(path, signed.data!.token, body)
+    expect(first.error).toBeNull()
+
+    const again = await anon.storage
+      .from("attachments")
+      .uploadToSignedUrl(
+        path,
+        signed.data!.token,
+        new Blob(["sobrescrita"], { type: "text/plain" }),
+      )
+    expect(again.error).not.toBeNull()
+
+    const stored = await admin.storage.from("attachments").download(path)
+    expect(await stored.data?.text()).toBe("primeira versão")
+    await admin.storage.from("attachments").remove([path])
+  })
+
   it("tenant_storage_bytes soma só os arquivos do próprio tenant", async () => {
     const before = await clientA.rpc("tenant_storage_bytes", {
       p_tenant: tenantA,

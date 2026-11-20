@@ -16,7 +16,7 @@ export async function SocialMediaSection({
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">Mídia</CardTitle>
-        <SocialMediaUploader tenantId={tenantId} postId={postId} />
+        <SocialMediaUploader postId={postId} />
       </CardHeader>
       <CardContent>
         {media.length === 0 ? (

@@ -26,11 +26,7 @@ export async function AttachmentsSection({
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">Anexos</CardTitle>
-        <AttachmentUploader
-          tenantId={tenantId}
-          entityType={entityType}
-          entityId={entityId}
-        />
+        <AttachmentUploader entityType={entityType} entityId={entityId} />
       </CardHeader>
       <CardContent className="space-y-2">
         {attachments.length === 0 ? (
