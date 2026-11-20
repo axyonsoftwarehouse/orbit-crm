@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { toDateKey } from "@/lib/format"
 
 export type CalendarItemKind = "event" | "task" | "invoice" | "contract"
 
@@ -30,7 +31,7 @@ const KIND_COLORS: Record<CalendarItemKind, string> = {
 }
 
 function localDate(value: string) {
-  return new Date(value).toLocaleDateString("en-CA")
+  return toDateKey(value)
 }
 
 export async function listMonthEvents(

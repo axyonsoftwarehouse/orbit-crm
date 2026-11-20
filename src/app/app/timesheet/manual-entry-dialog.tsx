@@ -19,6 +19,7 @@ import {
   addManualEntryAction,
   type ManualEntryState,
 } from "@/server/actions/time"
+import { todayIso } from "@/lib/format"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -111,7 +112,7 @@ export function ManualEntryDialog({
                 id="entry-date"
                 name="date"
                 type="date"
-                defaultValue={new Date().toISOString().slice(0, 10)}
+                defaultValue={todayIso()}
                 required
               />
             </div>

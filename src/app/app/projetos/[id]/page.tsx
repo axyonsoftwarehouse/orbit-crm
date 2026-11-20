@@ -20,7 +20,7 @@ import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { CommentsSection } from "@/components/app/comments-section"
 import { AttachmentsSection } from "@/components/app/attachments-section"
 import { TimeEntriesTable } from "@/components/app/time-entries-table"
-import { formatMoney } from "@/lib/format"
+import { formatDate, formatMoney } from "@/lib/format"
 import {
   formatDuration,
   listUnbilledBillableEntries,
@@ -79,7 +79,7 @@ function money(value: number | null) {
 }
 
 function date(value: string | null) {
-  return value ? new Date(value).toLocaleDateString("pt-BR") : null
+  return value ? formatDate(value) : null
 }
 
 export default async function ProjectDetailPage({
@@ -348,9 +348,7 @@ export default async function ProjectDetailPage({
                       <TaskStatusBadge status={task.status} />
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {task.due_date
-                        ? new Date(task.due_date).toLocaleDateString("pt-BR")
-                        : "—"}
+                      {task.due_date ? formatDate(task.due_date) : "—"}
                     </TableCell>
                   </TableRow>
                 ))

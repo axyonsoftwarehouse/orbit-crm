@@ -12,7 +12,14 @@ import { StatCard } from "@/components/app/stat-card"
 import { ProgressBar, ProjectStatusBadge } from "@/components/app/project-bits"
 import { InvoiceStatusBadge } from "@/components/app/document-status-badge"
 import { TASK_STATUSES } from "@/lib/constants"
-import { formatDate, formatMoney } from "@/lib/format"
+import {
+  addDaysIso,
+  formatDate,
+  formatDateTime,
+  formatMoney,
+  toDateKey,
+  todayIso,
+} from "@/lib/format"
 import { formatDuration } from "@/server/queries/time"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
@@ -45,9 +52,8 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const tenantId = active.tenantId
 
-  const monthStart = new Date()
-  monthStart.setDate(1)
-  const monthStartIso = monthStart.toISOString().slice(0, 10)
+  const today = todayIso()
+  const monthStartIso = `${today.slice(0, 8)}01`
 
   const [
     companies,
@@ -133,18 +139,12 @@ export default async function DashboardPage() {
 
   const days: { label: string; date: string; seconds: number }[] = []
   for (let i = 13; i >= 0; i--) {
-    const d = new Date()
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() - i)
-    days.push({
-      label: String(d.getDate()).padStart(2, "0"),
-      date: d.toISOString().slice(0, 10),
-      seconds: 0,
-    })
+    const date = addDaysIso(today, -i)
+    days.push({ label: date.slice(8, 10), date, seconds: 0 })
   }
   const byDate = new Map(days.map((day) => [day.date, day]))
   for (const row of entries) {
-    const key = new Date(row.started_at).toISOString().slice(0, 10)
+    const key = toDateKey(row.started_at)
     const day = byDate.get(key)
     if (day) day.seconds += Number(row.duration_seconds ?? 0)
   }
@@ -193,12 +193,11 @@ export default async function DashboardPage() {
 
   const months: { key: string; label: string; total: number }[] = []
   for (let i = 5; i >= 0; i--) {
-    const d = new Date()
-    d.setDate(1)
-    d.setMonth(d.getMonth() - i)
+    const [year, month] = today.split("-").map(Number)
+    const d = new Date(Date.UTC(year, month - 1 - i, 1))
     months.push({
       key: d.toISOString().slice(0, 7),
-      label: d.toLocaleDateString("pt-BR", { month: "short" }),
+      label: d.toLocaleDateString("pt-BR", { month: "short", timeZone: "UTC" }),
       total: 0,
     })
   }
@@ -404,7 +403,7 @@ export default async function DashboardPage() {
                   <div className="min-w-0">
                     <p className="line-clamp-2">{item.text}</p>
                     <p className="text-muted-foreground text-xs">
-                      {new Date(item.when).toLocaleString("pt-BR", {
+                      {formatDateTime(item.when, {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}

@@ -8,7 +8,7 @@ import {
   TicketPriorityBadge,
   TicketStatusBadge,
 } from "@/components/app/ticket-bits"
-import { formatDate } from "@/lib/format"
+import { formatDate, formatDateTime } from "@/lib/format"
 import {
   getPortalContact,
   getPortalTicket,
@@ -98,7 +98,7 @@ export default async function PortalTicketDetailPage({
                       {reply.from_client ? "Você" : "Equipe de suporte"}
                     </span>
                     <span>
-                      {new Date(reply.created_at).toLocaleString("pt-BR", {
+                      {formatDateTime(reply.created_at, {
                         dateStyle: "short",
                         timeStyle: "short",
                       })}

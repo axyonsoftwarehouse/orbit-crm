@@ -11,14 +11,7 @@ import {
 import { getPortalContact } from "@/server/queries/portal"
 import { getPortalSocialPost } from "@/server/queries/social"
 import { respondPortalSocialPostAction } from "@/server/actions/social"
-
-function formatDateTime(value: string | null) {
-  if (!value) return "—"
-  return new Date(value).toLocaleString("pt-BR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  })
-}
+import { formatDateTime } from "@/lib/format"
 
 export default async function PortalSocialDetailPage({
   params,

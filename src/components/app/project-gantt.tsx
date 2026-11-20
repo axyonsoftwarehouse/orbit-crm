@@ -12,6 +12,7 @@ import { TASK_STATUSES } from "@/lib/constants"
 import { addDays } from "@/lib/gantt"
 import { updateTaskScheduleAction } from "@/server/actions/gantt"
 import { GanttDependencyDialog } from "@/components/app/gantt-dependency-dialog"
+import { todayIso } from "@/lib/format"
 
 type GanttTask = {
   id: string
@@ -186,7 +187,7 @@ export function ProjectGantt({
     }
   }
 
-  const today = parseDate(new Date().toISOString().slice(0, 10)).getTime()
+  const today = parseDate(todayIso()).getTime()
   const todayLeft =
     today >= min && today <= max ? ((today - min) / span) * 100 : null
 

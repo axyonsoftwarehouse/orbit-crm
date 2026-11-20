@@ -16,6 +16,7 @@ import {
   replaceDocumentItems,
 } from "@/server/documents"
 import { getEstimate, listDocumentItems } from "@/server/queries/documents"
+import { addDaysIso } from "@/lib/format"
 
 export type EstimateFormState = { error?: string; success?: string } | undefined
 
@@ -169,9 +170,6 @@ export async function convertEstimateToInvoiceAction(formData: FormData) {
   )
   if (numberError || number === null) return
 
-  const dueDate = new Date(`${estimate.date}T00:00:00`)
-  dueDate.setDate(dueDate.getDate() + 30)
-
   const { data: invoice, error } = await supabase
     .from("invoices")
     .insert({
@@ -184,7 +182,7 @@ export async function convertEstimateToInvoiceAction(formData: FormData) {
       company_id: estimate.company_id,
       project_id: estimate.project_id,
       date: estimate.date,
-      due_date: dueDate.toISOString().slice(0, 10),
+      due_date: addDaysIso(estimate.date, 30),
       currency: estimate.currency,
       subtotal: estimate.subtotal,
       discount_type: estimate.discount_type,

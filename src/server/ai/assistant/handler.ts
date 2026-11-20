@@ -14,6 +14,7 @@ import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/logger"
 import { getChatModel, isAiConfigured } from "@/server/ai/model"
 import { checkAiRateLimit } from "@/server/rate-limit"
+import { todayIso } from "@/lib/format"
 
 const MAX_HISTORY = 20
 const MAX_STEPS = 6
@@ -92,7 +93,7 @@ export async function handleAssistantRequest(
     tenantId: active.tenantId,
     entityId,
     userName: profile?.full_name ?? null,
-    today: new Date().toISOString().slice(0, 10),
+    today: todayIso(),
   })
   if (!setup) return fail(404, options.notFound)
 

@@ -3,6 +3,7 @@ import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { getLatestSeoAudit, getSeoSite } from "@/server/queries/seo"
 import type { SeoCheckCategory } from "@/server/seo/audit"
+import { formatDate, formatDateTime, todayIso } from "@/lib/format"
 
 export const dynamic = "force-dynamic"
 
@@ -161,10 +162,10 @@ export async function GET(
 
   drawText(site.label, { size: 20, bold: true })
   drawText(site.url, { size: 9, color: gray })
-  drawText(
-    `Auditoria concluída em ${new Date(audit.created_at).toLocaleString("pt-BR")}`,
-    { size: 9, color: gray },
-  )
+  drawText(`Auditoria concluída em ${formatDateTime(audit.created_at)}`, {
+    size: 9,
+    color: gray,
+  })
   y -= 8
 
   // Score
@@ -267,7 +268,7 @@ export async function GET(
   const pages = doc.getPages()
   pages.forEach((current, index) => {
     current.drawText(
-      `Gerado por ${active.tenant.name} · ${new Date().toLocaleDateString("pt-BR")}`,
+      `Gerado por ${active.tenant.name} · ${formatDate(todayIso())}`,
       {
         x: MARGIN,
         y: 24,
@@ -286,7 +287,7 @@ export async function GET(
   })
 
   const bytes = await doc.save()
-  const stamp = new Date().toISOString().slice(0, 10)
+  const stamp = todayIso()
 
   return new Response(Buffer.from(bytes), {
     headers: {

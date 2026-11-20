@@ -13,10 +13,7 @@ import { TaskPriorityBadge, TaskStatusBadge } from "@/components/app/task-bits"
 import { EntityAvatar } from "@/components/app/entity-avatar"
 import { TaskStatusSelect } from "./task-status-select"
 import type { TaskListRow } from "@/server/queries/tasks"
-
-function formatDate(value: string | null) {
-  return value ? new Date(value).toLocaleDateString("pt-BR") : "—"
-}
+import { formatDate } from "@/lib/format"
 
 function DeadlinePill({ date }: { date: string | null }) {
   if (!date) return null
