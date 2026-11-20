@@ -33,6 +33,7 @@
 **Files:** Create `supabase/migrations/0058_document_links.sql`, `src/server/document-sharing/links.ts`; modify `src/lib/database.types.ts`; tests `tests/unit/document-links.test.ts`, `tests/rls/isolation.test.ts`.
 
 **Produces:**
+
 - `generateLinkToken(): { token: string; hash: string }`, `hashLinkToken(token: string): string`
 - `linkExpiry(kind: DocumentKind, expiryDate: string | null, now?: Date): string` (ISO)
 - `createDocumentLink(supabase, input: { tenantId; kind; docId; expiryDate: string | null; userId: string | null }): Promise<{ token: string } | { error: string }>`
@@ -46,6 +47,7 @@
 **Files:** Create `src/server/document-sharing/load.ts`, `src/server/document-sharing/pdf.ts`, `src/app/app/orcamentos/[id]/pdf/route.ts`, `src/app/app/faturas/[id]/pdf/route.ts`; test `tests/unit/document-pdf.test.ts`.
 
 **Produces:**
+
 - `type DocumentView = { kind; id; number; status; date; dueOrExpiry: string | null; currency; subtotal; discountTotal; totalTax; adjustment; total; paid: number; clientNote; terms; items: DocumentItem[]; company: { name; vat; address; city; state; zip; country } | null; tenant: { name; logoUrl: string | null; primaryColor: string | null } }`
 - `loadDocument(supabase, tenantId: string, kind: DocumentKind, id: string): Promise<DocumentView | null>`
 - `renderDocumentPdf(view: DocumentView): Promise<Uint8Array>` (Helvetica WinAnsi; caracteres fora do WinAnsi trocados por `?`; logo PNG/JPEG baixado da URL pública, ignorado se falhar)

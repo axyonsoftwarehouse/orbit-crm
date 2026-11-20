@@ -71,7 +71,10 @@ function setup(
   return mock
 }
 
-function statusUpdate(mock: ReturnType<typeof createSupabaseMock>, table: string) {
+function statusUpdate(
+  mock: ReturnType<typeof createSupabaseMock>,
+  table: string,
+) {
   return mock
     .callsFor(table)
     .find((calls) => calls.some((call) => call.method === "update"))
@@ -97,7 +100,10 @@ describe("sendDocumentAction", () => {
   })
 
   it("contato sem e-mail ou de outro cliente é recusado", async () => {
-    setup([{ id: C1, email: "ana@cliente.test" }, { id: C2, email: null }])
+    setup([
+      { id: C1, email: "ana@cliente.test" },
+      { id: C2, email: null },
+    ])
     const result = await sendDocumentAction({
       kind: "estimate",
       id: EST,

@@ -4,10 +4,7 @@ import {
   documentFileName,
   renderDocumentPdf,
 } from "@/server/document-sharing/pdf"
-import {
-  loadDocument,
-  type DocumentView,
-} from "@/server/document-sharing/load"
+import { loadDocument, type DocumentView } from "@/server/document-sharing/load"
 
 const view: DocumentView = {
   kind: "estimate",
@@ -98,17 +95,40 @@ describe("loadDocument", () => {
     total: 3000,
     client_note: null,
     terms: null,
-    company: { name: "Padaria Sol", vat: null, address: null, city: null, state: null, zip: null, country: null },
+    company: {
+      name: "Padaria Sol",
+      vat: null,
+      address: null,
+      city: null,
+      state: null,
+      zip: null,
+      country: null,
+    },
   }
 
   it("monta a visão do documento com itens, pagamentos e marca", async () => {
     const mock = createSupabaseMock({
-      invoices: { data: { ...estimateRow, formatted_number: "INV-000001", due_date: "2026-12-19" }, error: null },
+      invoices: {
+        data: {
+          ...estimateRow,
+          formatted_number: "INV-000001",
+          due_date: "2026-12-19",
+        },
+        error: null,
+      },
       document_items: { data: [], error: null },
       payments: { data: [{ amount: 500 }, { amount: "250.50" }], error: null },
-      tenants: { data: { name: "Agência Aurora", logo_url: null, primary_color: null }, error: null },
+      tenants: {
+        data: { name: "Agência Aurora", logo_url: null, primary_color: null },
+        error: null,
+      },
     })
-    const result = await loadDocument(mock.client as never, "t1", "invoice", "e1")
+    const result = await loadDocument(
+      mock.client as never,
+      "t1",
+      "invoice",
+      "e1",
+    )
     expect(result?.number).toBe("INV-000001")
     expect(result?.paid).toBe(750.5)
     expect(result?.dueOrExpiry).toBe("2026-12-19")
@@ -117,6 +137,8 @@ describe("loadDocument", () => {
 
   it("documento inexistente ou de outro tenant devolve null", async () => {
     const mock = createSupabaseMock({ estimates: { data: null, error: null } })
-    expect(await loadDocument(mock.client as never, "t1", "estimate", "x")).toBeNull()
+    expect(
+      await loadDocument(mock.client as never, "t1", "estimate", "x"),
+    ).toBeNull()
   })
 })

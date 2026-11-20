@@ -47,7 +47,9 @@ describe("resolveDocumentLink", () => {
   }
 
   it("encontra pelo hash do token", async () => {
-    const mock = createSupabaseMock({ document_links: { data: row, error: null } })
+    const mock = createSupabaseMock({
+      document_links: { data: row, error: null },
+    })
     const link = await resolveDocumentLink(mock.client as never, "abc", now)
     expect(link?.rel_id).toBe("e1")
     const [calls] = mock.callsFor("document_links")
@@ -61,7 +63,9 @@ describe("resolveDocumentLink", () => {
       null,
     ]) {
       const mock = createSupabaseMock({ document_links: { data, error: null } })
-      expect(await resolveDocumentLink(mock.client as never, "abc", now)).toBeNull()
+      expect(
+        await resolveDocumentLink(mock.client as never, "abc", now),
+      ).toBeNull()
     }
   })
 
