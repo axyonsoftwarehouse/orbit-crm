@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest"
-import { createSupabaseMock } from "./supabase-mock"
+import { afterEach, describe, expect, it, vi } from "vitest"
+import { createSupabaseMock, hasCall } from "./supabase-mock"
 import {
   documentFileName,
   renderDocumentPdf,
@@ -71,6 +71,38 @@ describe("renderDocumentPdf", () => {
   })
 })
 
+describe("logo do tenant", () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  it("não busca logo fora do bucket de branding do Supabase", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://proj.supabase.co"
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+    for (const logoUrl of [
+      "http://169.254.169.254/latest/meta-data",
+      "http://10.0.0.5/logo.png",
+      "https://proj.supabase.co/storage/v1/object/public/outro-bucket/x.png",
+      "https://evil.test/proj.supabase.co/storage/v1/object/public/branding/x.png",
+    ]) {
+      await renderDocumentPdf({ ...view, tenant: { ...view.tenant, logoUrl } })
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("busca o logo do bucket de branding sem seguir redirecionamento", async () => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://proj.supabase.co"
+    const fetchMock = vi.fn(async () => new Response(null, { status: 404 }))
+    vi.stubGlobal("fetch", fetchMock)
+    const logoUrl =
+      "https://proj.supabase.co/storage/v1/object/public/branding/t1/logo.png"
+    await renderDocumentPdf({ ...view, tenant: { ...view.tenant, logoUrl } })
+    expect(fetchMock).toHaveBeenCalledWith(
+      logoUrl,
+      expect.objectContaining({ redirect: "error" }),
+    )
+  })
+})
+
 describe("documentFileName", () => {
   it("usa o tipo e o número", () => {
     expect(documentFileName(view)).toBe("Orcamento-EST-000001.pdf")
@@ -105,6 +137,45 @@ describe("loadDocument", () => {
       country: null,
     },
   }
+
+  it("busca o cliente em consulta separada, filtrada pelo tenant", async () => {
+    const mock = createSupabaseMock({
+      estimates: {
+        data: { ...estimateRow, company: undefined, company_id: "c1" },
+        error: null,
+      },
+      companies: {
+        data: {
+          name: "Padaria Sol",
+          vat: null,
+          address: null,
+          city: null,
+          state: null,
+          zip: null,
+          country: null,
+        },
+        error: null,
+      },
+      document_items: { data: [], error: null },
+      tenants: {
+        data: { name: "Agência Aurora", logo_url: null, primary_color: null },
+        error: null,
+      },
+    })
+    const result = await loadDocument(
+      mock.client as never,
+      "t1",
+      "estimate",
+      "e1",
+    )
+    expect(result?.company?.name).toBe("Padaria Sol")
+    const [estimateCalls] = mock.callsFor("estimates")
+    const select = estimateCalls.find((call) => call.method === "select")
+    expect(String(select?.args[0])).not.toContain("companies(")
+    const [companyCalls] = mock.callsFor("companies")
+    expect(hasCall(companyCalls, "eq", "tenant_id", "t1")).toBe(true)
+    expect(hasCall(companyCalls, "eq", "id", "c1")).toBe(true)
+  })
 
   it("monta a visão do documento com itens, pagamentos e marca", async () => {
     const mock = createSupabaseMock({

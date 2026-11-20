@@ -34,7 +34,7 @@ export type DocumentView = {
 }
 
 const COMMON_COLUMNS =
-  "id, formatted_number, status, date, currency, subtotal, discount_total, total_tax, adjustment, total, client_note, terms, company:companies(name, vat, address, city, state, zip, country)"
+  "id, company_id, formatted_number, status, date, currency, subtotal, discount_total, total_tax, adjustment, total, client_note, terms"
 
 type DocumentRow = {
   id: string
@@ -51,7 +51,7 @@ type DocumentRow = {
   total: number | string
   client_note: string | null
   terms: string | null
-  company: DocumentView["company"]
+  company_id: string | null
 }
 
 /**
@@ -78,30 +78,42 @@ export async function loadDocument(
   const row = data as DocumentRow | null
   if (!row) return null
 
-  const [{ data: items }, { data: payments }, { data: tenant }] =
-    await Promise.all([
-      supabase
-        .from("document_items")
-        .select(
-          "id, description, qty, rate, unit, tax_name, tax_rate, position",
-        )
-        .eq("tenant_id", tenantId)
-        .eq("rel_type", kind)
-        .eq("rel_id", id)
-        .order("position", { ascending: true }),
-      kind === "invoice"
-        ? supabase
-            .from("payments")
-            .select("amount")
-            .eq("tenant_id", tenantId)
-            .eq("invoice_id", id)
-        : Promise.resolve({ data: [] as { amount: number }[] }),
-      supabase
-        .from("tenants")
-        .select("name, logo_url, primary_color")
-        .eq("id", tenantId)
-        .maybeSingle(),
-    ])
+  // Cliente em consulta separada e filtrada pelo tenant: com o client admin
+  // (página pública), um embed pela FK não teria filtro de tenant.
+  const [
+    { data: items },
+    { data: payments },
+    { data: tenant },
+    { data: company },
+  ] = await Promise.all([
+    supabase
+      .from("document_items")
+      .select("id, description, qty, rate, unit, tax_name, tax_rate, position")
+      .eq("tenant_id", tenantId)
+      .eq("rel_type", kind)
+      .eq("rel_id", id)
+      .order("position", { ascending: true }),
+    kind === "invoice"
+      ? supabase
+          .from("payments")
+          .select("amount")
+          .eq("tenant_id", tenantId)
+          .eq("invoice_id", id)
+      : Promise.resolve({ data: [] as { amount: number }[] }),
+    supabase
+      .from("tenants")
+      .select("name, logo_url, primary_color")
+      .eq("id", tenantId)
+      .maybeSingle(),
+    row.company_id
+      ? supabase
+          .from("companies")
+          .select("name, vat, address, city, state, zip, country")
+          .eq("id", row.company_id)
+          .eq("tenant_id", tenantId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
 
   const brand = tenant as {
     name: string
@@ -129,7 +141,7 @@ export async function loadDocument(
     clientNote: row.client_note,
     terms: row.terms,
     items: (items ?? []) as DocumentItem[],
-    company: row.company,
+    company: (company as DocumentView["company"]) ?? null,
     tenant: {
       name: brand?.name ?? "",
       logoUrl: brand?.logo_url ?? null,

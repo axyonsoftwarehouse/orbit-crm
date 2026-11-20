@@ -35,12 +35,55 @@ function hexToRgb(hex: string | null) {
 }
 
 /** Logo do tenant (PNG ou JPEG pela URL pública); qualquer falha é ignorada. */
+const LOGO_MAX_BYTES = 2 * 1024 * 1024
+
+/**
+ * Só aceita logos do bucket público `branding` do próprio Supabase:
+ * `logo_url` pode ser alterado pelo tenant, e buscar qualquer URL no servidor
+ * abriria SSRF (rede interna, metadados de nuvem).
+ */
+function isBrandingUrl(url: string): boolean {
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "")
+  if (!base) return false
+  return url.startsWith(`${base}/storage/v1/object/public/branding/`)
+}
+
+async function readCapped(response: Response, max: number) {
+  const declared = Number(response.headers.get("content-length") ?? 0)
+  if (declared > max) return null
+  const reader = response.body?.getReader()
+  if (!reader) return null
+  const chunks: Uint8Array[] = []
+  let total = 0
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) break
+    total += value.byteLength
+    if (total > max) {
+      await reader.cancel()
+      return null
+    }
+    chunks.push(value)
+  }
+  const bytes = new Uint8Array(total)
+  let offset = 0
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset)
+    offset += chunk.byteLength
+  }
+  return bytes
+}
+
 async function embedLogo(doc: PDFDocument, url: string | null) {
-  if (!url) return null
+  if (!url || !isBrandingUrl(url)) return null
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(5000) })
+    const response = await fetch(url, {
+      redirect: "error",
+      signal: AbortSignal.timeout(5000),
+    })
     if (!response.ok) return null
-    const bytes = new Uint8Array(await response.arrayBuffer())
+    const bytes = await readCapped(response, LOGO_MAX_BYTES)
+    if (!bytes) return null
     if (bytes[0] === 0x89 && bytes[1] === 0x50) return await doc.embedPng(bytes)
     if (bytes[0] === 0xff && bytes[1] === 0xd8) return await doc.embedJpg(bytes)
     return null
@@ -329,6 +372,7 @@ export async function pdfResponse(view: DocumentView): Promise<Response> {
       "Content-Type": "application/pdf",
       "Content-Disposition": `attachment; filename="${documentFileName(view)}"`,
       "Cache-Control": "private, no-store",
+      "X-Robots-Tag": "noindex, nofollow",
     },
   })
 }
