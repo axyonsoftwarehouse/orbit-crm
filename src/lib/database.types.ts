@@ -402,16 +402,142 @@ export type Database = {
           },
         ]
       }
+      contract_events: {
+        Row: {
+          actor_id: string | null
+          actor_kind: string
+          contract_id: string
+          created_at: string
+          id: string
+          ip: string | null
+          kind: string
+          metadata: Json | null
+          tenant_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_kind: string
+          contract_id: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          kind: string
+          metadata?: Json | null
+          tenant_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          actor_id?: string | null
+          actor_kind?: string
+          contract_id?: string
+          created_at?: string
+          id?: string
+          ip?: string | null
+          kind?: string
+          metadata?: Json | null
+          tenant_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_events_contract_fk"
+            columns: ["contract_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "contract_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contract_signers: {
+        Row: {
+          contract_id: string
+          created_at: string
+          email: string | null
+          id: string
+          ip: string | null
+          name: string | null
+          role: string
+          signature_path: string | null
+          signed_at: string | null
+          tenant_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          contract_id: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip?: string | null
+          name?: string | null
+          role?: string
+          signature_path?: string | null
+          signed_at?: string | null
+          tenant_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          contract_id?: string
+          created_at?: string
+          email?: string | null
+          id?: string
+          ip?: string | null
+          name?: string | null
+          role?: string
+          signature_path?: string | null
+          signed_at?: string | null
+          tenant_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contract_signers_contract_fk"
+            columns: ["contract_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "contract_signers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contracts: {
         Row: {
+          acceptance_email: string | null
+          acceptance_firstname: string | null
+          acceptance_ip: string | null
+          acceptance_lastname: string | null
+          acceptance_user_agent: string | null
           company_id: string | null
+          content: string | null
+          content_hash: string | null
+          content_rendered: string | null
           created_at: string
           created_by: string | null
           deleted_at: string | null
           description: string | null
           end_date: string | null
           id: string
+          last_sent_at: string | null
+          last_sign_reminder_at: string | null
+          marked_as_signed_at: string | null
+          marked_as_signed_by: string | null
           note: string | null
+          require_login: boolean
+          signature_path: string | null
+          signed_at: string | null
           start_date: string | null
           status: number
           tenant_id: string
@@ -420,14 +546,29 @@ export type Database = {
           value: number | null
         }
         Insert: {
+          acceptance_email?: string | null
+          acceptance_firstname?: string | null
+          acceptance_ip?: string | null
+          acceptance_lastname?: string | null
+          acceptance_user_agent?: string | null
           company_id?: string | null
+          content?: string | null
+          content_hash?: string | null
+          content_rendered?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
+          last_sent_at?: string | null
+          last_sign_reminder_at?: string | null
+          marked_as_signed_at?: string | null
+          marked_as_signed_by?: string | null
           note?: string | null
+          require_login?: boolean
+          signature_path?: string | null
+          signed_at?: string | null
           start_date?: string | null
           status?: number
           tenant_id: string
@@ -436,14 +577,29 @@ export type Database = {
           value?: number | null
         }
         Update: {
+          acceptance_email?: string | null
+          acceptance_firstname?: string | null
+          acceptance_ip?: string | null
+          acceptance_lastname?: string | null
+          acceptance_user_agent?: string | null
           company_id?: string | null
+          content?: string | null
+          content_hash?: string | null
+          content_rendered?: string | null
           created_at?: string
           created_by?: string | null
           deleted_at?: string | null
           description?: string | null
           end_date?: string | null
           id?: string
+          last_sent_at?: string | null
+          last_sign_reminder_at?: string | null
+          marked_as_signed_at?: string | null
+          marked_as_signed_by?: string | null
           note?: string | null
+          require_login?: boolean
+          signature_path?: string | null
+          signed_at?: string | null
           start_date?: string | null
           status?: number
           tenant_id?: string
@@ -462,6 +618,13 @@ export type Database = {
           {
             foreignKeyName: "contracts_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_marked_as_signed_by_fkey"
+            columns: ["marked_as_signed_by"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -2242,48 +2405,6 @@ export type Database = {
           },
         ]
       }
-      taggables: {
-        Row: {
-          created_at: string
-          entity_id: string
-          entity_type: string
-          id: string
-          tag_id: string
-          tenant_id: string
-        }
-        Insert: {
-          created_at?: string
-          entity_id: string
-          entity_type: string
-          id?: string
-          tag_id: string
-          tenant_id: string
-        }
-        Update: {
-          created_at?: string
-          entity_id?: string
-          entity_type?: string
-          id?: string
-          tag_id?: string
-          tenant_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "taggables_tag_fk"
-            columns: ["tag_id", "tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tags"
-            referencedColumns: ["id", "tenant_id"]
-          },
-          {
-            foreignKeyName: "taggables_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       social_accounts: {
         Row: {
           access_token_id: string | null
@@ -2348,7 +2469,29 @@ export type Database = {
           token_expires_at?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "social_accounts_company_fk"
+            columns: ["company_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "social_accounts_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_accounts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_media: {
         Row: {
@@ -2387,7 +2530,29 @@ export type Database = {
           storage_path?: string
           tenant_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "social_media_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_media_post_fk"
+            columns: ["post_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "social_media_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_post_events: {
         Row: {
@@ -2417,7 +2582,29 @@ export type Database = {
           post_id?: string
           tenant_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "social_post_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_events_post_fk"
+            columns: ["post_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "social_post_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_post_targets: {
         Row: {
@@ -2468,7 +2655,29 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "social_post_targets_account_fk"
+            columns: ["account_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "social_accounts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "social_post_targets_post_fk"
+            columns: ["post_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "social_posts"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "social_post_targets_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_posts: {
         Row: {
@@ -2483,9 +2692,9 @@ export type Database = {
           id: string
           manual_reminder_sent_at: string | null
           published_at: string | null
-          rejection_note: string | null
           rejected_at: string | null
           rejected_by: string | null
+          rejection_note: string | null
           requires_approval: boolean
           scheduled_at: string | null
           status: string
@@ -2504,9 +2713,9 @@ export type Database = {
           id?: string
           manual_reminder_sent_at?: string | null
           published_at?: string | null
-          rejection_note?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
+          rejection_note?: string | null
           requires_approval?: boolean
           scheduled_at?: string | null
           status?: string
@@ -2525,16 +2734,52 @@ export type Database = {
           id?: string
           manual_reminder_sent_at?: string | null
           published_at?: string | null
-          rejection_note?: string | null
           rejected_at?: string | null
           rejected_by?: string | null
+          rejection_note?: string | null
           requires_approval?: boolean
           scheduled_at?: string | null
           status?: string
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "social_posts_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_company_fk"
+            columns: ["company_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "social_posts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_rejected_by_fkey"
+            columns: ["rejected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_posts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_settings: {
         Row: {
@@ -2567,7 +2812,57 @@ export type Database = {
           tenant_id?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "social_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      taggables: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          tag_id: string
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          tag_id: string
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          tag_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taggables_tag_fk"
+            columns: ["tag_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "taggables_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       tags: {
         Row: {
@@ -2805,6 +3100,7 @@ export type Database = {
         Row: {
           created_at: string
           currency: string
+          e_sign_legal_text: string | null
           estimate_prefix: string
           id: string
           invoice_prefix: string
@@ -2829,6 +3125,7 @@ export type Database = {
         Insert: {
           created_at?: string
           currency?: string
+          e_sign_legal_text?: string | null
           estimate_prefix?: string
           id?: string
           invoice_prefix?: string
@@ -2853,6 +3150,7 @@ export type Database = {
         Update: {
           created_at?: string
           currency?: string
+          e_sign_legal_text?: string | null
           estimate_prefix?: string
           id?: string
           invoice_prefix?: string
@@ -3154,6 +3452,15 @@ export type Database = {
         Args: { p_bucket: string; p_limit: number; p_window_seconds: number }
         Returns: boolean
       }
+      claim_social_publish_targets: {
+        Args: { p_limit?: number }
+        Returns: {
+          account_id: string
+          post_id: string
+          target_id: string
+          tenant_id: string
+        }[]
+      }
       client_can_view_attachment_path: {
         Args: { p_name: string }
         Returns: boolean
@@ -3168,46 +3475,12 @@ export type Database = {
       }
       client_can_view_project: { Args: { p_project: string }; Returns: boolean }
       client_can_view_ticket: { Args: { p_ticket: string }; Returns: boolean }
-      claim_social_publish_targets: {
-        Args: { p_limit?: number }
-        Returns: {
-          account_id: string
-          post_id: string
-          target_id: string
-          tenant_id: string
-        }[]
-      }
       client_respond_estimate: {
         Args: { p_accept: boolean; p_estimate: string }
         Returns: undefined
       }
       configure_social_publish_cron: {
         Args: { p_cron_secret: string; p_site_url: string }
-        Returns: undefined
-      }
-      reset_stale_social_targets: {
-        Args: { p_minutes?: number }
-        Returns: number
-      }
-      social_clear_tokens: {
-        Args: { p_account: string }
-        Returns: undefined
-      }
-      social_get_tokens: {
-        Args: { p_account: string }
-        Returns: {
-          access_token: string | null
-          expires_at: string | null
-          refresh_token: string | null
-        }[]
-      }
-      social_store_tokens: {
-        Args: {
-          p_access_token: string
-          p_account: string
-          p_expires_at: string | null
-          p_refresh_token: string | null
-        }
         Returns: undefined
       }
       entity_belongs_to_tenant: {
@@ -3226,7 +3499,6 @@ export type Database = {
       is_client_of_company: { Args: { p_company: string }; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
       is_tenant_member: { Args: { p_tenant: string }; Returns: boolean }
-      tenant_storage_bytes: { Args: { p_tenant: string }; Returns: number }
       next_document_number: {
         Args: { p_kind: string; p_tenant: string }
         Returns: number
@@ -3271,6 +3543,20 @@ export type Database = {
           score: number
           site_id: string
           url: string
+        }[]
+      }
+      portal_get_social_post: {
+        Args: { p_company: string; p_post: string }
+        Returns: {
+          content: string
+          created_at: string
+          id: string
+          published_at: string
+          rejection_note: string
+          requires_approval: boolean
+          scheduled_at: string
+          status: string
+          targets: Json
         }[]
       }
       portal_list_contracts: {
@@ -3337,42 +3623,19 @@ export type Database = {
           url: string
         }[]
       }
-      portal_get_social_post: {
-        Args: { p_company: string; p_post: string }
-        Returns: {
-          content: string
-          created_at: string
-          id: string
-          published_at: string | null
-          rejection_note: string | null
-          requires_approval: boolean
-          scheduled_at: string | null
-          status: string
-          targets: Json
-        }[]
-      }
       portal_list_social_posts: {
         Args: { p_company: string }
         Returns: {
           content: string
           created_at: string
           id: string
-          published_at: string | null
-          rejection_note: string | null
+          published_at: string
+          rejection_note: string
           requires_approval: boolean
-          scheduled_at: string | null
+          scheduled_at: string
           status: string
           target_count: number
         }[]
-      }
-      portal_respond_social_post: {
-        Args: {
-          p_approve: boolean
-          p_company: string
-          p_note?: string
-          p_post: string
-        }
-        Returns: boolean
       }
       portal_list_tasks: {
         Args: { p_project: string }
@@ -3387,8 +3650,40 @@ export type Database = {
           status: number
         }[]
       }
+      portal_respond_social_post: {
+        Args: {
+          p_approve: boolean
+          p_company: string
+          p_note?: string
+          p_post: string
+        }
+        Returns: boolean
+      }
+      reset_stale_social_targets: {
+        Args: { p_minutes?: number }
+        Returns: number
+      }
       shares_tenant: { Args: { target: string }; Returns: boolean }
+      social_clear_tokens: { Args: { p_account: string }; Returns: undefined }
+      social_get_tokens: {
+        Args: { p_account: string }
+        Returns: {
+          access_token: string
+          expires_at: string
+          refresh_token: string
+        }[]
+      }
+      social_store_tokens: {
+        Args: {
+          p_access_token: string
+          p_account: string
+          p_expires_at: string
+          p_refresh_token: string
+        }
+        Returns: undefined
+      }
       storage_path_tenant: { Args: { p_name: string }; Returns: string }
+      tenant_storage_bytes: { Args: { p_tenant: string }; Returns: number }
       time_entries_summary: {
         Args: { p_project?: string; p_task?: string; p_tenant: string }
         Returns: {
