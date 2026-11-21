@@ -162,6 +162,8 @@ export type PortalContractRow = {
   start_date: string | null
   end_date: string | null
   status: number
+  signed_at: string | null
+  marked_as_signed_at: string | null
 }
 
 export async function listPortalContracts(

@@ -3565,6 +3565,8 @@ export type Database = {
           description: string
           end_date: string
           id: string
+          marked_as_signed_at: string
+          signed_at: string
           start_date: string
           status: number
           title: string
