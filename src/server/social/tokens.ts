@@ -6,11 +6,13 @@ export async function storeSocialTokens(
   tokens: OAuthTokenSet,
 ): Promise<void> {
   const admin = createAdminClient()
+  // O typegen marca os argumentos como não-nulos, mas a função SQL trata
+  // `null` (sem refresh token / sem validade) — o valor real pode ser null.
   const { error } = await admin.rpc("social_store_tokens", {
     p_account: accountId,
     p_access_token: tokens.accessToken,
-    p_refresh_token: tokens.refreshToken,
-    p_expires_at: tokens.expiresAt,
+    p_refresh_token: (tokens.refreshToken ?? null) as unknown as string,
+    p_expires_at: (tokens.expiresAt ?? null) as unknown as string,
   })
   if (error) throw new Error(error.message)
 }
