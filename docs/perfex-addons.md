@@ -2,6 +2,7 @@
 
 > Levantamento de 20/11/2026 sobre `C:\Arquivos Importantes\Fontes de Inspiração\fontes\crm\Perfex CRM.rar`.
 > Inventário bruto em `perfex-addons.csv` (uma linha por arquivo, com o nome original).
+> Ficha estrutural de cada um dos **162 produtos** (menus, tabelas, controllers/rotas): [`perfex-addons-fichas.md`](perfex-addons-fichas.md).
 
 ## 1. Método
 
