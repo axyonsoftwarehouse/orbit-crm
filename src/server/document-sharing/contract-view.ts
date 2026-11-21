@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
-/** Tudo que a página pública e o PDF do contrato mostram. */
+/** Tudo que a pÃ¡gina pÃºblica e o PDF do contrato mostram. */
 export type ContractView = {
   id: string
   title: string
-  /** Conteúdo congelado no aceite; senão o corpo com placeholders. */
+  /** ConteÃºdo congelado no aceite; senÃ£o o corpo com placeholders. */
   body: string
   value: number | null
   startDate: string | null
@@ -56,14 +56,13 @@ type ContractRow = {
   acceptance_firstname: string | null
   acceptance_lastname: string | null
   acceptance_email: string | null
-  acceptance_date: string | null
   acceptance_ip: string | null
   acceptance_user_agent: string | null
 }
 
 /**
- * Carrega o contrato para a página pública e o PDF. Recebe o client admin
- * (depois de validar o token) ou o do usuário; sempre filtra por tenant.
+ * Carrega o contrato para a pÃ¡gina pÃºblica e o PDF. Recebe o client admin
+ * (depois de validar o token) ou o do usuÃ¡rio; sempre filtra por tenant.
  */
 export async function loadContractView(
   supabase: SupabaseClient,
@@ -73,7 +72,7 @@ export async function loadContractView(
   const { data } = await supabase
     .from("contracts")
     .select(
-      "id, company_id, title, content, content_rendered, description, value, start_date, end_date, status, signed_at, signature_path, content_hash, acceptance_firstname, acceptance_lastname, acceptance_email, acceptance_date, acceptance_ip, acceptance_user_agent",
+      "id, company_id, title, content, content_rendered, description, value, start_date, end_date, status, signed_at, signature_path, content_hash, acceptance_firstname, acceptance_lastname, acceptance_email, acceptance_ip, acceptance_user_agent",
     )
     .eq("id", contractId)
     .eq("tenant_id", tenantId)
@@ -129,7 +128,7 @@ export async function loadContractView(
           firstname: row.acceptance_firstname,
           lastname: row.acceptance_lastname,
           email: row.acceptance_email,
-          date: row.acceptance_date,
+          date: row.signed_at,
           ip: row.acceptance_ip,
           userAgent: row.acceptance_user_agent,
           hash: row.content_hash,

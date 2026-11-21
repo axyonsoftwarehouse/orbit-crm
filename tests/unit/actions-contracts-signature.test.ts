@@ -58,16 +58,21 @@ const contract = {
   deleted_at: null,
 }
 
-function setup(input: {
-  contract?: Record<string, unknown> | null
-  contacts?: unknown[]
-  updateRows?: unknown[]
-} = {}) {
+function setup(
+  input: {
+    contract?: Record<string, unknown> | null
+    contacts?: unknown[]
+    updateRows?: unknown[]
+  } = {},
+) {
   const mock = createSupabaseMock({
     contracts: (calls) =>
       calls.some((call) => call.method === "update")
         ? { data: input.updateRows ?? [{ id: "c1" }], error: null }
-        : { data: input.contract === undefined ? contract : input.contract, error: null },
+        : {
+            data: input.contract === undefined ? contract : input.contract,
+            error: null,
+          },
     contacts: {
       data:
         input.contacts === undefined
@@ -145,15 +150,15 @@ describe("sendContractForSignatureAction", () => {
     const update = mock
       .callsFor("contracts")
       .find((calls) => calls.some((call) => call.method === "update"))!
-    const payload = update
-      .find((call) => call.method === "update")!
+    const payload = update.find((call) => call.method === "update")!
       .args[0] as Record<string, unknown>
     expect(payload.last_sent_at).toEqual(expect.any(String))
 
     const event = mock
       .callsFor("contract_events")
       .find((calls) => calls.some((call) => call.method === "insert"))!
-    const eventPayload = event.find((call) => call.method === "insert")!.args[0] as Record<string, unknown>
+    const eventPayload = event.find((call) => call.method === "insert")!
+      .args[0] as Record<string, unknown>
     expect(eventPayload.kind).toBe("sent")
   })
 
@@ -204,7 +209,8 @@ describe("clearContractSignatureAction", () => {
     const update = mock
       .callsFor("contracts")
       .find((calls) => calls.some((call) => call.method === "update"))!
-    const payload = update.find((call) => call.method === "update")!.args[0] as Record<string, unknown>
+    const payload = update.find((call) => call.method === "update")!
+      .args[0] as Record<string, unknown>
     expect(payload.signed_at).toBeNull()
     expect(payload.content_hash).toBeNull()
     expect(payload.acceptance_ip).toBeNull()
@@ -223,7 +229,8 @@ describe("markContractSignedAction", () => {
     const update = mock
       .callsFor("contracts")
       .find((calls) => calls.some((call) => call.method === "update"))!
-    const payload = update.find((call) => call.method === "update")!.args[0] as Record<string, unknown>
+    const payload = update.find((call) => call.method === "update")!
+      .args[0] as Record<string, unknown>
     expect(payload.marked_as_signed_at).toEqual(expect.any(String))
     expect(payload.marked_as_signed_by).toBe("u1")
     expect(payload).not.toHaveProperty("signed_at")

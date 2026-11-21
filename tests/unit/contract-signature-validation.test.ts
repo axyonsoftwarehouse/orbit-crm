@@ -22,9 +22,9 @@ describe("decodeSignatureDataUrl", () => {
   })
 
   it("recusa base64 inválido", () => {
-    expect(
-      "error" in decodeSignatureDataUrl("data:image/png;base64,@@@"),
-    ).toBe(true)
+    expect("error" in decodeSignatureDataUrl("data:image/png;base64,@@@")).toBe(
+      true,
+    )
   })
 
   it("recusa bytes que não são PNG", () => {

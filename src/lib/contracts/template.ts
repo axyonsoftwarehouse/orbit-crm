@@ -56,9 +56,7 @@ export function contractVars(input: ContractVarsInput): ContractVars {
     "cliente.nome": input.companyName ?? "",
     "cliente.documento": input.companyVat ?? "",
     "contrato.valor":
-      input.value === null
-        ? ""
-        : formatMoney(input.value, input.currency),
+      input.value === null ? "" : formatMoney(input.value, input.currency),
     "contrato.inicio": input.startDate ? formatDate(input.startDate) : "",
     "contrato.fim": input.endDate ? formatDate(input.endDate) : "",
     "data.hoje": formatDate(input.today),

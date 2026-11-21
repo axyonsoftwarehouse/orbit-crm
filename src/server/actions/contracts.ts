@@ -22,6 +22,7 @@ function parseContract(formData: FormData) {
     title: formData.get("title"),
     company_id: formData.get("company_id") || undefined,
     description: formData.get("description") || undefined,
+    content: formData.get("content") || undefined,
     value: formData.get("value"),
     start_date: formData.get("start_date") || undefined,
     end_date: formData.get("end_date") || undefined,

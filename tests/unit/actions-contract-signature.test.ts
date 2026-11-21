@@ -155,7 +155,10 @@ describe("signContractAction", () => {
   it("assinatura fora do formato PNG é recusada", async () => {
     adminMock()
     await expect(
-      signContractAction({ ...input, signature: "data:image/jpeg;base64,AAAA" }),
+      signContractAction({
+        ...input,
+        signature: "data:image/jpeg;base64,AAAA",
+      }),
     ).resolves.toEqual({ error: "Formato de assinatura inválido." })
   })
 
@@ -165,14 +168,17 @@ describe("signContractAction", () => {
 
     expect(state.uploads).toHaveLength(1)
     expect(state.uploads[0].bucket).toBe("contracts")
-    expect(state.uploads[0].path).toMatch(/^t1\/contracts\/c1\/signature-[\w-]+\.png$/)
+    expect(state.uploads[0].path).toMatch(
+      /^t1\/contracts\/c1\/signature-[\w-]+\.png$/,
+    )
 
     const update = mock
       .callsFor("contracts")
       .find((calls) => calls.some((call) => call.method === "update"))!
     expect(hasCall(update, "eq", "signed_at", null)).toBe(false)
     expect(hasCall(update, "is", "signed_at", null)).toBe(true)
-    const payload = update.find((call) => call.method === "update")!.args[0] as Record<string, unknown>
+    const payload = update.find((call) => call.method === "update")!
+      .args[0] as Record<string, unknown>
     expect(payload.acceptance_firstname).toBe("Ana")
     expect(payload.acceptance_email).toBe("ana@acme.com")
     expect(payload.acceptance_ip).toBe("1.2.3.4")
@@ -184,7 +190,8 @@ describe("signContractAction", () => {
     const event = mock
       .callsFor("contract_events")
       .find((calls) => calls.some((call) => call.method === "insert"))!
-    const eventPayload = event.find((call) => call.method === "insert")!.args[0] as Record<string, unknown>
+    const eventPayload = event.find((call) => call.method === "insert")!
+      .args[0] as Record<string, unknown>
     expect(eventPayload.kind).toBe("signed")
     expect(eventPayload.actor_kind).toBe("client")
 
