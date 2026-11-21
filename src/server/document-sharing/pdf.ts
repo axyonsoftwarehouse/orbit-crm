@@ -14,7 +14,7 @@ const MARGIN = 48
 const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2
 
 const LABELS = {
-  estimate: { title: "ORÇAMENTO", due: "Validade", file: "Orcamento" },
+  estimate: { title: "ORÃ‡AMENTO", due: "Validade", file: "Orcamento" },
   invoice: { title: "FATURA", due: "Vencimento", file: "Fatura" },
 } as const
 
@@ -23,7 +23,7 @@ export function documentFileName(view: DocumentView): string {
   return `${LABELS[view.kind].file}-${number}.pdf`
 }
 
-function hexToRgb(hex: string | null) {
+export function hexToRgb(hex: string | null) {
   const match = /^#?([0-9a-f]{6})$/i.exec(hex ?? "")
   if (!match) return rgb(0, 0.38, 1)
   const value = parseInt(match[1], 16)
@@ -34,11 +34,11 @@ function hexToRgb(hex: string | null) {
   )
 }
 
-/** Logo do tenant (PNG ou JPEG pela URL pública); qualquer falha é ignorada. */
+/** Logo do tenant (PNG ou JPEG pela URL pÃºblica); qualquer falha Ã© ignorada. */
 const LOGO_MAX_BYTES = 2 * 1024 * 1024
 
 /**
- * Só aceita logos do bucket público `branding` do próprio Supabase:
+ * SÃ³ aceita logos do bucket pÃºblico `branding` do prÃ³prio Supabase:
  * `logo_url` pode ser alterado pelo tenant, e buscar qualquer URL no servidor
  * abriria SSRF (rede interna, metadados de nuvem).
  */
@@ -74,7 +74,7 @@ async function readCapped(response: Response, max: number) {
   return bytes
 }
 
-async function embedLogo(doc: PDFDocument, url: string | null) {
+export async function embedLogo(doc: PDFDocument, url: string | null) {
   if (!url || !isBrandingUrl(url)) return null
   try {
     const response = await fetch(url, {
@@ -93,8 +93,8 @@ async function embedLogo(doc: PDFDocument, url: string | null) {
 }
 
 /**
- * Gera o PDF do orçamento ou da fatura. Usa as fontes padrão (WinAnsi):
- * caracteres que elas não codificam (emoji etc.) viram "?" em vez de quebrar.
+ * Gera o PDF do orÃ§amento ou da fatura. Usa as fontes padrÃ£o (WinAnsi):
+ * caracteres que elas nÃ£o codificam (emoji etc.) viram "?" em vez de quebrar.
  */
 export async function renderDocumentPdf(
   view: DocumentView,
@@ -191,7 +191,7 @@ export async function renderDocumentPdf(
     text(value, right - font.widthOfTextAtSize(safe(value), size), options)
   }
 
-  // Cabeçalho: logo e nome da agência à esquerda; tipo, número e datas à direita.
+  // CabeÃ§alho: logo e nome da agÃªncia Ã  esquerda; tipo, nÃºmero e datas Ã  direita.
   const logo: PDFImage | null = await embedLogo(doc, view.tenant.logoUrl)
   const top = y
   if (logo) {
@@ -242,7 +242,7 @@ export async function renderDocumentPdf(
       view.company.address,
       [view.company.city, view.company.state].filter(Boolean).join(" - ") ||
         null,
-      [view.company.zip, view.company.country].filter(Boolean).join(" · ") ||
+      [view.company.zip, view.company.country].filter(Boolean).join(" Â· ") ||
         null,
     ].filter((value): value is string => Boolean(value))
     for (const detail of details) {
@@ -270,7 +270,7 @@ export async function renderDocumentPdf(
     height: 20,
     color: rgb(0.96, 0.97, 0.98),
   })
-  text("Descrição", MARGIN + 6, { size: 9, font: bold, color: gray })
+  text("DescriÃ§Ã£o", MARGIN + 6, { size: 9, font: bold, color: gray })
   textRight("Qtd", columns.qty, { size: 9, font: bold, color: gray })
   textRight("Valor", columns.rate, { size: 9, font: bold, color: gray })
   if (hasTax)
@@ -294,7 +294,10 @@ export async function renderDocumentPdf(
     textRight(String(Number(item.qty)), columns.qty)
     textRight(money(Number(item.rate)), columns.rate)
     if (hasTax) {
-      textRight(item.tax_rate ? `${Number(item.tax_rate)}%` : "—", columns.tax)
+      textRight(
+        item.tax_rate ? `${Number(item.tax_rate)}%` : "â€”",
+        columns.tax,
+      )
     }
     textRight(money(Number(item.qty) * Number(item.rate)), columns.total - 6)
     y = rowTop - lines.length * 13 - 6
@@ -333,9 +336,9 @@ export async function renderDocumentPdf(
     y -= 16
   }
 
-  // Observações e termos
+  // ObservaÃ§Ãµes e termos
   for (const [title, body] of [
-    ["Observações", view.clientNote],
+    ["ObservaÃ§Ãµes", view.clientNote],
     ["Termos", view.terms],
   ] as const) {
     if (!body) continue
@@ -350,9 +353,9 @@ export async function renderDocumentPdf(
     }
   }
 
-  // Rodapé em todas as páginas
+  // RodapÃ© em todas as pÃ¡ginas
   for (const current of doc.getPages()) {
-    current.drawText(safe(`${view.tenant.name} · gerado pelo Orbit CRM`), {
+    current.drawText(safe(`${view.tenant.name} Â· gerado pelo Orbit CRM`), {
       x: MARGIN,
       y: MARGIN - 20,
       size: 8,
