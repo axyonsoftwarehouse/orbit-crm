@@ -1,5 +1,8 @@
 # Especificações de porte do Perfex
 
+> **Não sabe por onde começar?** Leia [`00-como-usar.md`](00-como-usar.md): mapa dos documentos,
+> o que cada um responde e como pedir.
+>
 > Fase 2 do plano C: pegar as lacunas P0 do [`paridade-perfex-3.4.1.md`](../paridade-perfex-3.4.1.md)
 > e traduzir o comportamento do Perfex em decisões prontas para implementar no Orbit.
 > Cada documento tem a mesma estrutura: como o Perfex faz (com evidência no código), regras a portar
