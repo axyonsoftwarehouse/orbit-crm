@@ -46,6 +46,13 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDefault> = {
     subject: "Fatura {{number}} · {{tenant}}",
     body: '<p>Olá,</p><p><strong>{{tenant}}</strong> enviou a fatura <strong>{{number}}</strong> no valor de <strong>{{total}}</strong>, com vencimento em {{date}}.</p><p>{{message}}</p><p><a href="{{link}}">Ver a fatura</a></p><p>O PDF segue em anexo.</p>',
   },
+  contract_sent: {
+    label: "Contrato enviado para assinatura",
+    description:
+      'Enviado aos contatos escolhidos ao clicar em "Enviar para assinatura" no contrato. O PDF vai anexo.',
+    subject: "Contrato {{title}} · {{tenant}}",
+    body: '<p>Olá,</p><p><strong>{{tenant}}</strong> enviou o contrato <strong>{{title}}</strong> para assinatura.</p><p>{{message}}</p><p><a href="{{link}}">Ler e assinar o contrato</a></p><p>O PDF segue em anexo.</p>',
+  },
   social_approval_requested: {
     label: "Post aguardando aprovação (cliente)",
     description:

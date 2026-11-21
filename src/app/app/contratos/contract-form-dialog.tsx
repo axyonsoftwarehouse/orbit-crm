@@ -149,6 +149,23 @@ export function ContractFormDialog({
           </div>
 
           <div className="space-y-2">
+            <Label htmlFor="contract-content">Conteúdo do contrato</Label>
+            <Textarea
+              id="contract-content"
+              name="content"
+              rows={8}
+              defaultValue={contract?.content ?? ""}
+              placeholder={
+                "Use {{cliente.nome}}, {{contrato.valor}}, {{contrato.inicio}}, {{contrato.fim}}, {{empresa.nome}} e {{data.hoje}}."
+              }
+            />
+            <p className="text-muted-foreground text-xs">
+              Os placeholders são preenchidos e congelados no momento da
+              assinatura.
+            </p>
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="contract-description">Descrição</Label>
             <Textarea
               id="contract-description"

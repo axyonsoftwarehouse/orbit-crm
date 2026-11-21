@@ -20,7 +20,9 @@ export async function GET(
   const { token } = await params
   const admin = createAdminClient()
   const link = await resolveDocumentLink(admin, token)
-  if (!link) return new Response("Link inválido ou expirado.", { status: 404 })
+  if (!link || link.rel_type === "contract") {
+    return new Response("Link inválido ou expirado.", { status: 404 })
+  }
 
   const view = await loadDocument(
     admin,

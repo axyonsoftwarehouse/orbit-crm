@@ -26,11 +26,11 @@ const serverEnvSchema = z.object({
   NEXT_PUBLIC_SUPABASE_ANON_KEY: z
     .string()
     .min(1, "NEXT_PUBLIC_SUPABASE_ANON_KEY ausente"),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  SUPABASE_SERVICE_ROLE_KEY: optionalEnv,
   NEXT_PUBLIC_SITE_URL: z.string().min(1).default("http://localhost:3000"),
   NEXT_PUBLIC_APP_NAME: z.string().default("Orbit CRM"),
-  RESEND_API_KEY: z.string().min(1).optional(),
-  EMAIL_FROM: z.string().optional(),
+  RESEND_API_KEY: optionalEnv,
+  EMAIL_FROM: optionalEnv,
   SUPER_ADMIN_EMAILS: z.string().optional(),
   OPENROUTER_API_KEY: optionalEnv,
   OPENROUTER_MODEL: versionEnv("anthropic/claude-haiku-5.5"),

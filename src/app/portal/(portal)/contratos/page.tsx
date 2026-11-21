@@ -6,7 +6,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { ContractStatusBadge } from "@/components/app/contract-bits"
+import {
+  ContractSignatureBadge,
+  ContractStatusBadge,
+} from "@/components/app/contract-bits"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getPortalContact, listPortalContracts } from "@/server/queries/portal"
 
@@ -30,6 +33,7 @@ export default async function PortalContractsPage() {
               <TableHead>Início</TableHead>
               <TableHead>Término</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Assinatura</TableHead>
               <TableHead className="text-right">Valor</TableHead>
             </TableRow>
           </TableHeader>
@@ -37,7 +41,7 @@ export default async function PortalContractsPage() {
             {contracts.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={5}
+                  colSpan={6}
                   className="text-muted-foreground text-center text-sm"
                 >
                   Nenhum contrato ainda.
@@ -64,6 +68,12 @@ export default async function PortalContractsPage() {
                     <ContractStatusBadge
                       status={contract.status}
                       endDate={contract.end_date}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <ContractSignatureBadge
+                      signedAt={contract.signed_at}
+                      markedAsSignedAt={contract.marked_as_signed_at}
                     />
                   </TableCell>
                   <TableCell className="text-right">

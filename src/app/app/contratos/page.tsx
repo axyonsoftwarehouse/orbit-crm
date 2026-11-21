@@ -10,7 +10,10 @@ import {
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Pagination } from "@/components/app/pagination"
-import { ContractStatusBadge } from "@/components/app/contract-bits"
+import {
+  ContractStatusBadge,
+  ContractSignatureBadge,
+} from "@/components/app/contract-bits"
 import { formatDate, formatMoney } from "@/lib/format"
 import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
@@ -113,6 +116,7 @@ export default async function ContratosPage({
               <TableHead>Início</TableHead>
               <TableHead>Término</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Assinatura</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead className="w-0" />
             </TableRow>
@@ -120,7 +124,7 @@ export default async function ContratosPage({
           <TableBody>
             {contracts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   <div className="text-muted-foreground flex flex-col items-center gap-1 text-sm">
                     <FileSignature className="size-5" />
                     Nenhum contrato cadastrado ainda.
@@ -131,7 +135,12 @@ export default async function ContratosPage({
               contracts.map((contract) => (
                 <TableRow key={contract.id}>
                   <TableCell className="font-medium">
-                    {contract.title}
+                    <Link
+                      href={`/app/contratos/${contract.id}`}
+                      className="hover:underline"
+                    >
+                      {contract.title}
+                    </Link>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {contract.company?.name ?? "—"}
@@ -146,6 +155,12 @@ export default async function ContratosPage({
                     <ContractStatusBadge
                       status={contract.status}
                       endDate={contract.end_date}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <ContractSignatureBadge
+                      signedAt={contract.signed_at}
+                      markedAsSignedAt={contract.marked_as_signed_at}
                     />
                   </TableCell>
                   <TableCell className="text-right">

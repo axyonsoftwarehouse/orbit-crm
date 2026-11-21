@@ -56,6 +56,8 @@ export default async function PublicDocumentPage({
   const admin = createAdminClient()
   const link = await resolveDocumentLink(admin, token)
   if (!link) return <Invalid />
+  // Contrato tem página própria (/c/[token]); aqui só orçamento e fatura.
+  if (link.rel_type === "contract") return <Invalid />
 
   const view = await loadDocument(
     admin,

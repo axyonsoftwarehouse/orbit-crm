@@ -447,7 +447,7 @@ sequenceDiagram
 
 ## 2.15 Publicação nativa (conectar conta e worker)
 
-> Acrescentado em 15/11/2026 (`main@5086092`). Fichas em [21-publicacao-nativa](arquivos/21-publicacao-nativa.md). Guia de configuração: [`docs/social-native-setup.md`](../../social-native-setup.md).
+> Acrescentado em 15/11/2026 (`main@5086092`). Fichas em [21-publicacao-nativa](arquivos/21-publicacao-nativa.md). Guia de configuração: [`docs/social-native-setup.md`](../social-native-setup.md).
 
 **Gatilho:** owner/admin clica em **Conectar Instagram/LinkedIn** em `/app/social/contas`; depois, um post **agendado** de um tenant com `social_settings.publish_mode='provider'` vence e o `pg_cron` chama o worker a cada minuto.
 
@@ -483,7 +483,7 @@ sequenceDiagram
     W->>DB: agrega status do post
 ```
 
-**Onde mexer:** [21-publicacao-nativa](arquivos/21-publicacao-nativa.md) §21.9–§21.11, migrations `0053`/`0054`, `src/server/actions/social.ts` (`retrySocialPostAction` e o bloqueio de Instagram sem imagem). A configuração operacional (apps Meta/LinkedIn, `CRON_SECRET`, `configure_social_publish_cron`) está em [`docs/social-native-setup.md`](../../social-native-setup.md).
+**Onde mexer:** [21-publicacao-nativa](arquivos/21-publicacao-nativa.md) §21.9–§21.11, migrations `0053`/`0054`, `src/server/actions/social.ts` (`retrySocialPostAction` e o bloqueio de Instagram sem imagem). A configuração operacional (apps Meta/LinkedIn, `CRON_SECRET`, `configure_social_publish_cron`) está em [`docs/social-native-setup.md`](../social-native-setup.md).
 
 ---
 
