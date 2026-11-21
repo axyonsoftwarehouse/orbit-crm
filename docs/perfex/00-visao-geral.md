@@ -14,6 +14,12 @@
 | 5   | Assinatura eletrônica de contrato | [`assinatura-de-contrato.md`](assinatura-de-contrato.md) | especificação pronta |
 | 6   | Gateway de pagamento              | [`gateway-de-pagamento.md`](gateway-de-pagamento.md)     | especificação pronta |
 
+## Leitura dos addons
+
+Os addons do catálogo não entram nas seis especificações acima. A análise dos cinco que tocam lacunas
+do Orbit está em [`addons-relevantes.md`](addons-relevantes.md): o que cada um é de fato (e o que não
+é), o modelo de dados e o veredito de porte.
+
 ## Como ler
 
 1. **§2** é o retrato do Perfex — útil para conferir se a regra foi bem entendida.
