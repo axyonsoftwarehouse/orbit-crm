@@ -5,14 +5,14 @@
 > Cada documento tem a mesma estrutura: como o Perfex faz (com evidência no código), regras a portar
 > (com as correções), proposta de banco/actions/UI, decisões abertas e testes.
 
-| #   | Módulo                            | Documento                                      | Estado                                       |
-| --- | --------------------------------- | ---------------------------------------------- | -------------------------------------------- |
-| 1   | Notas de crédito                  | [`notas-de-credito.md`](notas-de-credito.md)   | especificação pronta                         |
-| 2   | Fatura recorrente                 | [`recorrencia.md`](recorrencia.md)             | especificação pronta                         |
-| 3   | Catálogo de itens                 | [`catalogo-de-itens.md`](catalogo-de-itens.md) | especificação pronta                         |
-| 4   | Propostas                         | [`propostas.md`](propostas.md)                 | especificação pronta                         |
-| 5   | Assinatura eletrônica de contrato | —                                              | pendente (depende das decisões de propostas) |
-| 6   | Gateway de pagamento              | —                                              | pendente (entra com "Cobrança automática")   |
+| #   | Módulo                            | Documento                                                | Estado               |
+| --- | --------------------------------- | -------------------------------------------------------- | -------------------- |
+| 1   | Notas de crédito                  | [`notas-de-credito.md`](notas-de-credito.md)             | especificação pronta |
+| 2   | Fatura recorrente                 | [`recorrencia.md`](recorrencia.md)                       | especificação pronta |
+| 3   | Catálogo de itens                 | [`catalogo-de-itens.md`](catalogo-de-itens.md)           | especificação pronta |
+| 4   | Propostas                         | [`propostas.md`](propostas.md)                           | especificação pronta |
+| 5   | Assinatura eletrônica de contrato | [`assinatura-de-contrato.md`](assinatura-de-contrato.md) | especificação pronta |
+| 6   | Gateway de pagamento              | [`gateway-de-pagamento.md`](gateway-de-pagamento.md)     | especificação pronta |
 
 ## Como ler
 
