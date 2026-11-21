@@ -22,7 +22,7 @@
 | Faturas e pagamentos parciais | completa | [`actions/invoices.ts`](arquivos/07-servidor-actions-negocio.md) §07.10, `/app/faturas` | pagamento online (gateway) |
 | Faturar horas apontadas | completa | `invoiceBillableTimeAction` | — |
 | Despesas | completa | [`actions/expenses.ts`](arquivos/07-servidor-actions-negocio.md) §07.11, `/app/despesas` | — |
-| Contratos | completa | [`actions/contracts.ts`](arquivos/07-servidor-actions-negocio.md) §07.13, `/app/contratos` | — |
+| Contratos | completa | [`actions/contracts.ts`](arquivos/07-servidor-actions-negocio.md) §07.13, `contract-signature.ts`, `/app/contratos`, `/c/[token]`, [spec](../perfex/assinatura-de-contrato.md) | assinatura com um signatário; co-assinatura e provedor com certificado ficam fora |
 | Calendário | completa | [`actions/calendar.ts`](arquivos/06-servidor-actions-core.md) §06.12, `/app/calendario` | — |
 | Metas | completa | [`actions/goals.ts`](arquivos/07-servidor-actions-negocio.md) §07.14, `/app/metas` | — |
 | Log de auditoria (atividades) | completa | `activity_log` + trigger, `/app/atividades` | — |
