@@ -6,6 +6,10 @@ import type { DocumentKind } from "@/server/queries/documents"
 const DAY_MS = 86_400_000
 const ESTIMATE_DEFAULT_DAYS = 30
 const INVOICE_DAYS = 90
+const CONTRACT_DAYS = 30
+
+/** Tipos de documento que aceitam link público. */
+export type LinkKind = DocumentKind | "contract"
 
 /** Token secreto do link (32 bytes, base64url) e o hash guardado no banco. */
 export function generateLinkToken(): { token: string; hash: string } {
@@ -47,7 +51,7 @@ function timeZoneOffsetMs(date: Date, timeZone: string): number {
  * app), ou 30 dias sem validade; fatura, 90 dias.
  */
 export function linkExpiry(
-  kind: DocumentKind,
+  kind: LinkKind,
   expiryDate: string | null,
   now: Date = new Date(),
 ): string {
@@ -59,7 +63,12 @@ export function linkExpiry(
     const offset = timeZoneOffsetMs(endUtcGuess, APP_TIME_ZONE)
     return new Date(endUtcGuess.getTime() - offset).toISOString()
   }
-  const days = kind === "estimate" ? ESTIMATE_DEFAULT_DAYS : INVOICE_DAYS
+  const days =
+    kind === "estimate"
+      ? ESTIMATE_DEFAULT_DAYS
+      : kind === "contract"
+        ? CONTRACT_DAYS
+        : INVOICE_DAYS
   return new Date(now.getTime() + days * DAY_MS).toISOString()
 }
 
@@ -68,7 +77,7 @@ export async function createDocumentLink(
   supabase: SupabaseClient,
   input: {
     tenantId: string
-    kind: DocumentKind
+    kind: LinkKind
     docId: string
     expiryDate: string | null
     userId: string | null
@@ -95,7 +104,7 @@ export async function createDocumentLink(
 export type ResolvedLink = {
   id: string
   tenant_id: string
-  rel_type: DocumentKind
+  rel_type: LinkKind
   rel_id: string
   expires_at: string
 }
