@@ -78,6 +78,7 @@ create table public.items (
   description text not null,
   long_description text,
   rate numeric(15,2) not null default 0,
+  purchase_price numeric(15,2),
   unit text,
   tax_name text,
   tax_rate numeric(15,2),
@@ -93,6 +94,8 @@ alter table public.document_items
 ```
 
 `item_id` é só rastreabilidade: continua valendo o que está na linha, mesmo se o item mudar.
+`purchase_price` entrou depois da leitura do addon `Inventory`, que separa preço de compra do preço
+de venda (`rate`) desde o início — é o campo que permite calcular margem sem inventar número.
 Imposto fica em texto (`tax_name`/`tax_rate`) para casar com `document_items`; quando o catálogo de
 impostos entrar (item "Multi-moeda e impostos configuráveis"), o item passa a apontar para o imposto.
 
