@@ -62,12 +62,19 @@ export async function replaceDocumentItems(
   relId: string,
   items: LineItemInput[],
 ): Promise<{ error: string | null }> {
-  const { data: oldRows } = await supabase
+  const { data: oldRows, error: oldError } = await supabase
     .from("document_items")
     .select("id")
     .eq("tenant_id", tenantId)
     .eq("rel_type", relType)
     .eq("rel_id", relId)
+  if (oldError) {
+    return dbError(
+      "document_items.read",
+      oldError,
+      "Não foi possível ler os itens do documento.",
+    )
+  }
   const oldIds = ((oldRows ?? []) as { id: string }[]).map((row) => row.id)
 
   const wanted = [
@@ -116,7 +123,17 @@ export async function replaceDocumentItems(
   }
 
   if (oldIds.length > 0) {
-    await supabase.from("document_items").delete().in("id", oldIds)
+    const { error } = await supabase
+      .from("document_items")
+      .delete()
+      .in("id", oldIds)
+    if (error) {
+      return dbError(
+        "document_items.cleanup",
+        error,
+        "Não foi possível limpar as linhas antigas do documento.",
+      )
+    }
   }
 
   return { error: null }

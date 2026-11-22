@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { z } from "zod"
 import { createClient } from "@/lib/supabase/server"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
@@ -267,42 +268,69 @@ export async function updateItemGroupAction(
   return { success: "Grupo atualizado." }
 }
 
-export async function deleteItemGroupAction(formData: FormData): Promise<void> {
+export async function deleteItemGroupAction(
+  _prevState: ItemGroupFormState,
+  formData: FormData,
+): Promise<ItemGroupFormState> {
   const active = await getActiveMembership()
-  if (!active) return
-  if (!isManager(active.role)) return
+  if (!active) return { error: "Nenhuma empresa ativa." }
+  if (!isManager(active.role)) {
+    return { error: "Só owner/admin podem excluir grupos." }
+  }
 
   const id = String(formData.get("id") ?? "")
-  if (!id) return
   const mode = String(formData.get("mode") ?? "block")
   const target = String(formData.get("target_group_id") ?? "")
+  if (!z.string().uuid().safeParse(id).success) {
+    return { error: "Grupo inválido." }
+  }
+  if (target && !z.string().uuid().safeParse(target).success) {
+    return { error: "Grupo de destino inválido." }
+  }
 
   const supabase = await createClient()
+  // Conta também os itens soft-deleted: a FK do banco os enxerga e barraria o
+  // delete do grupo. Sem este ajuste o grupo ficaria impossível de excluir.
   const { count } = await supabase
     .from("items")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", active.tenantId)
     .eq("group_id", id)
-    .is("deleted_at", null)
 
   if ((count ?? 0) > 0) {
-    if (mode !== "move") return
+    if (mode !== "move") {
+      return { error: "Mova os itens antes de excluir o grupo." }
+    }
 
-    await supabase
+    const { error } = await supabase
       .from("items")
       .update({ group_id: target || null })
       .eq("tenant_id", active.tenantId)
       .eq("group_id", id)
-      .is("deleted_at", null)
+    if (error) {
+      return dbError(
+        "item_groups.move",
+        error,
+        "Não foi possível mover os itens do grupo.",
+      )
+    }
   }
 
-  await supabase
+  const { error } = await supabase
     .from("item_groups")
     .delete()
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
+  if (error) {
+    return dbError(
+      "item_groups.delete",
+      error,
+      "Não foi possível excluir o grupo.",
+    )
+  }
 
   revalidateItems()
+  return { success: "Grupo excluído." }
 }
 
 export async function importItemsAction(

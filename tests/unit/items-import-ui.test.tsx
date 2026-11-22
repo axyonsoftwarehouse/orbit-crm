@@ -9,7 +9,7 @@ vi.mock("@/server/actions/items", () => ({
 import { ImportItemsDialog } from "@/app/app/itens/import-items-dialog"
 
 describe("ImportItemsDialog", () => {
-  it("mostra o resumo da prévia e habilita importar as linhas válidas", async () => {
+  it("bloqueia a importação quando há linha inválida", async () => {
     render(<ImportItemsDialog descriptions={["Instalação"]} groups={[]} />)
 
     await userEvent.click(screen.getByRole("button", { name: /importar csv/i }))
@@ -25,6 +25,7 @@ describe("ImportItemsDialog", () => {
     expect(screen.getByText(/1 inválida/i)).toBeInTheDocument()
     expect(
       screen.getByRole("button", { name: /^importar 1 item/i }),
-    ).toBeEnabled()
+    ).toBeDisabled()
+    expect(screen.getByText(/corrija as linhas inválidas/i)).toBeInTheDocument()
   })
 })

@@ -176,8 +176,12 @@ describe("ações de grupo", () => {
     })
     state.supabase = blockMock.client
 
-    await deleteItemGroupAction(form({ id: GROUP_ID, mode: "block" }))
+    const blocked = await deleteItemGroupAction(
+      undefined,
+      form({ id: GROUP_ID, mode: "block" }),
+    )
 
+    expect(blocked?.error).toMatch(/mova os itens/i)
     expect(
       blockMock.callsFor("items").some((calls) => hasCall(calls, "update")),
     ).toBe(false)
@@ -192,13 +196,18 @@ describe("ações de grupo", () => {
     })
     state.supabase = moveMock.client
 
-    await deleteItemGroupAction(
+    const moved = await deleteItemGroupAction(
+      undefined,
       form({ id: GROUP_ID, mode: "move", target_group_id: "" }),
     )
 
+    expect(moved).toEqual({ success: "Grupo excluído." })
     expect(
-      hasCall(moveMock.callsFor("items")[1]!, "update", { group_id: null }),
-    ).toBe(true)
+      hasCall(moveMock.callsFor("items")[0]!, "is", "deleted_at", null),
+    ).toBe(false)
+    const moveCalls = moveMock.callsFor("items")[1]!
+    expect(hasCall(moveCalls, "update", { group_id: null })).toBe(true)
+    expect(hasCall(moveCalls, "is", "deleted_at", null)).toBe(false)
     expect(
       moveMock
         .callsFor("item_groups")

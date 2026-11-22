@@ -63,4 +63,46 @@ describe("replaceDocumentItems", () => {
       mock.callsFor("document_items").some((calls) => hasCall(calls, "delete")),
     ).toBe(false)
   })
+
+  it("se a leitura das linhas antigas falhar, não grava nada", async () => {
+    const mock = createSupabaseMock({
+      document_items: { data: null, error: { message: "boom" } },
+    })
+
+    const result = await replaceDocumentItems(
+      mock.client as never,
+      TENANT,
+      "estimate",
+      DOC,
+      [{ description: "A", qty: 1, rate: 1 }],
+    )
+
+    expect(result.error).toMatch(/Não foi possível/)
+    expect(
+      mock
+        .callsFor("document_items")
+        .some((calls) => calls.some((call) => call.method === "insert")),
+    ).toBe(false)
+  })
+
+  it("devolve erro quando a limpeza das linhas antigas falha", async () => {
+    const mock = createSupabaseMock({
+      document_items: (calls) =>
+        calls.some((call) => call.method === "insert")
+          ? { data: null, error: null }
+          : calls.some((call) => call.method === "delete")
+            ? { data: null, error: { message: "boom" } }
+            : { data: [{ id: OLD_ID }], error: null },
+    })
+
+    const result = await replaceDocumentItems(
+      mock.client as never,
+      TENANT,
+      "estimate",
+      DOC,
+      [{ description: "A", qty: 1, rate: 1 }],
+    )
+
+    expect(result.error).toMatch(/linhas antigas/i)
+  })
 })

@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useActionState, useEffect, useState } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -11,7 +12,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { deleteItemGroupAction } from "@/server/actions/items"
+import {
+  deleteItemGroupAction,
+  type ItemGroupFormState,
+} from "@/server/actions/items"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -25,6 +29,19 @@ export function DeleteGroupDialog({
 }) {
   const [open, setOpen] = useState(false)
   const others = groups.filter((item) => item.id !== group.id)
+  const [state, formAction, isPending] = useActionState<
+    ItemGroupFormState,
+    FormData
+  >(deleteItemGroupAction, undefined)
+
+  useEffect(() => {
+    if (state?.success) {
+      setOpen(false)
+      toast.success(state.success)
+    } else if (state?.error) {
+      toast.error(state.error)
+    }
+  }, [state])
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -43,11 +60,7 @@ export function DeleteGroupDialog({
         <DialogHeader>
           <DialogTitle>Excluir grupo</DialogTitle>
         </DialogHeader>
-        <form
-          action={deleteItemGroupAction}
-          className="space-y-4"
-          onSubmit={() => setOpen(false)}
-        >
+        <form action={formAction} className="space-y-4">
           <input type="hidden" name="id" value={group.id} />
           {group.count > 0 ? (
             <>
@@ -84,8 +97,13 @@ export function DeleteGroupDialog({
               type="submit"
               variant="outline"
               className="text-destructive"
+              disabled={isPending}
             >
-              {group.count > 0 ? "Mover e excluir" : "Excluir grupo"}
+              {isPending
+                ? "Excluindo..."
+                : group.count > 0
+                  ? "Mover e excluir"
+                  : "Excluir grupo"}
             </Button>
           </DialogFooter>
         </form>

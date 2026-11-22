@@ -27,10 +27,17 @@ create table public.items (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   deleted_at timestamptz,
-  -- impede grupo de outro tenant; null não é checado (MATCH SIMPLE)
+  -- impede grupo de outro tenant; null não é checado (MATCH SIMPLE).
+  -- Deferida para que o cascade de `tenants` possa apagar itens e grupos na
+  -- mesma transação sem esbarrar no restrict (ordem de cascata não é topológica).
   foreign key (group_id, tenant_id)
-    references public.item_groups (id, tenant_id) on delete restrict
+    references public.item_groups (id, tenant_id)
+    on delete no action deferrable initially deferred
 );
+
+grant select, insert, update, delete on public.item_groups to authenticated;
+grant select, insert, update, delete on public.items to authenticated;
+grant all on public.item_groups, public.items to service_role, postgres;
 
 create index items_tenant_description_idx
   on public.items (tenant_id, description) where deleted_at is null;
@@ -90,6 +97,7 @@ create policy "document_items_update" on public.document_items
   for update to authenticated using (public.is_tenant_member(tenant_id))
   with check (
     public.is_tenant_member(tenant_id)
+    and public.entity_belongs_to_tenant(rel_type, rel_id, tenant_id)
     and (
       item_id is null
       or exists (

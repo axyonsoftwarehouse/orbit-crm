@@ -935,6 +935,54 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     expect(error).toBeNull()
   })
 
+  it("A não aponta item de documento para orçamento de outro tenant", async () => {
+    const inserted = await clientA
+      .from("document_items")
+      .insert({
+        tenant_id: tenantA,
+        rel_type: "estimate",
+        rel_id: estimateAId,
+        description: "Update alvo",
+        qty: 1,
+        rate: 1,
+      })
+      .select("id")
+      .single()
+    expect(inserted.error).toBeNull()
+
+    const { error } = await clientA
+      .from("document_items")
+      .update({ rel_id: estimateBId })
+      .eq("id", inserted.data!.id)
+    expect(error).not.toBeNull()
+  })
+
+  it("apagar tenant com grupos e itens funciona em cascata", async () => {
+    const purgeSuffix = randomUUID().slice(0, 8)
+    const tenant = await admin
+      .from("tenants")
+      .insert({ name: `Purge ${purgeSuffix}`, slug: `purge-${purgeSuffix}` })
+      .select("id")
+      .single()
+    const group = await admin
+      .from("item_groups")
+      .insert({ tenant_id: tenant.data!.id, name: "Grupo" })
+      .select("id")
+      .single()
+    await admin.from("items").insert({
+      tenant_id: tenant.data!.id,
+      group_id: group.data!.id,
+      description: "Item",
+      rate: 1,
+    })
+
+    const { error } = await admin
+      .from("tenants")
+      .delete()
+      .eq("id", tenant.data!.id)
+    expect(error).toBeNull()
+  })
+
   it("A registra pagamento na própria fatura", async () => {
     const inserted = await clientA.from("payments").insert({
       tenant_id: tenantA,

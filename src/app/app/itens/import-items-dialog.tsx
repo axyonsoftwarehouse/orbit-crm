@@ -147,6 +147,13 @@ export function ImportItemsDialog({
                 <span>{newGroups.length} grupo(s) novo(s)</span>
               </div>
 
+              {invalid.length > 0 ? (
+                <p className="text-destructive text-sm" role="alert">
+                  Corrija as linhas inválidas no arquivo e envie de novo. Nada é
+                  importado enquanto houver erro.
+                </p>
+              ) : null}
+
               <div className="max-h-64 overflow-auto rounded-lg border">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-muted/50 text-muted-foreground text-xs">
@@ -187,7 +194,10 @@ export function ImportItemsDialog({
           ) : null}
 
           <DialogFooter>
-            <Button type="submit" disabled={isPending || valid.length === 0}>
+            <Button
+              type="submit"
+              disabled={isPending || valid.length === 0 || invalid.length > 0}
+            >
               {isPending
                 ? "Importando..."
                 : `Importar ${valid.length} item(ns)`}
