@@ -24,9 +24,7 @@ describe("ItemPicker", () => {
   it("filtra sem acento/caixa e ignora inativo", async () => {
     render(<ItemPicker items={pickerItems} onSelect={vi.fn()} />)
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /do catálogo/i }),
-    )
+    await userEvent.click(screen.getByRole("button", { name: /do catálogo/i }))
     await userEvent.type(
       screen.getByPlaceholderText(/buscar item/i),
       "instalacao",
@@ -41,24 +39,18 @@ describe("ItemPicker", () => {
     const onSelect = vi.fn()
     render(
       <ItemPicker
-        items={[
-          { ...base, id: "1", description: "Consultoria", active: true },
-        ]}
+        items={[{ ...base, id: "1", description: "Consultoria", active: true }]}
         onSelect={onSelect}
       />,
     )
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /do catálogo/i }),
-    )
+    await userEvent.click(screen.getByRole("button", { name: /do catálogo/i }))
     await userEvent.type(
       screen.getByPlaceholderText(/buscar item/i),
       "consul{Enter}",
     )
 
-    expect(onSelect).toHaveBeenCalledWith(
-      expect.objectContaining({ id: "1" }),
-    )
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: "1" }))
   })
 })
 
@@ -84,9 +76,7 @@ describe("DocumentItemsEditor", () => {
       />,
     )
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /do catálogo/i }),
-    )
+    await userEvent.click(screen.getByRole("button", { name: /do catálogo/i }))
     await userEvent.click(screen.getByText("Instalação"))
 
     expect(onChange).toHaveBeenCalledWith([

@@ -116,7 +116,9 @@ export function parseItemsCsv(
     return index === undefined ? "" : (row[index] ?? "")
   }
 
-  const existingDescriptions = new Set(existing.descriptions.map(normalizeItemKey))
+  const existingDescriptions = new Set(
+    existing.descriptions.map(normalizeItemKey),
+  )
   const existingGroups = new Set(existing.groups.map(normalizeItemKey))
   const seen = new Set<string>()
   const newGroups = new Set<string>()
@@ -194,7 +196,15 @@ export function parseItemsCsv(
 
 export function itemImportTemplate(): string {
   return toCsv(ITEM_IMPORT_HEADERS, [
-    ["Instalação elétrica", "Serviços", "Ponto novo com cabeamento", "150,00", "h", "ISS", "5"],
+    [
+      "Instalação elétrica",
+      "Serviços",
+      "Ponto novo com cabeamento",
+      "150,00",
+      "h",
+      "ISS",
+      "5",
+    ],
     ["Consultoria", "Serviços", "", "200,00", "h", "", ""],
   ])
 }

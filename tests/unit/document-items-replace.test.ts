@@ -10,8 +10,7 @@ import { replaceDocumentItems } from "@/server/documents"
 
 function firstInsert(calls: { method: string; args: unknown[] }[][]) {
   return calls.flat().find((call) => call.method === "insert")?.args[0] as
-    | Record<string, unknown>[]
-    | undefined
+    Record<string, unknown>[] | undefined
 }
 
 describe("replaceDocumentItems", () => {

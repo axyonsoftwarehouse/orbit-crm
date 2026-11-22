@@ -43,8 +43,7 @@ function form(values: Record<string, string>) {
 
 function firstInsert(calls: { method: string; args: unknown[] }[][]) {
   return calls.flat().find((call) => call.method === "insert")?.args[0] as
-    | Record<string, unknown>
-    | undefined
+    Record<string, unknown> | undefined
 }
 
 const detalhe = {
@@ -201,7 +200,9 @@ describe("ações de grupo", () => {
       hasCall(moveMock.callsFor("items")[1]!, "update", { group_id: null }),
     ).toBe(true)
     expect(
-      moveMock.callsFor("item_groups").some((calls) => hasCall(calls, "delete")),
+      moveMock
+        .callsFor("item_groups")
+        .some((calls) => hasCall(calls, "delete")),
     ).toBe(true)
   })
 

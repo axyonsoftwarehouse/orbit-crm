@@ -12,9 +12,7 @@ describe("ImportItemsDialog", () => {
   it("mostra o resumo da prévia e habilita importar as linhas válidas", async () => {
     render(<ImportItemsDialog descriptions={["Instalação"]} groups={[]} />)
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /importar csv/i }),
-    )
+    await userEvent.click(screen.getByRole("button", { name: /importar csv/i }))
     const file = new File(
       ["Descrição;Valor\nInstalação;10\nConsultoria;20\nManutenção;"],
       "itens.csv",

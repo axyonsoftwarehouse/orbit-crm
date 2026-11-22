@@ -100,8 +100,7 @@ export async function replaceDocumentItems(
     unit: item.unit ?? null,
     tax_name: item.tax_name ?? null,
     tax_rate: item.tax_rate ?? null,
-    item_id:
-      item.item_id && validItems.has(item.item_id) ? item.item_id : null,
+    item_id: item.item_id && validItems.has(item.item_id) ? item.item_id : null,
     position: index,
   }))
 

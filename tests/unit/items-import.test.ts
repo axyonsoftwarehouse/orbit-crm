@@ -51,7 +51,8 @@ describe("parseItemsCsv", () => {
   })
 
   it("lista grupos novos sem repetir e ignora os existentes", () => {
-    const csv = "Descrição;Valor;Grupo\nA;10;Serviços\nB;10;Serviços\nC;10;Licenças"
+    const csv =
+      "Descrição;Valor;Grupo\nA;10;Serviços\nB;10;Serviços\nC;10;Licenças"
     const result = parseItemsCsv(csv, {
       descriptions: [],
       groups: ["serviços"],
@@ -63,9 +64,9 @@ describe("parseItemsCsv", () => {
     const csv =
       "Descrição\n" +
       Array.from({ length: 1001 }, (_, i) => `Item ${i}`).join("\n")
-    expect(
-      parseItemsCsv(csv, { descriptions: [], groups: [] }).error,
-    ).toMatch(/1000/)
+    expect(parseItemsCsv(csv, { descriptions: [], groups: [] }).error).toMatch(
+      /1000/,
+    )
   })
 
   it("modelo sai com cabeçalho e duas linhas de exemplo", () => {
