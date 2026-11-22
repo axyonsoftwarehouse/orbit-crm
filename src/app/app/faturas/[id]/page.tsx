@@ -31,6 +31,7 @@ import {
   listPayments,
   sumPayments,
 } from "@/server/queries/documents"
+import { listItemOptions } from "@/server/queries/items"
 import { updateInvoiceStatusAction } from "@/server/actions/invoices"
 import { InvoiceFormDialog } from "../invoice-form-dialog"
 import { DeleteInvoiceButton } from "../delete-invoice-button"
@@ -63,6 +64,7 @@ export default async function InvoiceDetailPage({
     companies,
     projects,
     settings,
+    catalog,
   ] = await Promise.all([
     listDocumentItems(active.tenantId, "invoice", invoice.id),
     listPayments(active.tenantId, invoice.id),
@@ -76,6 +78,7 @@ export default async function InvoiceDetailPage({
     listCompanies(active.tenantId),
     listProjects(active.tenantId),
     getTenantFinanceSettings(supabase, active.tenantId),
+    listItemOptions(active.tenantId),
   ])
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }))
@@ -137,6 +140,7 @@ export default async function InvoiceDetailPage({
             projects={projectOptions}
             defaultCurrency={settings.currency}
             label="Editar"
+            catalog={catalog}
           />
           <DeleteInvoiceButton id={invoice.id} />
         </div>

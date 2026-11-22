@@ -64,13 +64,19 @@ export async function createEstimateAction(
     return dbError("estimates.create", error, "Falha ao criar o orçamento.")
   }
 
-  await replaceDocumentItems(
+  const itemsResult = await replaceDocumentItems(
     supabase,
     active.tenantId,
     "estimate",
     estimate.id,
     parsed.data.items as LineItemInput[],
   )
+  if (itemsResult.error) {
+    return {
+      error:
+        "Orçamento criado, mas os itens não foram salvos. Edite o orçamento e tente de novo.",
+    }
+  }
 
   revalidatePath("/app/orcamentos")
   return { success: "Orçamento criado." }
@@ -101,13 +107,14 @@ export async function updateEstimateAction(
 
   if (error) return dbError("estimates", error)
 
-  await replaceDocumentItems(
+  const itemsResult = await replaceDocumentItems(
     supabase,
     active.tenantId,
     "estimate",
     id,
     parsed.data.items as LineItemInput[],
   )
+  if (itemsResult.error) return { error: itemsResult.error }
 
   revalidatePath("/app/orcamentos")
   revalidatePath(`/app/orcamentos/${id}`)
@@ -200,7 +207,7 @@ export async function convertEstimateToInvoiceAction(formData: FormData) {
 
   if (error || !invoice) return
 
-  await replaceDocumentItems(
+  const itemsResult = await replaceDocumentItems(
     supabase,
     active.tenantId,
     "invoice",
@@ -212,8 +219,17 @@ export async function convertEstimateToInvoiceAction(formData: FormData) {
       unit: item.unit,
       tax_name: item.tax_name,
       tax_rate: item.tax_rate !== null ? Number(item.tax_rate) : null,
+      item_id: item.item_id,
     })),
   )
+  if (itemsResult.error) {
+    await supabase
+      .from("invoices")
+      .delete()
+      .eq("id", invoice.id)
+      .eq("tenant_id", active.tenantId)
+    return
+  }
 
   await supabase
     .from("estimates")

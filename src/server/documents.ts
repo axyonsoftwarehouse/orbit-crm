@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { computeTotals, type LineItemInput } from "@/lib/documents/totals"
+import { dbError } from "@/lib/db-error"
 import { documentSchema, type DocumentInput } from "@/lib/validations/documents"
 
 export function parseDocumentForm(formData: FormData) {
@@ -60,13 +61,41 @@ export async function replaceDocumentItems(
   relType: "estimate" | "invoice",
   relId: string,
   items: LineItemInput[],
-) {
-  await supabase
+): Promise<{ error: string | null }> {
+  const { data: oldRows, error: oldError } = await supabase
     .from("document_items")
-    .delete()
+    .select("id")
     .eq("tenant_id", tenantId)
     .eq("rel_type", relType)
     .eq("rel_id", relId)
+  if (oldError) {
+    return dbError(
+      "document_items.read",
+      oldError,
+      "Não foi possível ler os itens do documento.",
+    )
+  }
+  const oldIds = ((oldRows ?? []) as { id: string }[]).map((row) => row.id)
+
+  const wanted = [
+    ...new Set(
+      items
+        .map((item) => item.item_id)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ]
+  const validItems = new Set<string>()
+  if (wanted.length > 0) {
+    const { data } = await supabase
+      .from("items")
+      .select("id")
+      .eq("tenant_id", tenantId)
+      .in("id", wanted)
+      .is("deleted_at", null)
+    for (const row of (data ?? []) as { id: string }[]) {
+      validItems.add(row.id)
+    }
+  }
 
   const rows = items.map((item, index) => ({
     tenant_id: tenantId,
@@ -78,12 +107,36 @@ export async function replaceDocumentItems(
     unit: item.unit ?? null,
     tax_name: item.tax_name ?? null,
     tax_rate: item.tax_rate ?? null,
+    item_id: item.item_id && validItems.has(item.item_id) ? item.item_id : null,
     position: index,
   }))
 
   if (rows.length > 0) {
-    await supabase.from("document_items").insert(rows)
+    const { error } = await supabase.from("document_items").insert(rows)
+    if (error) {
+      return dbError(
+        "document_items.replace",
+        error,
+        "Não foi possível salvar os itens do documento.",
+      )
+    }
   }
+
+  if (oldIds.length > 0) {
+    const { error } = await supabase
+      .from("document_items")
+      .delete()
+      .in("id", oldIds)
+    if (error) {
+      return dbError(
+        "document_items.cleanup",
+        error,
+        "Não foi possível limpar as linhas antigas do documento.",
+      )
+    }
+  }
+
+  return { error: null }
 }
 
 export async function getTenantFinanceSettings(

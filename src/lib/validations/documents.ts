@@ -13,6 +13,10 @@ export const lineItemSchema = z.object({
   unit: optionalText,
   tax_name: optionalText,
   tax_rate: optionalNumber(),
+  item_id: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.string().uuid().optional(),
+  ),
 })
 
 export const documentSchema = z.object({

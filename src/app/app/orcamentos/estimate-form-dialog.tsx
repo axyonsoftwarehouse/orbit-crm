@@ -24,6 +24,7 @@ import {
   type EstimateFormState,
 } from "@/server/actions/estimates"
 import type { DocumentItem, Estimate } from "@/server/queries/documents"
+import type { ItemOption } from "@/server/queries/items"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -37,6 +38,7 @@ function toInputs(items: DocumentItem[]): LineItemInput[] {
     unit: item.unit,
     tax_name: item.tax_name,
     tax_rate: item.tax_rate !== null ? Number(item.tax_rate) : null,
+    item_id: item.item_id,
   }))
 }
 
@@ -47,6 +49,7 @@ export function EstimateFormDialog({
   projects,
   defaultCurrency = "BRL",
   label,
+  catalog,
 }: {
   estimate?: Estimate
   items?: DocumentItem[]
@@ -54,6 +57,7 @@ export function EstimateFormDialog({
   projects: { id: string; name: string }[]
   defaultCurrency?: string
   label: string
+  catalog: ItemOption[]
 }) {
   const [open, setOpen] = useState(false)
   const [lineItems, setLineItems] = useState<LineItemInput[]>(() =>
@@ -200,7 +204,11 @@ export function EstimateFormDialog({
             </div>
           </div>
 
-          <DocumentItemsEditor items={lineItems} onChange={setLineItems} />
+          <DocumentItemsEditor
+            items={lineItems}
+            onChange={setLineItems}
+            catalog={catalog}
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

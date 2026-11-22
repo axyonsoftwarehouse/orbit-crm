@@ -773,6 +773,7 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          item_id: string | null
           position: number
           qty: number
           rate: number
@@ -787,6 +788,7 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          item_id?: string | null
           position?: number
           qty?: number
           rate?: number
@@ -801,6 +803,7 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          item_id?: string | null
           position?: number
           qty?: number
           rate?: number
@@ -812,6 +815,13 @@ export type Database = {
           unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "document_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "items"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "document_items_tenant_id_fkey"
             columns: ["tenant_id"]
@@ -1415,6 +1425,114 @@ export type Database = {
           },
           {
             foreignKeyName: "invoices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      item_groups: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "item_groups_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      items: {
+        Row: {
+          active: boolean
+          created_at: string
+          created_by: string | null
+          deleted_at: string | null
+          description: string
+          group_id: string | null
+          id: string
+          long_description: string | null
+          purchase_price: number | null
+          rate: number
+          tax_name: string | null
+          tax_rate: number | null
+          tenant_id: string
+          unit: string | null
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description: string
+          group_id?: string | null
+          id?: string
+          long_description?: string | null
+          purchase_price?: number | null
+          rate?: number
+          tax_name?: string | null
+          tax_rate?: number | null
+          tenant_id: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          created_by?: string | null
+          deleted_at?: string | null
+          description?: string
+          group_id?: string | null
+          id?: string
+          long_description?: string | null
+          purchase_price?: number | null
+          rate?: number
+          tax_name?: string | null
+          tax_rate?: number | null
+          tenant_id?: string
+          unit?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "items_group_id_tenant_id_fkey"
+            columns: ["group_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "item_groups"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "items_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"

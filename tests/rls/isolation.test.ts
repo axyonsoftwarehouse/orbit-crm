@@ -50,6 +50,10 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
   let estimateBId = ""
   let invoiceAId = ""
   let invoiceBId = ""
+  let itemGroupAId = ""
+  let itemGroupBId = ""
+  let itemAId = ""
+  let itemBId = ""
   const storagePaths: string[] = []
   const brandingPaths: string[] = []
   const socialMediaPaths: string[] = []
@@ -275,6 +279,44 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     if (iA.error || iB.error) throw iA.error ?? iB.error
     invoiceAId = iA.data!.id
     invoiceBId = iB.data!.id
+
+    const groupA = await admin
+      .from("item_groups")
+      .insert({ tenant_id: tenantA, name: `Grupo A ${suffix}` })
+      .select("id")
+      .single()
+    const groupB = await admin
+      .from("item_groups")
+      .insert({ tenant_id: tenantB, name: `Grupo B ${suffix}` })
+      .select("id")
+      .single()
+    if (groupA.error || groupB.error) throw groupA.error ?? groupB.error
+    itemGroupAId = groupA.data!.id
+    itemGroupBId = groupB.data!.id
+
+    const itemA = await admin
+      .from("items")
+      .insert({
+        tenant_id: tenantA,
+        group_id: itemGroupAId,
+        description: `Item A ${suffix}`,
+        rate: 10,
+      })
+      .select("id")
+      .single()
+    const itemB = await admin
+      .from("items")
+      .insert({
+        tenant_id: tenantB,
+        group_id: itemGroupBId,
+        description: `Item B ${suffix}`,
+        rate: 10,
+      })
+      .select("id")
+      .single()
+    if (itemA.error || itemB.error) throw itemA.error ?? itemB.error
+    itemAId = itemA.data!.id
+    itemBId = itemB.data!.id
 
     clientA = createClient(url!, anonKey!)
     clientB = createClient(url!, anonKey!)
@@ -837,6 +879,108 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
       rate: 100,
     })
     expect(error).not.toBeNull()
+  })
+
+  it("A não lê item nem grupo do tenant B", async () => {
+    const item = await clientA.from("items").select("id").eq("id", itemBId)
+    const group = await clientA
+      .from("item_groups")
+      .select("id")
+      .eq("id", itemGroupBId)
+    expect(item.data).toEqual([])
+    expect(group.data).toEqual([])
+  })
+
+  it("A não cria item apontando para grupo de outro tenant", async () => {
+    const { error } = await clientA.from("items").insert({
+      tenant_id: tenantA,
+      group_id: itemGroupBId,
+      description: "Cross group",
+      rate: 1,
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A não apaga grupo com itens", async () => {
+    const { error } = await clientA
+      .from("item_groups")
+      .delete()
+      .eq("id", itemGroupAId)
+    expect(error).not.toBeNull()
+  })
+
+  it("A não usa item de outro tenant em document_items", async () => {
+    const { error } = await clientA.from("document_items").insert({
+      tenant_id: tenantA,
+      rel_type: "estimate",
+      rel_id: estimateAId,
+      description: "Cross item",
+      qty: 1,
+      rate: 1,
+      item_id: itemBId,
+    })
+    expect(error).not.toBeNull()
+  })
+
+  it("A usa o próprio item em document_items", async () => {
+    const { error } = await clientA.from("document_items").insert({
+      tenant_id: tenantA,
+      rel_type: "estimate",
+      rel_id: estimateAId,
+      description: "Item próprio",
+      qty: 1,
+      rate: 1,
+      item_id: itemAId,
+    })
+    expect(error).toBeNull()
+  })
+
+  it("A não aponta item de documento para orçamento de outro tenant", async () => {
+    const inserted = await clientA
+      .from("document_items")
+      .insert({
+        tenant_id: tenantA,
+        rel_type: "estimate",
+        rel_id: estimateAId,
+        description: "Update alvo",
+        qty: 1,
+        rate: 1,
+      })
+      .select("id")
+      .single()
+    expect(inserted.error).toBeNull()
+
+    const { error } = await clientA
+      .from("document_items")
+      .update({ rel_id: estimateBId })
+      .eq("id", inserted.data!.id)
+    expect(error).not.toBeNull()
+  })
+
+  it("apagar tenant com grupos e itens funciona em cascata", async () => {
+    const purgeSuffix = randomUUID().slice(0, 8)
+    const tenant = await admin
+      .from("tenants")
+      .insert({ name: `Purge ${purgeSuffix}`, slug: `purge-${purgeSuffix}` })
+      .select("id")
+      .single()
+    const group = await admin
+      .from("item_groups")
+      .insert({ tenant_id: tenant.data!.id, name: "Grupo" })
+      .select("id")
+      .single()
+    await admin.from("items").insert({
+      tenant_id: tenant.data!.id,
+      group_id: group.data!.id,
+      description: "Item",
+      rate: 1,
+    })
+
+    const { error } = await admin
+      .from("tenants")
+      .delete()
+      .eq("id", tenant.data!.id)
+    expect(error).toBeNull()
   })
 
   it("A registra pagamento na própria fatura", async () => {

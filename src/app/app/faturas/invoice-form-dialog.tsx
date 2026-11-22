@@ -24,6 +24,7 @@ import {
   type InvoiceFormState,
 } from "@/server/actions/invoices"
 import type { DocumentItem, Invoice } from "@/server/queries/documents"
+import type { ItemOption } from "@/server/queries/items"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -37,6 +38,7 @@ function toInputs(items: DocumentItem[]): LineItemInput[] {
     unit: item.unit,
     tax_name: item.tax_name,
     tax_rate: item.tax_rate !== null ? Number(item.tax_rate) : null,
+    item_id: item.item_id,
   }))
 }
 
@@ -47,6 +49,7 @@ export function InvoiceFormDialog({
   projects,
   defaultCurrency = "BRL",
   label,
+  catalog,
 }: {
   invoice?: Invoice
   items?: DocumentItem[]
@@ -54,6 +57,7 @@ export function InvoiceFormDialog({
   projects: { id: string; name: string }[]
   defaultCurrency?: string
   label: string
+  catalog: ItemOption[]
 }) {
   const [open, setOpen] = useState(false)
   const [lineItems, setLineItems] = useState<LineItemInput[]>(() =>
@@ -198,7 +202,11 @@ export function InvoiceFormDialog({
             </div>
           </div>
 
-          <DocumentItemsEditor items={lineItems} onChange={setLineItems} />
+          <DocumentItemsEditor
+            items={lineItems}
+            onChange={setLineItems}
+            catalog={catalog}
+          />
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">

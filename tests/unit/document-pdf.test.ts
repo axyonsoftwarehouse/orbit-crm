@@ -29,6 +29,7 @@ const view: DocumentView = {
       qty: 1,
       rate: 3000,
       unit: null,
+      item_id: null,
       tax_name: null,
       tax_rate: null,
       position: 0,

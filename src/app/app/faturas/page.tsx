@@ -20,6 +20,7 @@ import { getTenantFinanceSettings } from "@/server/documents"
 import { listCompanies } from "@/server/queries/companies"
 import { listProjects } from "@/server/queries/projects"
 import { listInvoicesPage } from "@/server/queries/documents"
+import { listItemOptions } from "@/server/queries/items"
 import { InvoiceFormDialog } from "./invoice-form-dialog"
 
 export default async function FaturasPage({
@@ -34,12 +35,13 @@ export default async function FaturasPage({
   if (!active) return null
 
   const supabase = await createClient()
-  const [{ rows: invoices, total }, companies, projects, settings] =
+  const [{ rows: invoices, total }, companies, projects, settings, catalog] =
     await Promise.all([
       listInvoicesPage(active.tenantId, { page, pageSize: PAGE_SIZE }),
       listCompanies(active.tenantId),
       listProjects(active.tenantId),
       getTenantFinanceSettings(supabase, active.tenantId),
+      listItemOptions(active.tenantId),
     ])
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }))
@@ -61,6 +63,7 @@ export default async function FaturasPage({
             projects={projectOptions}
             defaultCurrency={settings.currency}
             label="Nova fatura"
+            catalog={catalog}
           />
         </div>
       </div>
