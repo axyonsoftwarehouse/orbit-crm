@@ -25,7 +25,7 @@ export type ItemOption = {
   group: { id: string; name: string } | null
 }
 
-export type ItemListRow = ItemOption
+export type ItemListRow = Item & { group: { id: string; name: string } | null }
 
 export type ItemGroupOption = { id: string; name: string; count: number }
 
@@ -104,7 +104,9 @@ export async function listItemGroups(
   }))
 }
 
-export async function listItemDescriptions(tenantId: string): Promise<string[]> {
+export async function listItemDescriptions(
+  tenantId: string,
+): Promise<string[]> {
   const supabase = await createClient()
   const { data } = await supabase
     .from("items")

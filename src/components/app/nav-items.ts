@@ -11,6 +11,7 @@ import {
   LifeBuoy,
   ListChecks,
   MessageSquare,
+  Package,
   Receipt,
   Search,
   Settings,
@@ -35,6 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   { title: "Calendário", href: "/app/calendario", icon: CalendarDays },
   { title: "Orçamentos", href: "/app/orcamentos", icon: FileText },
   { title: "Faturas", href: "/app/faturas", icon: Receipt },
+  { title: "Itens", href: "/app/itens", icon: Package },
   { title: "Despesas", href: "/app/despesas", icon: Wallet },
   { title: "Contratos", href: "/app/contratos", icon: FileSignature },
   { title: "Relatórios", href: "/app/relatorios", icon: BarChart3 },
@@ -61,5 +63,6 @@ export const NEW_ITEMS = [
     command: "Novo orçamento",
   },
   { href: "/app/faturas", label: "Fatura", command: "Nova fatura" },
+  { href: "/app/itens", label: "Item", command: "Novo item" },
   { href: "/app/tickets", label: "Ticket", command: "Novo ticket" },
 ]
