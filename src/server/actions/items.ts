@@ -6,9 +6,12 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { dbError } from "@/lib/db-error"
 import { isManager } from "@/server/permissions"
-import { itemSchema } from "@/lib/validations/items"
+import { itemGroupSchema, itemSchema } from "@/lib/validations/items"
 
 export type ItemFormState = { error?: string; success?: string } | undefined
+export type ItemGroupFormState =
+  | { error?: string; success?: string }
+  | undefined
 
 const PATHS = ["/app/itens", "/app/itens/grupos"]
 
@@ -179,6 +182,108 @@ export async function toggleItemActiveAction(formData: FormData): Promise<void> 
   await supabase
     .from("items")
     .update({ active: !data.active })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+
+  revalidateItems()
+}
+
+function isDuplicateName(error: { message?: string; code?: string }) {
+  return error.code === "23505" || /duplicate key/i.test(error.message ?? "")
+}
+
+export async function createItemGroupAction(
+  _prevState: ItemGroupFormState,
+  formData: FormData,
+): Promise<ItemGroupFormState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const parsed = itemGroupSchema.safeParse({ name: formData.get("name") })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from("item_groups").insert({
+    tenant_id: active.tenantId,
+    name: parsed.data.name,
+  })
+  if (error) {
+    if (isDuplicateName(error)) {
+      return { error: "Já existe um grupo com esse nome." }
+    }
+    return dbError("item_groups.create", error, "Falha ao criar o grupo.")
+  }
+
+  revalidateItems()
+  return { success: "Grupo criado." }
+}
+
+export async function updateItemGroupAction(
+  _prevState: ItemGroupFormState,
+  formData: FormData,
+): Promise<ItemGroupFormState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) return { error: "Grupo inválido." }
+
+  const parsed = itemGroupSchema.safeParse({ name: formData.get("name") })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("item_groups")
+    .update({ name: parsed.data.name, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+  if (error) {
+    if (isDuplicateName(error)) {
+      return { error: "Já existe um grupo com esse nome." }
+    }
+    return dbError("item_groups.update", error, "Falha ao atualizar o grupo.")
+  }
+
+  revalidateItems()
+  return { success: "Grupo atualizado." }
+}
+
+export async function deleteItemGroupAction(formData: FormData): Promise<void> {
+  const active = await getActiveMembership()
+  if (!active) return
+  if (!isManager(active.role)) return
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) return
+  const mode = String(formData.get("mode") ?? "block")
+  const target = String(formData.get("target_group_id") ?? "")
+
+  const supabase = await createClient()
+  const { count } = await supabase
+    .from("items")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", active.tenantId)
+    .eq("group_id", id)
+    .is("deleted_at", null)
+
+  if ((count ?? 0) > 0) {
+    if (mode !== "move") return
+
+    await supabase
+      .from("items")
+      .update({ group_id: target || null })
+      .eq("tenant_id", active.tenantId)
+      .eq("group_id", id)
+      .is("deleted_at", null)
+  }
+
+  await supabase
+    .from("item_groups")
+    .delete()
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 

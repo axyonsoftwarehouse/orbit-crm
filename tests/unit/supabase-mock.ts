@@ -1,7 +1,7 @@
 import { vi } from "vitest"
 
 type Call = { method: string; args: unknown[] }
-type Result = { data: unknown; error: unknown }
+type Result = { data: unknown; error: unknown; count?: number }
 
 /**
  * Mock encadeável do client Supabase. `results[table]` é o que a query da

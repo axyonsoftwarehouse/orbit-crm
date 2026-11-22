@@ -4,6 +4,7 @@ import { createSupabaseMock, hasCall } from "./supabase-mock"
 const TENANT = "11111111-1111-4111-8111-111111111111"
 const USER = "22222222-2222-4222-8222-222222222222"
 const ITEM_ID = "33333333-3333-4333-8333-333333333333"
+const GROUP_ID = "44444444-4444-4444-8444-444444444444"
 
 const state = vi.hoisted(() => ({
   membership: null as { tenantId: string; role: string } | null,
@@ -26,7 +27,9 @@ vi.mock("@/lib/logger", () => ({
 
 import {
   createItemAction,
+  createItemGroupAction,
   deleteItemAction,
+  deleteItemGroupAction,
   duplicateItemAction,
   toggleItemActiveAction,
   updateItemAction,
@@ -160,5 +163,69 @@ describe("ações de item", () => {
     expect(
       hasCall(mock.callsFor("items")[1]!, "update", { active: false }),
     ).toBe(true)
+  })
+})
+
+describe("ações de grupo", () => {
+  beforeEach(() => {
+    state.membership = { tenantId: TENANT, role: "admin" }
+  })
+
+  it("excluir grupo com itens exige mode=move e move antes de apagar", async () => {
+    const blockMock = createSupabaseMock({
+      items: { data: [], error: null, count: 2 },
+    })
+    state.supabase = blockMock.client
+
+    await deleteItemGroupAction(form({ id: GROUP_ID, mode: "block" }))
+
+    expect(
+      blockMock.callsFor("items").some((calls) => hasCall(calls, "update")),
+    ).toBe(false)
+    expect(
+      blockMock
+        .callsFor("item_groups")
+        .some((calls) => hasCall(calls, "delete")),
+    ).toBe(false)
+
+    const moveMock = createSupabaseMock({
+      items: { data: [], error: null, count: 2 },
+    })
+    state.supabase = moveMock.client
+
+    await deleteItemGroupAction(
+      form({ id: GROUP_ID, mode: "move", target_group_id: "" }),
+    )
+
+    expect(
+      hasCall(moveMock.callsFor("items")[1]!, "update", { group_id: null }),
+    ).toBe(true)
+    expect(
+      moveMock.callsFor("item_groups").some((calls) => hasCall(calls, "delete")),
+    ).toBe(true)
+  })
+
+  it("cria grupo e devolve mensagem amigável no nome duplicado", async () => {
+    const okMock = createSupabaseMock({
+      item_groups: { data: null, error: null },
+    })
+    state.supabase = okMock.client
+
+    expect(
+      await createItemGroupAction(undefined, form({ name: "Serviços" })),
+    ).toEqual({ success: "Grupo criado." })
+
+    state.supabase = createSupabaseMock({
+      item_groups: {
+        data: null,
+        error: { message: "duplicate key value violates unique constraint" },
+      },
+    }).client
+
+    const duplicated = await createItemGroupAction(
+      undefined,
+      form({ name: "Serviços" }),
+    )
+    expect(duplicated?.error).toMatch(/já existe/i)
   })
 })
