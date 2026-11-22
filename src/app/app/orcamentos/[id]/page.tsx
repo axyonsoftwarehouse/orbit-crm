@@ -26,6 +26,7 @@ import {
 import { SendDocumentDialog } from "@/components/app/send-document-dialog"
 import { listProjects } from "@/server/queries/projects"
 import { getEstimate, listDocumentItems } from "@/server/queries/documents"
+import { listItemOptions } from "@/server/queries/items"
 import {
   convertEstimateToInvoiceAction,
   updateEstimateStatusAction,
@@ -50,7 +51,7 @@ export default async function EstimateDetailPage({
   if (!estimate) notFound()
 
   const supabase = await createClient()
-  const [items, company, contacts, companies, projects, settings] =
+  const [items, company, contacts, companies, projects, settings, catalog] =
     await Promise.all([
       listDocumentItems(active.tenantId, "estimate", estimate.id),
       estimate.company_id
@@ -62,6 +63,7 @@ export default async function EstimateDetailPage({
       listCompanies(active.tenantId),
       listProjects(active.tenantId),
       getTenantFinanceSettings(supabase, active.tenantId),
+      listItemOptions(active.tenantId),
     ])
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }))
@@ -115,6 +117,7 @@ export default async function EstimateDetailPage({
             projects={projectOptions}
             defaultCurrency={settings.currency}
             label="Editar"
+            catalog={catalog}
           />
           {estimate.invoice_id ? (
             <Button

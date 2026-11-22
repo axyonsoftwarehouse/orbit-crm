@@ -20,6 +20,7 @@ import { getTenantFinanceSettings } from "@/server/documents"
 import { listCompanies } from "@/server/queries/companies"
 import { listProjects } from "@/server/queries/projects"
 import { listEstimatesPage } from "@/server/queries/documents"
+import { listItemOptions } from "@/server/queries/items"
 import { EstimateFormDialog } from "./estimate-form-dialog"
 
 export default async function OrcamentosPage({
@@ -34,12 +35,13 @@ export default async function OrcamentosPage({
   if (!active) return null
 
   const supabase = await createClient()
-  const [{ rows: estimates, total }, companies, projects, settings] =
+  const [{ rows: estimates, total }, companies, projects, settings, catalog] =
     await Promise.all([
       listEstimatesPage(active.tenantId, { page, pageSize: PAGE_SIZE }),
       listCompanies(active.tenantId),
       listProjects(active.tenantId),
       getTenantFinanceSettings(supabase, active.tenantId),
+      listItemOptions(active.tenantId),
     ])
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }))
@@ -61,6 +63,7 @@ export default async function OrcamentosPage({
             projects={projectOptions}
             defaultCurrency={settings.currency}
             label="Novo orçamento"
+            catalog={catalog}
           />
         </div>
       </div>
