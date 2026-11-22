@@ -16,9 +16,14 @@ import { getMemberships } from "@/lib/auth"
 import { getActiveTenant } from "@/lib/tenant"
 import { PAGE_SIZE, parsePage } from "@/lib/pagination"
 import { isManager } from "@/server/permissions"
-import { listItemGroups, listItemsPage } from "@/server/queries/items"
+import {
+  listItemDescriptions,
+  listItemGroups,
+  listItemsPage,
+} from "@/server/queries/items"
 import { toggleItemActiveAction } from "@/server/actions/items"
 import { ItemFormDialog } from "./item-form-dialog"
+import { ImportItemsDialog } from "./import-items-dialog"
 import { DeleteItemButton } from "./delete-item-button"
 import { DuplicateItemButton } from "./duplicate-item-button"
 
@@ -41,7 +46,7 @@ export default async function ItemsPage({
   const active = await getActiveTenant(memberships)
   if (!active) return null
 
-  const [{ rows: items, total }, groups] = await Promise.all([
+  const [{ rows: items, total }, groups, descriptions] = await Promise.all([
     listItemsPage(active.tenantId, {
       page,
       pageSize: PAGE_SIZE,
@@ -55,6 +60,7 @@ export default async function ItemsPage({
             : undefined,
     }),
     listItemGroups(active.tenantId),
+    listItemDescriptions(active.tenantId),
   ])
 
   const groupOptions = groups.map((item) => ({
@@ -82,6 +88,10 @@ export default async function ItemsPage({
             <Layers className="size-4" />
             Grupos
           </Button>
+          <ImportItemsDialog
+            descriptions={descriptions}
+            groups={groupOptions.map((item) => item.name)}
+          />
           <ItemFormDialog groups={groupOptions} label="Novo item" />
         </div>
       </div>
