@@ -40,7 +40,7 @@ vi.mock("@/server/custom-fields", () => ({
 }))
 vi.mock("@/server/documents", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/server/documents")>()),
-  replaceDocumentItems: vi.fn(async () => undefined),
+  replaceDocumentItems: vi.fn(async () => ({ error: null })),
 }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 vi.mock("next/navigation", () => ({

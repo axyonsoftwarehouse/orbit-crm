@@ -102,13 +102,19 @@ export async function createInvoiceAction(
     return dbError("invoices.create", error, "Falha ao criar a fatura.")
   }
 
-  await replaceDocumentItems(
+  const itemsResult = await replaceDocumentItems(
     supabase,
     active.tenantId,
     "invoice",
     invoice.id,
     parsed.data.items,
   )
+  if (itemsResult.error) {
+    return {
+      error:
+        "Fatura criada, mas os itens não foram salvos. Edite a fatura e tente de novo.",
+    }
+  }
 
   revalidatePath("/app/faturas")
   return { success: "Fatura criada." }
@@ -139,13 +145,14 @@ export async function updateInvoiceAction(
 
   if (error) return dbError("invoices", error)
 
-  await replaceDocumentItems(
+  const itemsResult = await replaceDocumentItems(
     supabase,
     active.tenantId,
     "invoice",
     id,
     parsed.data.items,
   )
+  if (itemsResult.error) return { error: itemsResult.error }
 
   await recomputeInvoiceStatus(supabase, active.tenantId, id)
 
@@ -330,13 +337,21 @@ export async function invoiceBillableTimeAction(formData: FormData) {
 
   if (error || !invoice) return
 
-  await replaceDocumentItems(
+  const itemsResult = await replaceDocumentItems(
     supabase,
     active.tenantId,
     "invoice",
     invoice.id,
     items,
   )
+  if (itemsResult.error) {
+    await supabase
+      .from("invoices")
+      .delete()
+      .eq("id", invoice.id)
+      .eq("tenant_id", active.tenantId)
+    return
+  }
 
   const ids = Array.from(groups.values()).flatMap((group) => group.ids)
   await supabase

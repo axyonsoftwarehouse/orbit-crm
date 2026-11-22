@@ -5,6 +5,7 @@ export type LineItemInput = {
   unit?: string | null
   tax_name?: string | null
   tax_rate?: number | null
+  item_id?: string | null
 }
 
 export type TotalsInput = {

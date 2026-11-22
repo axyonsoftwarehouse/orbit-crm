@@ -11,6 +11,7 @@ export type DocumentItem = {
   tax_name: string | null
   tax_rate: number | null
   position: number
+  item_id: string | null
 }
 
 export type EstimateRow = {
@@ -191,7 +192,9 @@ export async function listDocumentItems(
   const supabase = await createClient()
   const { data } = await supabase
     .from("document_items")
-    .select("id, description, qty, rate, unit, tax_name, tax_rate, position")
+    .select(
+      "id, description, qty, rate, unit, tax_name, tax_rate, position, item_id",
+    )
     .eq("tenant_id", tenantId)
     .eq("rel_type", relType)
     .eq("rel_id", relId)
