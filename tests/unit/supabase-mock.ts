@@ -41,6 +41,7 @@ export function createSupabaseMock(
       "is",
       "order",
       "limit",
+      "range",
     ]) {
       chain[method] = (...args: unknown[]) => {
         calls.push({ method, args })
