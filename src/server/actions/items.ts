@@ -6,11 +6,24 @@ import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { dbError } from "@/lib/db-error"
 import { isManager } from "@/server/permissions"
-import { itemGroupSchema, itemSchema } from "@/lib/validations/items"
+import {
+  itemGroupSchema,
+  importItemRowSchema,
+  itemSchema,
+} from "@/lib/validations/items"
+import { normalizeItemKey } from "@/lib/items/import"
 
 export type ItemFormState = { error?: string; success?: string } | undefined
 export type ItemGroupFormState =
-  | { error?: string; success?: string }
+  { error?: string; success?: string } | undefined
+export type ItemImportState =
+  | {
+      error?: string
+      success?: string
+      created?: number
+      skipped?: number
+      groupsCreated?: number
+    }
   | undefined
 
 const PATHS = ["/app/itens", "/app/itens/grupos"]
@@ -162,7 +175,9 @@ export async function duplicateItemAction(formData: FormData): Promise<void> {
   revalidateItems()
 }
 
-export async function toggleItemActiveAction(formData: FormData): Promise<void> {
+export async function toggleItemActiveAction(
+  formData: FormData,
+): Promise<void> {
   const active = await getActiveMembership()
   if (!active) return
 
@@ -288,4 +303,153 @@ export async function deleteItemGroupAction(formData: FormData): Promise<void> {
     .eq("tenant_id", active.tenantId)
 
   revalidateItems()
+}
+
+export async function importItemsAction(
+  _prevState: ItemImportState,
+  formData: FormData,
+): Promise<ItemImportState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+
+  let payload: unknown
+  try {
+    payload = JSON.parse(String(formData.get("rows") ?? "[]"))
+  } catch {
+    return { error: "Não foi possível ler as linhas do arquivo." }
+  }
+  if (!Array.isArray(payload)) {
+    return { error: "Não foi possível ler as linhas do arquivo." }
+  }
+  if (payload.length > 1000) {
+    return { error: "A importação passa de 1000 linhas. Divida o arquivo." }
+  }
+
+  const rows: {
+    description: string
+    long_description: string | null
+    group: string | null
+    rate: number
+    unit: string | null
+    tax_name: string | null
+    tax_rate: number | null
+  }[] = []
+
+  for (const [index, row] of payload.entries()) {
+    const parsed = importItemRowSchema.safeParse(row)
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? "dados inválidos"
+      return { error: `Linha ${index + 1}: ${message}` }
+    }
+    rows.push({
+      description: parsed.data.description,
+      long_description: parsed.data.long_description ?? null,
+      group: parsed.data.group ?? null,
+      rate: parsed.data.rate,
+      unit: parsed.data.unit ?? null,
+      tax_name: parsed.data.tax_name ?? null,
+      tax_rate: parsed.data.tax_rate ?? null,
+    })
+  }
+
+  const supabase = await createClient()
+  const [itemsResult, groupsResult] = await Promise.all([
+    supabase
+      .from("items")
+      .select("description")
+      .eq("tenant_id", active.tenantId)
+      .is("deleted_at", null),
+    supabase
+      .from("item_groups")
+      .select("id, name")
+      .eq("tenant_id", active.tenantId),
+  ])
+
+  const existing = new Set(
+    ((itemsResult.data ?? []) as { description: string }[]).map((row) =>
+      normalizeItemKey(row.description),
+    ),
+  )
+  const groupByName = new Map(
+    ((groupsResult.data ?? []) as { id: string; name: string }[]).map((row) => [
+      normalizeItemKey(row.name),
+      row.id,
+    ]),
+  )
+
+  const selected: typeof rows = []
+  for (const row of rows) {
+    const key = normalizeItemKey(row.description)
+    if (existing.has(key)) continue
+    existing.add(key)
+    selected.push(row)
+  }
+  const skipped = rows.length - selected.length
+
+  if (selected.length === 0) {
+    return { error: "Nenhuma linha válida para importar." }
+  }
+
+  const missingGroups = new Map<string, string>()
+  for (const row of selected) {
+    if (!row.group) continue
+    const key = normalizeItemKey(row.group)
+    if (!groupByName.has(key) && !missingGroups.has(key)) {
+      missingGroups.set(key, row.group)
+    }
+  }
+
+  const createdGroupIds: string[] = []
+  if (missingGroups.size > 0) {
+    const { data, error } = await supabase
+      .from("item_groups")
+      .insert(
+        [...missingGroups.values()].map((name) => ({
+          tenant_id: active.tenantId,
+          name,
+        })),
+      )
+      .select("id, name")
+    if (error) {
+      return dbError("item_groups.import", error, "Falha ao criar os grupos.")
+    }
+    for (const group of (data ?? []) as { id: string; name: string }[]) {
+      groupByName.set(normalizeItemKey(group.name), group.id)
+      createdGroupIds.push(group.id)
+    }
+  }
+
+  const user = await getUser()
+  const { error } = await supabase.from("items").insert(
+    selected.map((row) => ({
+      tenant_id: active.tenantId,
+      created_by: user?.id ?? null,
+      group_id: row.group
+        ? (groupByName.get(normalizeItemKey(row.group)) ?? null)
+        : null,
+      description: row.description,
+      long_description: row.long_description,
+      rate: row.rate,
+      purchase_price: null,
+      unit: row.unit,
+      tax_name: row.tax_name,
+      tax_rate: row.tax_rate,
+      active: true,
+    })),
+  )
+
+  if (error) {
+    if (createdGroupIds.length > 0) {
+      await supabase.from("item_groups").delete().in("id", createdGroupIds)
+    }
+    return dbError("items.import", error, "Falha ao importar os itens.")
+  }
+
+  revalidateItems()
+  return {
+    success: `${selected.length} item(ns) importado(s), ${skipped} ignorado(s).`,
+    created: selected.length,
+    skipped,
+    groupsCreated: createdGroupIds.length,
+  }
 }

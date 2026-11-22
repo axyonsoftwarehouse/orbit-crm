@@ -61,7 +61,8 @@ export const importItemRowSchema = z
   })
   .refine(
     (data) =>
-      (!data.tax_name && (data.tax_rate === null || data.tax_rate === undefined)) ||
+      (!data.tax_name &&
+        (data.tax_rate === null || data.tax_rate === undefined)) ||
       (Boolean(data.tax_name) &&
         data.tax_rate !== null &&
         data.tax_rate !== undefined),
