@@ -8,6 +8,7 @@ import { getActiveMembership } from "@/lib/tenant"
 import { ticketReplySchema, ticketSchema } from "@/lib/validations/tickets"
 import { checkPlanLimit } from "@/server/plan-limits"
 import { dbError } from "@/lib/db-error"
+import { notifyClientTicketReply } from "@/server/portal-notifications"
 
 export type TicketFormState = { error?: string; success?: string } | undefined
 
@@ -182,13 +183,22 @@ export async function addTicketReplyAction(formData: FormData) {
 
   const user = await getUser()
   const supabase = await createClient()
-  await supabase.from("ticket_replies").insert({
+  const { error } = await supabase.from("ticket_replies").insert({
     tenant_id: active.tenantId,
     ticket_id: ticketId,
     author_id: user?.id ?? null,
     body: parsed.data.body,
     is_internal: parsed.data.is_internal,
   })
+  if (error) return
+
+  if (!parsed.data.is_internal) {
+    await notifyClientTicketReply({
+      tenantId: active.tenantId,
+      ticketId,
+      body: parsed.data.body,
+    })
+  }
 
   revalidatePath(`/app/tickets/${ticketId}`)
 }

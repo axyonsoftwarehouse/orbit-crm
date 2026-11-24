@@ -67,6 +67,34 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDefault> = {
     subject: "[Orbit CRM] Cliente {{decision}} o post: {{post}}",
     body: '<p>O cliente <strong>{{decision}}</strong> o post <strong>{{post}}</strong>.</p><p>{{note}}</p><p><a href="{{url}}">Abrir post</a></p>',
   },
+  portal_estimate_response: {
+    label: "Resposta do cliente a um orçamento",
+    description:
+      "Enviado ao criador do orçamento (ou a owner/admin) quando o cliente aceita ou recusa no portal.",
+    subject: "[Orbit CRM] {{company}} {{decision}} o orçamento {{number}}",
+    body: '<p><strong>{{company}}</strong> {{decision}} o orçamento <strong>{{number}}</strong> pelo portal.</p><p><a href="{{url}}">Abrir orçamento</a></p>',
+  },
+  portal_ticket_opened: {
+    label: "Ticket aberto pelo cliente",
+    description:
+      "Enviado ao responsável pelo ticket (ou a owner/admin) quando o cliente abre um ticket no portal.",
+    subject: "[Orbit CRM] Novo ticket de {{company}}: {{number}} {{subject}}",
+    body: '<p><strong>{{company}}</strong> abriu o ticket <strong>{{number}} {{subject}}</strong> pelo portal.</p><p>{{message}}</p><p><a href="{{url}}">Abrir ticket</a></p>',
+  },
+  portal_ticket_reply: {
+    label: "Mensagem do cliente em ticket",
+    description:
+      "Enviado ao responsável pelo ticket (ou a owner/admin) quando o cliente responde pelo portal.",
+    subject: "[Orbit CRM] {{company}} respondeu o ticket {{number}}",
+    body: '<p><strong>{{company}}</strong> respondeu o ticket <strong>{{number}} {{subject}}</strong>:</p><p>{{message}}</p><p><a href="{{url}}">Abrir ticket</a></p>',
+  },
+  ticket_reply_client: {
+    label: "Resposta da equipe em ticket (cliente)",
+    description:
+      "Enviado ao contato que abriu o ticket, se tiver acesso ao portal, quando a equipe responde (notas internas não disparam).",
+    subject: "[{{tenant}}] Resposta no ticket {{number}}",
+    body: '<p>Há uma nova resposta no seu ticket <strong>{{number}} {{subject}}</strong>:</p><p>{{message}}</p><p><a href="{{url}}">Ver no portal</a></p>',
+  },
 }
 
 export function renderTemplate(
