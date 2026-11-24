@@ -482,6 +482,89 @@ describe.runIf(hasEnv)("RLS: isolamento entre tenants", () => {
     expect(data?.length).toBeGreaterThanOrEqual(1)
   })
 
+  describe("portal_invitations", () => {
+    async function contactIn(tenantId: string) {
+      const company = await admin
+        .from("companies")
+        .insert({ tenant_id: tenantId, name: `Convite ${suffix}` })
+        .select("id")
+        .single()
+      if (company.error) throw company.error
+      const { data, error } = await admin
+        .from("contacts")
+        .insert({
+          tenant_id: tenantId,
+          company_id: company.data!.id,
+          first_name: `Convite ${suffix}`,
+          email: `convite-${randomUUID().slice(0, 8)}@cliente.test`,
+        })
+        .select("id, email")
+        .single()
+      if (error) throw error
+      return data as { id: string; email: string }
+    }
+
+    it("owner cria e vê convites do próprio tenant; B não vê", async () => {
+      const contact = await contactIn(tenantA)
+      const inserted = await clientA
+        .from("portal_invitations")
+        .insert({
+          tenant_id: tenantA,
+          contact_id: contact.id,
+          email: contact.email,
+        })
+        .select("id")
+        .single()
+      expect(inserted.error).toBeNull()
+
+      const own = await clientA
+        .from("portal_invitations")
+        .select("id")
+        .eq("id", inserted.data!.id)
+      expect(own.data?.length).toBe(1)
+
+      const other = await clientB
+        .from("portal_invitations")
+        .select("id")
+        .eq("id", inserted.data!.id)
+      expect(other.data).toEqual([])
+    })
+
+    it("member e cliente do portal não veem nem criam convites", async () => {
+      const contact = await contactIn(tenantA)
+      await admin.from("portal_invitations").insert({
+        tenant_id: tenantA,
+        contact_id: contact.id,
+        email: contact.email,
+      })
+
+      for (const client of [clientMember, clientPortal]) {
+        const { data } = await client
+          .from("portal_invitations")
+          .select("id")
+          .eq("contact_id", contact.id)
+        expect(data ?? []).toEqual([])
+
+        const { error } = await client.from("portal_invitations").insert({
+          tenant_id: tenantA,
+          contact_id: contact.id,
+          email: contact.email,
+        })
+        expect(error).not.toBeNull()
+      }
+    })
+
+    it("não aceita convite para contato de outro tenant", async () => {
+      const contactB = await contactIn(tenantB)
+      const { error } = await clientA.from("portal_invitations").insert({
+        tenant_id: tenantA,
+        contact_id: contactB.id,
+        email: contactB.email,
+      })
+      expect(error).not.toBeNull()
+    })
+  })
+
   it("B não vê dados de A", async () => {
     const { data } = await clientB
       .from("tenants")

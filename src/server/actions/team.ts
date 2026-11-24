@@ -2,7 +2,6 @@
 
 import { dbError } from "@/lib/db-error"
 
-import { headers } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
@@ -15,19 +14,10 @@ import {
 } from "@/lib/validations/team"
 import { sendTenantEmail } from "@/server/email"
 import { isManager } from "@/server/permissions"
+import { getBaseUrl } from "@/server/base-url"
 
 export type TeamFormState =
   { error?: string; success?: string; inviteLink?: string } | undefined
-
-async function getBaseUrl() {
-  const configured = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "")
-  if (configured) return configured
-  const headerList = await headers()
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host")
-  const proto = headerList.get("x-forwarded-proto") ?? "https"
-  if (host) return `${proto}://${host}`
-  return "http://localhost:3000"
-}
 
 async function countOwners(tenantId: string) {
   const supabase = await createClient()

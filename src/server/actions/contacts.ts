@@ -4,10 +4,11 @@ import { dbError } from "@/lib/db-error"
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { getUser } from "@/lib/auth"
 import { getActiveMembership } from "@/lib/tenant"
 import { contactSchema } from "@/lib/validations/clients"
+import { sendTenantEmail } from "@/server/email"
+import { getBaseUrl } from "@/server/base-url"
 
 export type ContactFormState = { error?: string; success?: string } | undefined
 
@@ -99,8 +100,13 @@ export async function deleteContactAction(formData: FormData) {
 }
 
 export type InviteContactState =
-  { error?: string; success?: string } | undefined
+  { error?: string; success?: string; inviteLink?: string } | undefined
 
+/**
+ * Convida o contato para o portal: cria um convite de uso único e manda o
+ * link por e-mail. O cliente define a própria senha ao aceitar
+ * (`/portal/convite/<token>`). Um convite novo substitui o pendente.
+ */
 export async function inviteContactToPortalAction(
   _prevState: InviteContactState,
   formData: FormData,
@@ -113,11 +119,7 @@ export async function inviteContactToPortalAction(
 
   const contactId = String(formData.get("contact_id") ?? "")
   const companyId = String(formData.get("company_id") ?? "")
-  const password = String(formData.get("password") ?? "")
-
-  if (!contactId || password.length < 8) {
-    return { error: "Defina uma senha com pelo menos 8 caracteres." }
-  }
+  if (!contactId) return { error: "Contato não encontrado." }
 
   const supabase = await createClient()
   const { data: contact } = await supabase
@@ -125,6 +127,7 @@ export async function inviteContactToPortalAction(
     .select("id, email, first_name, last_name, user_id")
     .eq("id", contactId)
     .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
     .maybeSingle()
 
   if (!contact) return { error: "Contato não encontrado." }
@@ -135,34 +138,48 @@ export async function inviteContactToPortalAction(
     return { error: "Este contato já possui acesso ao portal." }
   }
 
-  const admin = createAdminClient()
+  const { error: revokeError } = await supabase
+    .from("portal_invitations")
+    .delete()
+    .eq("tenant_id", active.tenantId)
+    .eq("contact_id", contact.id)
+    .is("accepted_at", null)
+  if (revokeError) return dbError("contacts.portal_invite.revoke", revokeError)
 
-  const { data: created, error: createError } =
-    await admin.auth.admin.createUser({
-      email: contact.email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        full_name: `${contact.first_name} ${contact.last_name ?? ""}`.trim(),
-      },
+  const user = await getUser()
+  const email = contact.email.trim().toLowerCase()
+  const { data: invitation, error } = await supabase
+    .from("portal_invitations")
+    .insert({
+      tenant_id: active.tenantId,
+      contact_id: contact.id,
+      email,
+      invited_by: user?.id ?? null,
     })
+    .select("token")
+    .single()
 
-  if (createError || !created.user) {
-    return {
-      error:
-        "Não foi possível criar o acesso. Este e-mail pode já possuir uma conta.",
-    }
+  if (error || !invitation) {
+    return dbError("contacts.portal_invite", error, "Falha ao criar o convite.")
   }
 
-  const { error } = await supabase
-    .from("contacts")
-    .update({ user_id: created.user.id })
-    .eq("id", contactId)
-    .eq("tenant_id", active.tenantId)
-
-  if (error) return dbError("contacts", error)
+  const link = `${await getBaseUrl()}/portal/convite/${invitation.token}`
+  const result = await sendTenantEmail(supabase, {
+    tenantId: active.tenantId,
+    templateKey: "portal_invite",
+    to: email,
+    vars: {
+      tenant: active.tenant.name,
+      name: contact.first_name,
+      link,
+    },
+  })
 
   if (companyId) revalidatePath(`/app/clientes/${companyId}`)
-  revalidatePath("/app/clientes")
-  return { success: `Acesso ao portal criado para ${contact.email}.` }
+  return {
+    success: result.sent
+      ? `Convite enviado para ${email}.`
+      : "Convite criado. Copie o link e envie ao cliente.",
+    inviteLink: link,
+  }
 }
