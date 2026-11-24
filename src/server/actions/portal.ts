@@ -10,6 +10,11 @@ import { getPortalContact } from "@/server/queries/portal"
 import { checkPlanLimitWith } from "@/server/plan-limits"
 import { isLoginRateLimited } from "@/server/rate-limit"
 import { signInSchema } from "@/lib/validations/auth"
+import {
+  notifyStaffEstimateResponse,
+  notifyStaffTicketOpened,
+  notifyStaffTicketReply,
+} from "@/server/portal-notifications"
 
 export type PortalAuthState = { error?: string } | undefined
 
@@ -55,6 +60,8 @@ export async function respondEstimateAction(formData: FormData) {
     p_accept: accept,
   })
   if (error) return
+
+  await notifyStaffEstimateResponse({ estimateId: id, accepted: accept })
 
   revalidatePath("/portal/orcamentos")
   revalidatePath(`/portal/orcamentos/${id}`)
@@ -122,6 +129,15 @@ export async function createPortalTicketAction(
     return dbError("portal.ticket.create", error, "Falha ao abrir o ticket.")
   }
 
+  if (contact.company_id) {
+    await notifyStaffTicketOpened({
+      tenantId: contact.tenant_id,
+      companyId: contact.company_id,
+      ticketId: ticket.id,
+      details,
+    })
+  }
+
   revalidatePath("/portal/tickets")
   redirect(`/portal/tickets/${ticket.id}`)
 }
@@ -135,13 +151,23 @@ export async function addPortalTicketReplyAction(formData: FormData) {
   if (!ticketId || body.length < 1) return
 
   const supabase = await createClient()
-  await supabase.from("ticket_replies").insert({
+  const { error } = await supabase.from("ticket_replies").insert({
     tenant_id: contact.tenant_id,
     ticket_id: ticketId,
     contact_id: contact.id,
     body,
     is_internal: false,
   })
+  if (error) return
+
+  if (contact.company_id) {
+    await notifyStaffTicketReply({
+      tenantId: contact.tenant_id,
+      companyId: contact.company_id,
+      ticketId,
+      body,
+    })
+  }
 
   revalidatePath(`/portal/tickets/${ticketId}`)
 }
