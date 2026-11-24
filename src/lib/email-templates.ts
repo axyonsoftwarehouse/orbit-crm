@@ -25,6 +25,13 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDefault> = {
     subject: "Convite para {{tenant}}",
     body: '<p>VocǦ foi convidado para a empresa <strong>{{tenant}}</strong> no Orbit CRM.</p><p><a href="{{link}}">Aceitar convite</a></p><p>Ou copie e cole no navegador:<br />{{link}}</p>',
   },
+  portal_invite: {
+    label: "Convite do portal do cliente",
+    description:
+      'Enviado ao contato ao clicar em "Dar acesso": o link (válido por 7 dias) leva o cliente a definir a própria senha.',
+    subject: "{{tenant}} convidou você para o portal do cliente",
+    body: '<p>Olá, {{name}}!</p><p><strong>{{tenant}}</strong> liberou para você o acesso ao portal do cliente, onde você acompanha projetos, orçamentos, faturas e tickets.</p><p><a href="{{link}}">Criar minha senha e entrar</a></p><p>O link vale por 7 dias. Ou copie e cole no navegador:<br />{{link}}</p>',
+  },
   social_publish_due: {
     label: "Post agendado (manual)",
     description:

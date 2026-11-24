@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useActionState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,7 +30,15 @@ export function PortalLoginForm() {
         />
       </div>
       <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor="password">Senha</Label>
+          <Link
+            href="/portal/esqueci-senha"
+            className="text-muted-foreground text-xs hover:underline"
+          >
+            Esqueci minha senha
+          </Link>
+        </div>
         <Input
           id="password"
           name="password"

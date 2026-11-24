@@ -3,7 +3,19 @@ import { NextResponse, type NextRequest } from "next/server"
 import type { Database } from "@/lib/database.types"
 
 const PROTECTED_PREFIXES = ["/app", "/plataforma", "/portal"]
-const AUTH_PREFIXES = ["/login", "/portal/login"]
+/** Telas de quem não entrou: com sessão, vão direto para a área. */
+const AUTH_PREFIXES = [
+  "/login",
+  "/portal/login",
+  "/esqueci-senha",
+  "/portal/esqueci-senha",
+]
+/** Abertas com ou sem sessão (convite e redefinição de senha por link). */
+const PUBLIC_PREFIXES = [
+  "/portal/convite",
+  "/redefinir-senha",
+  "/portal/redefinir-senha",
+]
 
 export async function updateSession(request: NextRequest) {
   // Nunca confia em x-tenant-slug vindo do cliente: remove e recalcula.
@@ -59,8 +71,12 @@ export async function updateSession(request: NextRequest) {
   const isAuthRoute = AUTH_PREFIXES.some((prefix) =>
     pathname.startsWith(prefix),
   )
+  const isPublicRoute = PUBLIC_PREFIXES.some((prefix) =>
+    pathname.startsWith(prefix),
+  )
   const isProtected =
     !isAuthRoute &&
+    !isPublicRoute &&
     PROTECTED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 
   if (!user && isProtected) {
