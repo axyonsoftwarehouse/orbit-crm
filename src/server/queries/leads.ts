@@ -50,9 +50,13 @@ export type Lead = {
 
 export type LeadActivity = {
   id: string
+  type: string
   description: string
   created_at: string
   author_name: string | null
+  next_step_at: string | null
+  next_step_note: string | null
+  next_step_done_at: string | null
 }
 
 export async function listLeadStatuses(
@@ -215,17 +219,16 @@ export async function listLeadActivities(
   const supabase = await createClient()
   const { data } = await supabase
     .from("lead_activities")
-    .select("id, description, created_at, author_id")
+    .select(
+      "id, type, description, created_at, author_id, next_step_at, next_step_note, next_step_done_at",
+    )
     .eq("tenant_id", tenantId)
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false })
 
-  const rows = (data ?? []) as {
-    id: string
-    description: string
-    created_at: string
+  const rows = (data ?? []) as (Omit<LeadActivity, "author_name"> & {
     author_id: string | null
-  }[]
+  })[]
   const ids = Array.from(
     new Set(rows.map((r) => r.author_id).filter(Boolean) as string[]),
   )
@@ -243,10 +246,8 @@ export async function listLeadActivities(
     }
   }
 
-  return rows.map((row) => ({
-    id: row.id,
-    description: row.description,
-    created_at: row.created_at,
-    author_name: row.author_id ? (nameById.get(row.author_id) ?? null) : null,
+  return rows.map(({ author_id, ...row }) => ({
+    ...row,
+    author_name: author_id ? (nameById.get(author_id) ?? null) : null,
   }))
 }

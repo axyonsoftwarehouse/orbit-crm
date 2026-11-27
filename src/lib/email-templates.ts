@@ -13,6 +13,13 @@ export const EMAIL_TEMPLATES: Record<string, EmailTemplateDefault> = {
     subject: "[Orbit CRM] Tarefa vencendo: {{task}}",
     body: '<p>Sua tarefa <strong>{{task}}</strong> vence em {{due_date}}.</p><p><a href="{{url}}">Abrir tarefa</a></p>',
   },
+  lead_next_step: {
+    label: "Próximo passo do lead",
+    description:
+      "Lembrete enviado pela manhã ao responsável no dia do próximo passo.",
+    subject: "[Orbit CRM] Próximo passo: {{lead}}",
+    body: '<p>Próximo passo com <strong>{{lead}}</strong>: {{when}}.</p><p>{{note}}</p><p><a href="{{url}}">Abrir lead</a></p>',
+  },
   invoice_overdue: {
     label: "Fatura vencida",
     description: "Aviso enviado aos administradores quando uma fatura vence.",

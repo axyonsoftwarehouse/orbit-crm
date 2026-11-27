@@ -3,6 +3,7 @@ import { timingSafeEqual } from "node:crypto"
 import { runReminders } from "@/server/reminders"
 import { runSocialPublishReminders } from "@/server/social/reminders"
 import { runRecurringInvoices } from "@/server/recurring-invoices"
+import { runLeadNextStepReminders } from "@/server/lead-next-step-reminders"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { logger } from "@/lib/logger"
 
@@ -31,12 +32,19 @@ export async function GET(request: Request) {
   try {
     // Gera as recorrentes antes dos lembretes de vencidas.
     const recurring = await runRecurringInvoices(createAdminClient())
-    const [result, social] = await Promise.all([
+    const [result, social, nextSteps] = await Promise.all([
       runReminders(),
       runSocialPublishReminders(),
+      runLeadNextStepReminders(createAdminClient()),
     ])
-    logger.info("cron.reminders", { result, social, recurring })
-    return NextResponse.json({ ok: true, ...result, social, recurring })
+    logger.info("cron.reminders", { result, social, recurring, nextSteps })
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      social,
+      recurring,
+      nextSteps,
+    })
   } catch (error) {
     logger.error("cron.reminders.failed", {
       error: error instanceof Error ? error.message : String(error),

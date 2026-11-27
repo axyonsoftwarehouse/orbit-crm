@@ -1,11 +1,11 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, CalendarClock } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
 import { StatusPill } from "@/components/app/status-pill"
 import { TagPicker } from "@/components/app/tag-picker"
+import { ContactShortcuts } from "@/components/app/contact-shortcuts"
 import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { Badge } from "@/components/ui/badge"
 import { formatDate, formatDateTime, formatMoney } from "@/lib/format"
@@ -25,10 +25,17 @@ import {
   customFieldValuesForEntity,
   listCustomFieldDefinitions,
 } from "@/server/queries/custom-fields"
-import { addLeadActivityAction } from "@/server/actions/leads"
+import { completeLeadNextStepAction } from "@/server/actions/leads"
+import {
+  formatNextStep,
+  isNextStepOverdue,
+  leadActivityTypeLabel,
+} from "@/lib/lead-activity"
+import { cn } from "@/lib/utils"
 import { LeadFormDialog } from "../lead-form-dialog"
 import { LeadStatusSelect } from "../lead-status-select"
 import { ConvertLeadButton, DeleteLeadButton } from "./lead-actions"
+import { LeadActivityForm } from "./lead-activity-form"
 
 function DetailRow({ label, value }: { label: string; value: string | null }) {
   return (
@@ -70,6 +77,8 @@ export default async function LeadDetailPage({
   const source = sources.find((s) => s.id === lead.source_id) ?? null
   const assignee =
     members.find((m) => m.user_id === lead.assignee_id)?.full_name ?? null
+  const openNextStep =
+    activities.find((a) => a.next_step_at && !a.next_step_done_at) ?? null
 
   return (
     <div className="space-y-6">
@@ -98,6 +107,11 @@ export default async function LeadDetailPage({
               </span>
             ) : null}
           </div>
+          <ContactShortcuts
+            email={lead.email}
+            phone={lead.phone}
+            name={lead.name}
+          />
           <TagPicker
             entityType="lead"
             entityId={lead.id}
@@ -166,34 +180,40 @@ export default async function LeadDetailPage({
                       key={activity.id}
                       className="rounded-lg border px-3 py-2 text-sm"
                     >
-                      <div className="text-muted-foreground mb-1 flex items-center justify-between text-xs">
-                        <span className="text-foreground font-medium">
-                          {activity.author_name ?? "Sistema"}
+                      <div className="text-muted-foreground mb-1 flex items-center justify-between gap-2 text-xs">
+                        <span className="flex items-center gap-2">
+                          <Badge variant="outline">
+                            {leadActivityTypeLabel(activity.type)}
+                          </Badge>
+                          <span className="text-foreground font-medium">
+                            {activity.author_name ?? "Sistema"}
+                          </span>
                         </span>
                         <span>{formatDateTime(activity.created_at)}</span>
                       </div>
                       <p className="whitespace-pre-wrap">
                         {activity.description}
                       </p>
+                      {activity.next_step_at ? (
+                        <p
+                          className={cn(
+                            "text-muted-foreground mt-1 flex items-center gap-1.5 text-xs",
+                            activity.next_step_done_at && "line-through",
+                          )}
+                        >
+                          <CalendarClock className="size-3.5" />
+                          Próximo passo: {formatNextStep(activity.next_step_at)}
+                          {activity.next_step_note
+                            ? ` · ${activity.next_step_note}`
+                            : null}
+                        </p>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
               )}
 
-              <form action={addLeadActivityAction} className="space-y-2">
-                <input type="hidden" name="lead_id" value={lead.id} />
-                <Textarea
-                  name="description"
-                  rows={2}
-                  placeholder="Registrar uma interação..."
-                  required
-                />
-                <div className="flex justify-end">
-                  <Button type="submit" size="sm">
-                    Adicionar
-                  </Button>
-                </div>
-              </form>
+              <LeadActivityForm leadId={lead.id} />
             </CardContent>
           </Card>
 
@@ -207,6 +227,46 @@ export default async function LeadDetailPage({
         </div>
 
         <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <CalendarClock className="size-4" />
+                Próximo passo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {openNextStep?.next_step_at ? (
+                <>
+                  <div>
+                    <p
+                      className={cn(
+                        "font-medium",
+                        isNextStepOverdue(openNextStep.next_step_at) &&
+                          "text-destructive",
+                      )}
+                    >
+                      {formatNextStep(openNextStep.next_step_at)}
+                    </p>
+                    <p className="text-muted-foreground">
+                      {openNextStep.next_step_note ?? "Sem descrição"}
+                    </p>
+                  </div>
+                  <form action={completeLeadNextStepAction}>
+                    <input type="hidden" name="id" value={openNextStep.id} />
+                    <input type="hidden" name="lead_id" value={lead.id} />
+                    <Button type="submit" variant="outline" size="sm">
+                      Marcar como feito
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <p className="text-muted-foreground">
+                  Nenhum agendado. Registre uma atividade com o próximo passo.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Dados</CardTitle>

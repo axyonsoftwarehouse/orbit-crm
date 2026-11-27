@@ -1674,7 +1674,12 @@ export type Database = {
           description: string
           id: string
           lead_id: string
+          next_step_at: string | null
+          next_step_done_at: string | null
+          next_step_note: string | null
+          next_step_reminded_at: string | null
           tenant_id: string
+          type: string
         }
         Insert: {
           author_id?: string | null
@@ -1682,7 +1687,12 @@ export type Database = {
           description: string
           id?: string
           lead_id: string
+          next_step_at?: string | null
+          next_step_done_at?: string | null
+          next_step_note?: string | null
+          next_step_reminded_at?: string | null
           tenant_id: string
+          type?: string
         }
         Update: {
           author_id?: string | null
@@ -1690,7 +1700,12 @@ export type Database = {
           description?: string
           id?: string
           lead_id?: string
+          next_step_at?: string | null
+          next_step_done_at?: string | null
+          next_step_note?: string | null
+          next_step_reminded_at?: string | null
           tenant_id?: string
+          type?: string
         }
         Relationships: [
           {

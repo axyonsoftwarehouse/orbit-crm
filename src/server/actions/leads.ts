@@ -14,6 +14,7 @@ import {
   leadStatusSchema,
 } from "@/lib/validations/leads"
 import { getLead, listLeadStatuses } from "@/server/queries/leads"
+import { isLeadActivityType, parseNextStepInput } from "@/lib/lead-activity"
 import { saveCustomFieldValues } from "@/server/custom-fields"
 import { checkPlanLimit } from "@/server/plan-limits"
 import { isManager } from "@/server/permissions"
@@ -163,26 +164,94 @@ export async function deleteLeadAction(formData: FormData) {
   redirect("/app/leads")
 }
 
-export async function addLeadActivityAction(formData: FormData) {
+export type LeadActivityFormState =
+  { error?: string; success?: string; key?: number } | undefined
+
+export async function addLeadActivityAction(
+  _prev: LeadActivityFormState,
+  formData: FormData,
+): Promise<LeadActivityFormState> {
   const active = await getActiveMembership()
-  if (!active) return
+  if (!active) return { error: "Sessão expirada. Entre novamente." }
 
   const leadId = String(formData.get("lead_id") ?? "")
   const parsed = leadActivitySchema.safeParse({
     description: formData.get("description"),
   })
-  if (!leadId || !parsed.success) return
+  if (!leadId) return { error: "Lead não encontrado." }
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+
+  const rawType = formData.get("type")
+  const type = isLeadActivityType(rawType) ? rawType : "note"
+  const nextStep = parseNextStepInput({
+    at: formData.get("next_step_at"),
+    note: formData.get("next_step_note"),
+  })
+  if ("error" in nextStep) return { error: nextStep.error }
+
+  const lead = await getLead(active.tenantId, leadId)
+  if (!lead) return { error: "Lead não encontrado." }
 
   const user = await getUser()
   const supabase = await createClient()
-  await supabase.from("lead_activities").insert({
-    tenant_id: active.tenantId,
-    lead_id: leadId,
-    author_id: user?.id ?? null,
-    description: parsed.data.description,
-  })
 
-  revalidatePath(`/app/leads/${leadId}`)
+  // Um próximo passo novo substitui o que estava em aberto.
+  if (nextStep.values.next_step_at) {
+    const { error: closeError } = await supabase
+      .from("lead_activities")
+      .update({ next_step_done_at: new Date().toISOString() })
+      .eq("tenant_id", active.tenantId)
+      .eq("lead_id", lead.id)
+      .not("next_step_at", "is", null)
+      .is("next_step_done_at", null)
+    if (closeError) return dbError("lead_activity.close_next_step", closeError)
+  }
+
+  const { error } = await supabase.from("lead_activities").insert({
+    tenant_id: active.tenantId,
+    lead_id: lead.id,
+    author_id: user?.id ?? null,
+    type,
+    description: parsed.data.description,
+    ...nextStep.values,
+  })
+  if (error) return dbError("lead_activity.insert", error)
+
+  revalidatePath(`/app/leads/${lead.id}`)
+  revalidatePath("/app")
+  return {
+    success: nextStep.values.next_step_at
+      ? "Atividade registrada e próximo passo agendado."
+      : "Atividade registrada.",
+    key: Date.now(),
+  }
+}
+
+/** Marca o próximo passo como feito (sai do painel, calendário e lembrete). */
+export async function completeLeadNextStepAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) return
+
+  const id = String(formData.get("id") ?? "")
+  const leadId = String(formData.get("lead_id") ?? "")
+  if (!id) return
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("lead_activities")
+    .update({ next_step_done_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .is("next_step_done_at", null)
+  if (error) {
+    dbError("lead_activity.complete_next_step", error)
+    return
+  }
+
+  if (leadId) revalidatePath(`/app/leads/${leadId}`)
+  revalidatePath("/app")
 }
 
 export async function convertLeadToCustomerAction(formData: FormData) {

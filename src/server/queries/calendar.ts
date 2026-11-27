@@ -1,7 +1,15 @@
 import { createClient } from "@/lib/supabase/server"
-import { toDateKey } from "@/lib/format"
+import {
+  addDaysIso,
+  APP_TIME_ZONE,
+  formatDateTime,
+  toDateKey,
+} from "@/lib/format"
+import { zonedTimeToUtc } from "@/lib/timezone"
+import { listOpenNextSteps } from "@/server/queries/lead-next-steps"
 
-export type CalendarItemKind = "event" | "task" | "invoice" | "contract"
+export type CalendarItemKind =
+  "event" | "task" | "invoice" | "contract" | "next_step"
 
 export type CalendarItem = {
   id: string
@@ -28,6 +36,7 @@ const KIND_COLORS: Record<CalendarItemKind, string> = {
   task: "#f59e0b",
   invoice: "#ef4444",
   contract: "#8b5cf6",
+  next_step: "#10b981",
 }
 
 function localDate(value: string) {
@@ -59,7 +68,13 @@ export async function listCalendarItems(
 ): Promise<CalendarItem[]> {
   const supabase = await createClient()
 
-  const [events, tasks, invoices, contracts] = await Promise.all([
+  const fromIso = zonedTimeToUtc(`${fromDate}T00:00`, APP_TIME_ZONE)
+  const untilIso = zonedTimeToUtc(
+    `${addDaysIso(toDate, 1)}T00:00`,
+    APP_TIME_ZONE,
+  )
+
+  const [events, tasks, invoices, contracts, nextSteps] = await Promise.all([
     supabase
       .from("calendar_events")
       .select("id, title, start_at")
@@ -90,6 +105,13 @@ export async function listCalendarItems(
       .is("deleted_at", null)
       .gte("end_date", fromDate)
       .lte("end_date", toDate),
+    fromIso && untilIso
+      ? listOpenNextSteps(tenantId, {
+          fromIso: fromIso.toISOString(),
+          untilIso: untilIso.toISOString(),
+          client: supabase,
+        })
+      : Promise.resolve([]),
   ])
 
   const items: CalendarItem[] = []
@@ -158,6 +180,20 @@ export async function listCalendarItems(
       time: null,
       href: "/app/contratos",
       color: KIND_COLORS.contract,
+    })
+  }
+
+  for (const step of nextSteps) {
+    items.push({
+      id: `next-step-${step.id}`,
+      kind: "next_step",
+      title: step.next_step_note
+        ? `${step.lead_name}: ${step.next_step_note}`
+        : step.lead_name,
+      date: localDate(step.next_step_at),
+      time: formatDateTime(step.next_step_at, { timeStyle: "short" }),
+      href: `/app/leads/${step.lead_id}`,
+      color: KIND_COLORS.next_step,
     })
   }
 
