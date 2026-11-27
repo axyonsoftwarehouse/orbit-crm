@@ -208,7 +208,7 @@ describe("cota de armazenamento no registro de arquivos", () => {
 
   it("mídia do Social: caminho de outro post é recusado", async () => {
     const mock = createSupabaseMock({
-      social_posts: { data: { id: POST }, error: null },
+      social_posts: { data: { id: POST, status: "draft" }, error: null },
     })
     state.supabase = mock.client
     const { bucket } = withStorage(mock, { data: { size: 7000 }, error: null })
@@ -237,7 +237,7 @@ describe("cota de armazenamento no registro de arquivos", () => {
   it("mídia do Social: estourou a cota, remove o objeto e não registra", async () => {
     state.storage = { ok: false, message: STORAGE_MESSAGE }
     const mock = createSupabaseMock({
-      social_posts: { data: { id: POST }, error: null },
+      social_posts: { data: { id: POST, status: "draft" }, error: null },
     })
     state.supabase = mock.client
     const { bucket, storage } = withStorage(mock, {
@@ -263,7 +263,7 @@ describe("cota de armazenamento no registro de arquivos", () => {
 
   it("mídia do Social: grava o tamanho real quando cabe", async () => {
     const mock = createSupabaseMock({
-      social_posts: { data: { id: POST }, error: null },
+      social_posts: { data: { id: POST, status: "draft" }, error: null },
     })
     state.supabase = mock.client
     withStorage(mock, { data: { size: 7000 }, error: null })

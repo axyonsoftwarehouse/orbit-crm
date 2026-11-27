@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -16,14 +17,18 @@ export function SocialPostActions({
   id,
   status,
   canManage,
+  editSlot,
 }: {
   id: string
   status: string
   canManage: boolean
+  /** Botão "Editar" (diálogo), quando o post pode ser editado. */
+  editSlot?: ReactNode
 }) {
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
+        {editSlot}
         {status === "draft" || status === "rejected" ? (
           <form action={submitSocialPostAction}>
             <input type="hidden" name="id" value={id} />

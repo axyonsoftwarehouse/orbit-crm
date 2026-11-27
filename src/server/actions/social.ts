@@ -23,11 +23,17 @@ import {
   socialAccountSchema,
   socialPostResponseSchema,
   socialPostSchema,
+  socialPostUpdateSchema,
   socialScheduleSchema,
 } from "@/lib/validations/social"
 import { getPortalContact } from "@/server/queries/portal"
 import { validatePostTargets } from "@/lib/social-accounts"
 import { resolveRequiresApproval } from "@/lib/social-approval"
+import {
+  APPROVAL_RESET_VALUES,
+  editResetsApproval,
+  isSocialPostEditable,
+} from "@/lib/social-edit"
 
 export type SocialFormState = { error?: string; success?: string } | undefined
 
@@ -160,6 +166,67 @@ export async function deleteSocialAccountAction(formData: FormData) {
   redirect("/app/social/contas")
 }
 
+type ServerSupabase = Awaited<ReturnType<typeof createClient>>
+
+/**
+ * Confere se as contas pertencem ao tenant e ao cliente do post (ou à
+ * agência). Devolve a lista sem repetição ou a mensagem de erro.
+ */
+async function resolvePostTargets(
+  supabase: ServerSupabase,
+  tenantId: string,
+  requestedIds: string[],
+  companyId: string,
+): Promise<{ ids: string[] } | { error: string }> {
+  const targetIds = [...new Set(requestedIds)]
+  const { data: accounts, error } = await supabase
+    .from("social_accounts")
+    .select("id, company_id")
+    .eq("tenant_id", tenantId)
+    .is("deleted_at", null)
+    .in("id", targetIds)
+
+  if (error) return dbError("social_accounts", error)
+
+  const targets = validatePostTargets(targetIds, accounts ?? [], companyId)
+  if (!targets.ok) {
+    return {
+      error:
+        targets.reason === "other_company"
+          ? "Selecione apenas contas deste cliente ou da agência."
+          : "Selecione contas válidas da empresa.",
+    }
+  }
+  return { ids: targetIds }
+}
+
+/**
+ * Depois de mudar a mídia de um post aprovado/agendado que exige aprovação,
+ * desfaz a aprovação (volta para rascunho), como na edição do texto.
+ */
+async function resetApprovalAfterMediaChange(
+  supabase: ServerSupabase,
+  tenantId: string,
+  postId: string,
+  actorId: string | null,
+) {
+  const { data: reset } = await supabase
+    .from("social_posts")
+    .update(APPROVAL_RESET_VALUES)
+    .eq("id", postId)
+    .eq("tenant_id", tenantId)
+    .eq("requires_approval", true)
+    .in("status", ["approved", "scheduled"])
+    .select("id")
+
+  if (reset?.length) {
+    await recordEvent(tenantId, postId, "approval_reset", actorId, {
+      reason: "media",
+    })
+    revalidatePath("/app/social")
+  }
+}
+
 export async function createSocialPostAction(
   _prevState: SocialFormState,
   formData: FormData,
@@ -180,30 +247,15 @@ export async function createSocialPostAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   }
 
-  const targetIds = [...new Set(parsed.data.target_ids)]
   const supabase = await createClient()
-  const { data: accounts, error: accountsError } = await supabase
-    .from("social_accounts")
-    .select("id, company_id")
-    .eq("tenant_id", active.tenantId)
-    .is("deleted_at", null)
-    .in("id", targetIds)
-
-  if (accountsError) return dbError("social_accounts", accountsError)
-
-  const targets = validatePostTargets(
-    targetIds,
-    accounts ?? [],
+  const targets = await resolvePostTargets(
+    supabase,
+    active.tenantId,
+    parsed.data.target_ids,
     parsed.data.company_id,
   )
-  if (!targets.ok) {
-    return {
-      error:
-        targets.reason === "other_company"
-          ? "Selecione apenas contas deste cliente ou da agência."
-          : "Selecione contas válidas da empresa.",
-    }
-  }
+  if ("error" in targets) return targets
+  const targetIds = targets.ids
 
   const settings = await getSocialSettings(active.tenantId)
   const requiresApproval = resolveRequiresApproval(
@@ -247,6 +299,104 @@ export async function createSocialPostAction(
     success: requiresApproval
       ? "Post criado como rascunho."
       : "Post aprovado e pronto para agendar.",
+  }
+}
+
+export async function updateSocialPostAction(
+  _prevState: SocialFormState,
+  formData: FormData,
+): Promise<SocialFormState> {
+  const active = await getActiveMembership()
+  if (!active) return { error: "Nenhuma empresa ativa." }
+
+  const parsed = socialPostUpdateSchema.safeParse({
+    id: formData.get("id"),
+    content: formData.get("content"),
+    target_ids: formData.getAll("target_ids").map(String),
+  })
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
+  }
+  const { id } = parsed.data
+
+  const supabase = await createClient()
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("id, status, company_id, requires_approval")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+
+  if (!post) return { error: "Post não encontrado." }
+  if (!isSocialPostEditable(post.status)) {
+    return {
+      error:
+        post.status === "pending_approval"
+          ? "O post está com o cliente para aprovação e não pode ser editado agora."
+          : "Este post não pode mais ser editado.",
+    }
+  }
+  if (!post.company_id) return { error: "Post sem cliente." }
+
+  const targets = await resolvePostTargets(
+    supabase,
+    active.tenantId,
+    parsed.data.target_ids,
+    post.company_id,
+  )
+  if ("error" in targets) return targets
+
+  const resetsApproval = editResetsApproval(post.status, post.requires_approval)
+  const { data: updated, error: updateError } = await supabase
+    .from("social_posts")
+    .update({
+      content: parsed.data.content,
+      ...(resetsApproval ? APPROVAL_RESET_VALUES : {}),
+    })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    // Só grava se o status não mudou desde a leitura (ex.: cliente respondeu).
+    .eq("status", post.status)
+    .select("id")
+
+  if (updateError) return dbError("social_posts", updateError)
+  if (!updated?.length) {
+    return { error: "O post mudou enquanto você editava. Recarregue a página." }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("social_post_targets")
+    .delete()
+    .eq("tenant_id", active.tenantId)
+    .eq("post_id", id)
+  if (deleteError) return dbError("social_post_targets", deleteError)
+
+  const { error: targetsError } = await supabase
+    .from("social_post_targets")
+    .insert(
+      targets.ids.map((accountId) => ({
+        tenant_id: active.tenantId,
+        post_id: id,
+        account_id: accountId,
+      })),
+    )
+  if (targetsError) return dbError("social_post_targets", targetsError)
+
+  const user = await getUser()
+  await recordEvent(active.tenantId, id, "edited", user?.id ?? null)
+  if (resetsApproval) {
+    await recordEvent(active.tenantId, id, "approval_reset", user?.id ?? null, {
+      reason: "edit",
+    })
+  }
+
+  revalidatePath("/app/social")
+  revalidatePath(`/app/social/${id}`)
+  return {
+    success: resetsApproval
+      ? "Post salvo. Ele voltou para rascunho: envie de novo para aprovação."
+      : "Post salvo.",
   }
 }
 
@@ -620,13 +770,18 @@ export async function registerSocialMediaAction(input: {
   const supabase = await createClient()
   const { data: post } = await supabase
     .from("social_posts")
-    .select("id")
+    .select("id, status")
     .eq("id", input.postId)
     .eq("tenant_id", active.tenantId)
     .is("deleted_at", null)
     .maybeSingle()
 
   if (!post) return { error: "Post inválido." }
+  if (!isSocialPostEditable(post.status)) {
+    // O arquivo já subiu pela URL assinada; remove para não sobrar no bucket.
+    await supabase.storage.from("social_media").remove([input.storagePath])
+    return { error: "A mídia deste post não pode mais ser alterada." }
+  }
 
   const verified = await verifyUploadedFile(supabase, {
     bucket: "social_media",
@@ -649,6 +804,12 @@ export async function registerSocialMediaAction(input: {
 
   if (error) return dbError("social_media", error)
 
+  await resetApprovalAfterMediaChange(
+    supabase,
+    active.tenantId,
+    input.postId,
+    user?.id ?? null,
+  )
   revalidatePath(`/app/social/${input.postId}`)
   return {}
 }
@@ -665,13 +826,21 @@ export async function deleteSocialMediaAction(formData: FormData) {
   const user = await getUser()
   const { data: media } = await supabase
     .from("social_media")
-    .select("storage_path, created_by")
+    .select("storage_path, created_by, post_id")
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
     .maybeSingle()
 
-  if (!media) return
+  if (!media || media.post_id !== postId) return
   if (!isManager(active.role) && media.created_by !== user?.id) return
+
+  const { data: post } = await supabase
+    .from("social_posts")
+    .select("status")
+    .eq("id", postId)
+    .eq("tenant_id", active.tenantId)
+    .maybeSingle()
+  if (!post || !isSocialPostEditable(post.status)) return
 
   await supabase.storage.from("social_media").remove([media.storage_path])
   await supabase
@@ -680,6 +849,12 @@ export async function deleteSocialMediaAction(formData: FormData) {
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
+  await resetApprovalAfterMediaChange(
+    supabase,
+    active.tenantId,
+    postId,
+    user?.id ?? null,
+  )
   revalidatePath(`/app/social/${postId}`)
 }
 
