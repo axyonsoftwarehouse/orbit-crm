@@ -27,6 +27,8 @@ import { SendDocumentDialog } from "@/components/app/send-document-dialog"
 import { listProjects } from "@/server/queries/projects"
 import {
   getInvoice,
+  getRecurrenceParent,
+  listRecurrenceChildren,
   listDocumentItems,
   listPayments,
   sumPayments,
@@ -37,6 +39,11 @@ import { InvoiceFormDialog } from "../invoice-form-dialog"
 import { DeleteInvoiceButton } from "../delete-invoice-button"
 import { DeletePaymentButton } from "../delete-payment-button"
 import { RecordPaymentDialog } from "../record-payment-dialog"
+import {
+  GeneratedFromNotice,
+  RecurrenceCard,
+  RecurrenceChildrenCard,
+} from "./recurrence-card"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -65,6 +72,8 @@ export default async function InvoiceDetailPage({
     projects,
     settings,
     catalog,
+    recurrenceChildren,
+    recurrenceParent,
   ] = await Promise.all([
     listDocumentItems(active.tenantId, "invoice", invoice.id),
     listPayments(active.tenantId, invoice.id),
@@ -79,6 +88,13 @@ export default async function InvoiceDetailPage({
     listProjects(active.tenantId),
     getTenantFinanceSettings(supabase, active.tenantId),
     listItemOptions(active.tenantId),
+    // Gerada não tem filhas; o modelo mostra as geradas mesmo após parar.
+    invoice.recurrence_parent_id
+      ? Promise.resolve(null)
+      : listRecurrenceChildren(active.tenantId, invoice.id),
+    invoice.recurrence_parent_id
+      ? getRecurrenceParent(active.tenantId, invoice.recurrence_parent_id)
+      : Promise.resolve(null),
   ])
 
   const companyOptions = companies.map((c) => ({ id: c.id, name: c.name }))
@@ -105,6 +121,12 @@ export default async function InvoiceDetailPage({
             status={invoice.status}
             dueDate={invoice.due_date}
           />
+          {invoice.recurrence_parent_id ? (
+            <GeneratedFromNotice
+              parent={recurrenceParent}
+              sequence={invoice.recurrence_sequence}
+            />
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {invoice.company_id ? (
@@ -192,6 +214,12 @@ export default async function InvoiceDetailPage({
         </Card>
 
         <div className="space-y-6">
+          {recurrenceChildren && invoice.recurrence_interval_months ? (
+            <RecurrenceCard
+              invoice={invoice}
+              lastSequence={recurrenceChildren.lastSequence}
+            />
+          ) : null}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Resumo</CardTitle>
@@ -266,6 +294,15 @@ export default async function InvoiceDetailPage({
           </form>
         </div>
       </div>
+
+      {recurrenceChildren &&
+      (invoice.recurrence_interval_months ||
+        recurrenceChildren.rows.length > 0) ? (
+        <RecurrenceChildrenCard
+          rows={recurrenceChildren.rows}
+          currency={currency}
+        />
+      ) : null}
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">

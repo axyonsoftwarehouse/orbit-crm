@@ -25,6 +25,7 @@ import {
 } from "@/server/actions/invoices"
 import type { DocumentItem, Invoice } from "@/server/queries/documents"
 import type { ItemOption } from "@/server/queries/items"
+import { RECURRENCE_INTERVALS } from "@/lib/recurrence"
 
 const fieldClass =
   "border-input bg-background dark:bg-input/30 focus-visible:border-ring focus-visible:ring-ring/50 h-8 w-full rounded-lg border px-2.5 text-sm outline-none focus-visible:ring-3"
@@ -72,6 +73,12 @@ export function InvoiceFormDialog({
   const [adjustment, setAdjustment] = useState(
     invoice?.adjustment ? String(invoice.adjustment) : "",
   )
+  const [recurrenceInterval, setRecurrenceInterval] = useState(
+    invoice?.recurrence_interval_months
+      ? String(invoice.recurrence_interval_months)
+      : "",
+  )
+  const isGenerated = Boolean(invoice?.recurrence_parent_id)
 
   const action = invoice ? updateInvoiceAction : createInvoiceAction
   const [state, formAction, isPending] = useActionState<
@@ -111,6 +118,11 @@ export function InvoiceFormDialog({
             invoice?.discount_percent ? String(invoice.discount_percent) : "",
           )
           setAdjustment(invoice?.adjustment ? String(invoice.adjustment) : "")
+          setRecurrenceInterval(
+            invoice?.recurrence_interval_months
+              ? String(invoice.recurrence_interval_months)
+              : "",
+          )
         }
       }}
     >
@@ -201,6 +213,65 @@ export function InvoiceFormDialog({
               />
             </div>
           </div>
+
+          {isGenerated ? null : (
+            <fieldset className="space-y-3 rounded-lg border p-3">
+              <legend className="px-1 text-sm font-medium">Recorrência</legend>
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="inv-recurrence">Repetir</Label>
+                  <select
+                    id="inv-recurrence"
+                    name="recurrence_interval_months"
+                    value={recurrenceInterval}
+                    onChange={(event) =>
+                      setRecurrenceInterval(event.target.value)
+                    }
+                    className={fieldClass}
+                  >
+                    <option value="">Não repetir</option>
+                    {Object.entries(RECURRENCE_INTERVALS).map(
+                      ([value, config]) => (
+                        <option key={value} value={value}>
+                          {config.label}
+                        </option>
+                      ),
+                    )}
+                  </select>
+                </div>
+                {recurrenceInterval ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="inv-recurrence-end">Até (opcional)</Label>
+                      <Input
+                        id="inv-recurrence-end"
+                        name="recurrence_end_date"
+                        type="date"
+                        defaultValue={invoice?.recurrence_end_date ?? ""}
+                      />
+                    </div>
+                    <label className="flex items-center gap-2 self-end pb-1.5 text-sm">
+                      <input
+                        type="checkbox"
+                        name="recurrence_auto_send"
+                        defaultChecked={invoice?.recurrence_auto_send ?? false}
+                        className="accent-primary size-4"
+                      />
+                      Enviar automaticamente ao cliente
+                    </label>
+                  </>
+                ) : null}
+              </div>
+              {recurrenceInterval ? (
+                <p className="text-muted-foreground text-xs">
+                  Esta fatura vira o modelo: na mesma data de cada período, uma
+                  nova fatura é gerada com os mesmos itens e prazo. Com o envio
+                  automático, ela vai por e-mail ao contato principal do
+                  cliente; sem ele, fica em rascunho para você revisar.
+                </p>
+              ) : null}
+            </fieldset>
+          )}
 
           <DocumentItemsEditor
             items={lineItems}
