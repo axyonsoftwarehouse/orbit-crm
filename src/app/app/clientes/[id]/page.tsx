@@ -12,6 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { TagPicker } from "@/components/app/tag-picker"
+import { ContactShortcuts } from "@/components/app/contact-shortcuts"
 import { CustomFieldsCard } from "@/components/app/custom-fields-view"
 import { getMemberships, getUser } from "@/lib/auth"
 import { ClientAssistant } from "@/components/app/assistant/client-assistant"
@@ -91,6 +92,8 @@ export default async function CompanyDetailPage({
     getClient360(active.tenantId, company.id),
   ])
 
+  const primaryContact =
+    contacts.find((contact) => contact.is_primary) ?? contacts[0] ?? null
   const activeProjects = client360.projects.filter(
     (project) => project.status === 1 || project.status === 2,
   ).length
@@ -115,6 +118,11 @@ export default async function CompanyDetailPage({
             {[company.city, company.country].filter(Boolean).join(", ") ||
               "Cliente"}
           </p>
+          <ContactShortcuts
+            email={primaryContact?.email}
+            phone={company.phone ?? primaryContact?.phone}
+            name={company.name}
+          />
           <TagPicker
             entityType="company"
             entityId={company.id}
@@ -268,6 +276,12 @@ export default async function CompanyDetailPage({
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-1">
+                            <ContactShortcuts
+                              email={contact.email}
+                              phone={contact.phone}
+                              name={`${contact.first_name} ${contact.last_name ?? ""}`.trim()}
+                              variant="icon"
+                            />
                             <InvitePortalDialog
                               contactId={contact.id}
                               companyId={company.id}

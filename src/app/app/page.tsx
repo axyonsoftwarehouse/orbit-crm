@@ -21,7 +21,10 @@ import {
   todayIso,
 } from "@/lib/format"
 import { formatDuration } from "@/server/queries/time"
-import { getMemberships } from "@/lib/auth"
+import { getMemberships, getUser } from "@/lib/auth"
+import { endOfTodayUtc } from "@/lib/lead-activity"
+import { listOpenNextSteps } from "@/server/queries/lead-next-steps"
+import { NextStepsCard } from "@/components/app/next-steps-card"
 import { getActiveTenant } from "@/lib/tenant"
 import { createClient } from "@/lib/supabase/server"
 import { listProjects } from "@/server/queries/projects"
@@ -54,6 +57,15 @@ export default async function DashboardPage() {
 
   const today = todayIso()
   const monthStartIso = `${today.slice(0, 8)}01`
+
+  const [user, openNextSteps] = await Promise.all([
+    getUser(),
+    listOpenNextSteps(tenantId, {
+      untilIso: endOfTodayUtc(),
+      client: supabase,
+    }),
+  ])
+  const myNextSteps = openNextSteps.filter((step) => step.owner_id === user?.id)
 
   const [
     companies,
@@ -279,6 +291,8 @@ export default async function DashboardPage() {
           tone="green"
         />
       </div>
+
+      <NextStepsCard steps={myNextSteps} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
