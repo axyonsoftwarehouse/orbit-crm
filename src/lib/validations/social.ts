@@ -35,6 +35,10 @@ export const socialPostSchema = z.object({
 
 export type SocialPostInput = z.infer<typeof socialPostSchema>
 
+export const socialPostUpdateSchema = socialPostSchema
+  .pick({ content: true, target_ids: true })
+  .extend({ id: z.string().uuid("Post inválido") })
+
 export const socialScheduleSchema = z.object({
   scheduled_at: z.string().trim().min(1, "Informe a data e hora"),
 })

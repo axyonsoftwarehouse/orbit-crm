@@ -83,6 +83,8 @@ export const SOCIAL_EVENT_LABELS: Record<string, string> = {
   failed: "Falha na publicação",
   retried: "Nova tentativa",
   cancelled: "Cancelado",
+  edited: "Editado",
+  approval_reset: "Aprovação desfeita pela edição",
 }
 
 export const ROLES = ["owner", "admin", "member"] as const

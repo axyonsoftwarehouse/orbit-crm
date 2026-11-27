@@ -1,6 +1,11 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
-import { ArrowLeft, CalendarClock, MessageSquare } from "lucide-react"
+import {
+  ArrowLeft,
+  CalendarClock,
+  MessageSquare,
+  MessageSquareWarning,
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   SocialProviderBadge,
@@ -15,8 +20,15 @@ import { isManager } from "@/server/permissions"
 import {
   getSocialPost,
   getSocialSettings,
+  listSocialAccounts,
   listSocialMedia,
 } from "@/server/queries/social"
+import {
+  editResetsApproval,
+  isSocialPostEditable,
+  publishModeNotice,
+} from "@/lib/social-edit"
+import { SocialPostFormDialog } from "../social-post-form-dialog"
 import { SocialPostActions } from "./social-post-actions"
 import { ManualPublishPanel } from "./manual-publish-panel"
 import { SocialMediaSection } from "./social-media-section"
@@ -48,7 +60,15 @@ export default async function SocialPostDetailPage({
   ])
   if (!post) notFound()
 
-  const media = await listSocialMedia(active.tenantId, post.id)
+  const editable = isSocialPostEditable(post.status)
+  const [media, accounts] = await Promise.all([
+    listSocialMedia(active.tenantId, post.id),
+    editable ? listSocialAccounts(active.tenantId) : Promise.resolve([]),
+  ])
+  const lastEvent = post.events.at(-1)?.event
+  const approvalWasReset =
+    post.status === "draft" && lastEvent === "approval_reset"
+  const resetsApproval = editResetsApproval(post.status, post.requires_approval)
   const nativeEnabled = socialNativeEnabled()
   const hasNativeTarget = post.targets.some(
     (target) =>
@@ -107,10 +127,52 @@ export default async function SocialPostDetailPage({
         </div>
       ) : null}
 
+      {post.status === "rejected" ? (
+        <div className="border-destructive/30 bg-destructive/10 flex gap-3 rounded-xl border px-4 py-3">
+          <MessageSquareWarning className="text-destructive mt-0.5 size-5 shrink-0" />
+          <div className="space-y-1 text-sm">
+            <p className="text-destructive font-medium">
+              Post rejeitado: ajuste e envie de novo
+            </p>
+            {post.rejection_note ? (
+              <p className="whitespace-pre-wrap">“{post.rejection_note}”</p>
+            ) : (
+              <p className="text-muted-foreground">
+                Nenhum comentário deixado.
+              </p>
+            )}
+            <p className="text-muted-foreground text-xs">
+              Use “Editar” para ajustar o texto, os destinos ou as imagens e
+              depois “Enviar para aprovação”. O cliente verá a versão nova.
+            </p>
+          </div>
+        </div>
+      ) : null}
+      {approvalWasReset ? (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
+          A última alteração desfez a aprovação do cliente. Revise o post e
+          clique em “Enviar para aprovação” quando estiver pronto.
+        </div>
+      ) : null}
+
       <SocialPostActions
         id={post.id}
         status={post.status}
         canManage={isManager(active.role)}
+        editSlot={
+          editable && post.company ? (
+            <SocialPostFormDialog
+              accounts={accounts}
+              post={{
+                id: post.id,
+                company: post.company,
+                content: post.content,
+                targetIds: post.targets.map((target) => target.account_id),
+                resetsApproval,
+              }}
+            />
+          ) : null
+        }
       />
 
       <Card>
@@ -126,7 +188,16 @@ export default async function SocialPostDetailPage({
         <ManualPublishPanel postId={post.id} content={post.content} />
       ) : null}
 
-      <SocialMediaSection tenantId={active.tenantId} postId={post.id} />
+      {resetsApproval ? (
+        <p className="text-muted-foreground -mb-3 text-xs">
+          Adicionar ou remover imagens também desfaz a aprovação deste post.
+        </p>
+      ) : null}
+      <SocialMediaSection
+        tenantId={active.tenantId}
+        postId={post.id}
+        editable={editable}
+      />
 
       {post.targets.length > 0 ? (
         <div>
@@ -213,11 +284,6 @@ export default async function SocialPostDetailPage({
                 settings.default_timezone,
               )}
             </p>
-            {post.rejection_note ? (
-              <p className="text-destructive">
-                Motivo da rejeição: {post.rejection_note}
-              </p>
-            ) : null}
             {post.failure_reason ? (
               <p className="text-destructive">
                 Falha na publicação: {post.failure_reason}
@@ -257,8 +323,11 @@ export default async function SocialPostDetailPage({
       </Card>
 
       <p className="text-muted-foreground text-xs">
-        Criado em {formatDate(post.created_at, settings.default_timezone)}.
-        Contas conectadas publicam automaticamente no horário agendado.
+        Criado em {formatDate(post.created_at, settings.default_timezone)}.{" "}
+        {publishModeNotice(
+          post.targets.map((target) => target.provider),
+          nativeEnabled,
+        )}
       </p>
     </div>
   )

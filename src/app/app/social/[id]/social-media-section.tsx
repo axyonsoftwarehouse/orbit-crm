@@ -6,9 +6,12 @@ import { SocialMediaUploader } from "./social-media-uploader"
 export async function SocialMediaSection({
   tenantId,
   postId,
+  editable,
 }: {
   tenantId: string
   postId: string
+  /** Fora dos status editáveis, a mídia fica só para consulta. */
+  editable: boolean
 }) {
   const media = await listSocialMedia(tenantId, postId)
 
@@ -16,13 +19,14 @@ export async function SocialMediaSection({
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle className="text-base">Mídia</CardTitle>
-        <SocialMediaUploader postId={postId} />
+        {editable ? <SocialMediaUploader postId={postId} /> : null}
       </CardHeader>
       <CardContent>
         {media.length === 0 ? (
           <p className="text-muted-foreground text-sm">
-            Nenhuma imagem adicionada. Use “Adicionar imagem” para preparar o
-            post.
+            {editable
+              ? "Nenhuma imagem adicionada. Use “Adicionar imagem” para preparar o post."
+              : "Nenhuma imagem adicionada."}
           </p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -41,9 +45,11 @@ export async function SocialMediaSection({
                 ) : (
                   <div className="bg-muted aspect-square w-full" />
                 )}
-                <div className="absolute top-1 right-1 opacity-0 transition-opacity group-hover:opacity-100">
-                  <DeleteSocialMediaButton id={item.id} postId={postId} />
-                </div>
+                {editable ? (
+                  <div className="absolute top-1 right-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <DeleteSocialMediaButton id={item.id} postId={postId} />
+                  </div>
+                ) : null}
                 <p className="truncate bg-black/60 px-2 py-1 text-[10px] text-white">
                   {item.file_name}
                 </p>
