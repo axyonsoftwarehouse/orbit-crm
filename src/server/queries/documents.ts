@@ -31,6 +31,7 @@ export type InvoiceRow = {
   date: string
   due_date: string | null
   total: number
+  recurrence_interval_months: number | null
   company: { id: string; name: string } | null
 }
 
@@ -75,6 +76,62 @@ export type Invoice = {
   client_note: string | null
   terms: string | null
   reference_no: string | null
+  recurrence_interval_months: number | null
+  recurrence_end_date: string | null
+  recurrence_auto_send: boolean
+  recurrence_parent_id: string | null
+  recurrence_sequence: number | null
+}
+
+export type RecurrenceChild = {
+  id: string
+  formatted_number: string
+  status: number
+  date: string
+  due_date: string | null
+  total: number
+  recurrence_sequence: number
+}
+
+/** Faturas geradas a partir de um modelo recorrente (mais recentes primeiro). */
+export async function listRecurrenceChildren(
+  tenantId: string,
+  templateId: string,
+): Promise<{ rows: RecurrenceChild[]; lastSequence: number }> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("invoices")
+    .select(
+      "id, formatted_number, status, date, due_date, total, recurrence_sequence, deleted_at",
+    )
+    .eq("tenant_id", tenantId)
+    .eq("recurrence_parent_id", templateId)
+    .order("recurrence_sequence", { ascending: false })
+
+  const all = (data ?? []) as (RecurrenceChild & {
+    deleted_at: string | null
+  })[]
+  return {
+    // Excluídas também contam: a ocorrência não é gerada de novo.
+    lastSequence: all[0]?.recurrence_sequence ?? 0,
+    rows: all.filter((row) => row.deleted_at === null),
+  }
+}
+
+/** Modelo de uma fatura gerada (para o link "gerada a partir de"). */
+export async function getRecurrenceParent(
+  tenantId: string,
+  parentId: string,
+): Promise<{ id: string; formatted_number: string } | null> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("invoices")
+    .select("id, formatted_number")
+    .eq("tenant_id", tenantId)
+    .eq("id", parentId)
+    .is("deleted_at", null)
+    .maybeSingle()
+  return (data as { id: string; formatted_number: string } | null) ?? null
 }
 
 export type Payment = {
@@ -140,7 +197,7 @@ export async function listInvoices(tenantId: string): Promise<InvoiceRow[]> {
   const { data } = await supabase
     .from("invoices")
     .select(
-      "id, formatted_number, status, date, due_date, total, company:companies(id, name)",
+      "id, formatted_number, status, date, due_date, total, recurrence_interval_months, company:companies(id, name)",
     )
     .eq("tenant_id", tenantId)
     .is("deleted_at", null)
@@ -158,7 +215,7 @@ export async function listInvoicesPage(
   const { data, count } = await supabase
     .from("invoices")
     .select(
-      "id, formatted_number, status, date, due_date, total, company:companies(id, name)",
+      "id, formatted_number, status, date, due_date, total, recurrence_interval_months, company:companies(id, name)",
       { count: "exact" },
     )
     .eq("tenant_id", tenantId)

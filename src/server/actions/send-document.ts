@@ -4,44 +4,13 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { getActiveMembership } from "@/lib/tenant"
 import { getUser } from "@/lib/auth"
-import { env } from "@/lib/env"
-import { formatDate, formatMoney } from "@/lib/format"
-import { logger } from "@/lib/logger"
-import { sendTenantEmail } from "@/server/email"
-import { createDocumentLink } from "@/server/document-sharing/links"
-import { loadDocument } from "@/server/document-sharing/load"
 import {
-  documentFileName,
-  renderDocumentPdf,
-} from "@/server/document-sharing/pdf"
+  DOCUMENT_KIND,
+  deliverDocumentEmail,
+} from "@/server/document-sharing/deliver"
 import type { DocumentKind } from "@/server/queries/documents"
 
 const MAX_RECIPIENTS = 20
-
-const KIND = {
-  estimate: {
-    table: "estimates",
-    dateColumn: "expiry_date",
-    template: "estimate_sent",
-    path: "/app/orcamentos",
-    /** Rascunho → Enviado */
-    statusFrom: 1,
-    statusTo: 2,
-    /** Só rascunho ou enviado (não respondido nem vencido). */
-    sendable: [1, 2],
-  },
-  invoice: {
-    table: "invoices",
-    dateColumn: "due_date",
-    template: "invoice_sent",
-    path: "/app/faturas",
-    /** Rascunho → Em aberto */
-    statusFrom: 6,
-    statusTo: 1,
-    /** Qualquer uma, menos cancelada (5). */
-    sendable: [1, 2, 3, 6],
-  },
-} as const
 
 export type SendDocumentResult = {
   error?: string
@@ -64,7 +33,7 @@ export async function sendDocumentAction(input: {
   const active = await getActiveMembership()
   if (!active) return { error: "Nenhuma empresa ativa." }
 
-  const config = KIND[input.kind]
+  const config = DOCUMENT_KIND[input.kind]
   if (!config) return { error: "Documento inválido." }
 
   const contactIds = [...new Set(input.contactIds)].slice(0, MAX_RECIPIENTS)
@@ -119,96 +88,25 @@ export async function sendDocumentAction(input: {
     return { error: "Selecione contatos deste cliente com e-mail." }
   }
 
-  const view = await loadDocument(supabase, active.tenantId, input.kind, row.id)
-  if (!view) return { error: "Documento não encontrado." }
-
   const user = await getUser()
-  const dateValue =
-    (input.kind === "estimate" ? row.expiry_date : row.due_date) ?? null
-
-  const pdf = Buffer.from(await renderDocumentPdf(view)).toString("base64")
-  const link = await createDocumentLink(supabase, {
+  const result = await deliverDocumentEmail(supabase, {
     tenantId: active.tenantId,
     kind: input.kind,
-    docId: row.id,
-    expiryDate: input.kind === "estimate" ? dateValue : null,
+    doc: row,
+    emails: recipients.map((contact) => contact.email!.trim()),
+    message: input.message,
     userId: user?.id ?? null,
   })
-  if ("error" in link) return { error: link.error }
-  const { data: tenant } = await supabase
-    .from("tenants")
-    .select("name")
-    .eq("id", active.tenantId)
-    .maybeSingle()
-
-  const siteUrl = env().NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")
-  const vars = {
-    tenant: (tenant as { name?: string } | null)?.name ?? "",
-    number: row.formatted_number,
-    total: formatMoney(Number(row.total), row.currency),
-    date: formatDate(dateValue),
-    link: `${siteUrl}/d/${link.token}`,
-    message: input.message?.trim() ?? "",
-  }
-  const attachments = [{ filename: documentFileName(view), content: pdf }]
-
-  const results = await Promise.allSettled(
-    recipients.map((contact) =>
-      sendTenantEmail(supabase, {
-        tenantId: active.tenantId,
-        templateKey: config.template,
-        to: contact.email!.trim(),
-        vars,
-        attachments,
-      }),
-    ),
-  )
-  const outcomes = results.map((result) =>
-    result.status === "fulfilled" ? result.value : { sent: false },
-  )
-  for (const result of results) {
-    if (result.status === "rejected") {
-      logger.error("documents.send_failed", {
-        kind: input.kind,
-        error:
-          result.reason instanceof Error
-            ? result.reason.message
-            : String(result.reason),
-      })
-    }
-  }
-  const sent = outcomes.filter((outcome) => outcome.sent).length
-
-  if (sent === 0) {
-    await supabase
-      .from("document_links")
-      .update({ revoked_at: new Date().toISOString() })
-      .eq("id", link.id)
-      .eq("tenant_id", active.tenantId)
-    const skipped = outcomes.every(
-      (outcome) => "skipped" in outcome && outcome.skipped,
-    )
-    return {
-      error: skipped
-        ? "E-mail não configurado. Configure o Resend para enviar documentos."
-        : "Não foi possível enviar o e-mail. Tente novamente.",
-    }
-  }
-
-  await supabase
-    .from(config.table)
-    .update({ status: config.statusTo })
-    .eq("id", row.id)
-    .eq("tenant_id", active.tenantId)
-    .eq("status", config.statusFrom)
+  if ("error" in result) return { error: result.error }
 
   revalidatePath(`${config.path}/${row.id}`)
   revalidatePath(config.path)
+  const { sent, total } = result
   return {
     sent,
     success:
-      sent === recipients.length
+      sent === total
         ? `Enviado para ${sent} contato(s).`
-        : `Enviado para ${sent} de ${recipients.length} contato(s).`,
+        : `Enviado para ${sent} de ${total} contato(s).`,
   }
 }

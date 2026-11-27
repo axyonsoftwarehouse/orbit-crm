@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Receipt } from "lucide-react"
+import { Receipt, Repeat } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -100,6 +100,15 @@ export default async function FaturasPage({
                     >
                       {invoice.formatted_number}
                     </Link>
+                    {invoice.recurrence_interval_months ? (
+                      <span
+                        className="text-muted-foreground ml-2 inline-flex items-center gap-1 text-xs font-normal"
+                        title="Modelo de fatura recorrente"
+                      >
+                        <Repeat className="size-3" />
+                        Recorrente
+                      </span>
+                    ) : null}
                   </TableCell>
                   <TableCell className="text-muted-foreground">
                     {invoice.company?.name ?? "—"}

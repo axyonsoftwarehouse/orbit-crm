@@ -17,6 +17,18 @@ import {
   replaceDocumentItems,
 } from "@/server/documents"
 import { addDaysIso, todayIso } from "@/lib/format"
+import { parseRecurrenceInput } from "@/lib/recurrence"
+
+function readRecurrence(formData: FormData, invoiceDate: string) {
+  return parseRecurrenceInput(
+    {
+      interval: formData.get("recurrence_interval_months"),
+      endDate: formData.get("recurrence_end_date"),
+      autoSend: formData.get("recurrence_auto_send"),
+    },
+    invoiceDate,
+  )
+}
 
 export type InvoiceFormState = { error?: string; success?: string } | undefined
 
@@ -70,6 +82,9 @@ export async function createInvoiceAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." }
   }
 
+  const recurrence = readRecurrence(formData, parsed.data.date)
+  if ("error" in recurrence) return { error: recurrence.error }
+
   const supabase = await createClient()
   const settings = await getTenantFinanceSettings(supabase, active.tenantId)
   const user = await getUser()
@@ -94,6 +109,7 @@ export async function createInvoiceAction(
       status: 1,
       due_date: parsed.data.due_date ?? null,
       ...values,
+      ...recurrence.values,
     })
     .select("id")
     .single()
@@ -137,9 +153,31 @@ export async function updateInvoiceAction(
 
   const values = buildDocumentValues(parsed.data)
   const supabase = await createClient()
+
+  const { data: current } = await supabase
+    .from("invoices")
+    .select("recurrence_parent_id")
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+    .is("deleted_at", null)
+    .maybeSingle()
+  if (!current) return { error: "Fatura não encontrada." }
+
+  // Fatura gerada por uma recorrência não vira modelo de outra série.
+  let recurrenceValues = {}
+  if (!current.recurrence_parent_id) {
+    const recurrence = readRecurrence(formData, parsed.data.date)
+    if ("error" in recurrence) return { error: recurrence.error }
+    recurrenceValues = recurrence.values
+  }
+
   const { error } = await supabase
     .from("invoices")
-    .update({ ...values, due_date: parsed.data.due_date ?? null })
+    .update({
+      ...values,
+      due_date: parsed.data.due_date ?? null,
+      ...recurrenceValues,
+    })
     .eq("id", id)
     .eq("tenant_id", active.tenantId)
 
@@ -159,6 +197,33 @@ export async function updateInvoiceAction(
   revalidatePath("/app/faturas")
   revalidatePath(`/app/faturas/${id}`)
   return { success: "Fatura atualizada." }
+}
+
+/** Para a recorrência: o modelo deixa de gerar faturas (as geradas ficam). */
+export async function stopInvoiceRecurrenceAction(formData: FormData) {
+  const active = await getActiveMembership()
+  if (!active) return
+
+  const id = String(formData.get("id") ?? "")
+  if (!id) return
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      recurrence_interval_months: null,
+      recurrence_end_date: null,
+      recurrence_auto_send: false,
+    })
+    .eq("id", id)
+    .eq("tenant_id", active.tenantId)
+  if (error) {
+    dbError("invoices.stop_recurrence", error)
+    return
+  }
+
+  revalidatePath("/app/faturas")
+  revalidatePath(`/app/faturas/${id}`)
 }
 
 export async function updateInvoiceStatusAction(formData: FormData) {

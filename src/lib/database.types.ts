@@ -1338,6 +1338,11 @@ export type Database = {
           number: number
           prefix: string
           project_id: string | null
+          recurrence_auto_send: boolean
+          recurrence_end_date: string | null
+          recurrence_interval_months: number | null
+          recurrence_parent_id: string | null
+          recurrence_sequence: number | null
           reference_no: string | null
           status: number
           subtotal: number
@@ -1365,6 +1370,11 @@ export type Database = {
           number: number
           prefix: string
           project_id?: string | null
+          recurrence_auto_send?: boolean
+          recurrence_end_date?: string | null
+          recurrence_interval_months?: number | null
+          recurrence_parent_id?: string | null
+          recurrence_sequence?: number | null
           reference_no?: string | null
           status?: number
           subtotal?: number
@@ -1392,6 +1402,11 @@ export type Database = {
           number?: number
           prefix?: string
           project_id?: string | null
+          recurrence_auto_send?: boolean
+          recurrence_end_date?: string | null
+          recurrence_interval_months?: number | null
+          recurrence_parent_id?: string | null
+          recurrence_sequence?: number | null
           reference_no?: string | null
           status?: number
           subtotal?: number
@@ -1421,6 +1436,13 @@ export type Database = {
             columns: ["project_id", "tenant_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id", "tenant_id"]
+          },
+          {
+            foreignKeyName: "invoices_recurrence_parent_fk"
+            columns: ["recurrence_parent_id", "tenant_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
             referencedColumns: ["id", "tenant_id"]
           },
           {
