@@ -12,6 +12,7 @@ import { getMemberships } from "@/lib/auth"
 import { socialNativeEnabled } from "@/lib/env"
 import { getActiveTenant } from "@/lib/tenant"
 import { isManager } from "@/server/permissions"
+import { upgradeHint } from "@/server/plan-limits"
 import { listCompanies } from "@/server/queries/companies"
 import { listSocialAccounts } from "@/server/queries/social"
 import { getSocialProvider } from "@/server/social"
@@ -23,7 +24,6 @@ const ERROR_MESSAGES: Record<string, string> = {
   disabled: "A publicação nativa está desativada no ambiente.",
   provider: "Provedor não suportado ou não configurado.",
   not_configured: "Configure as credenciais do app no ambiente.",
-  plan_limit: "Limite de contas sociais do plano atingido.",
   account_type: "Tipo de conta inválido para esta rede.",
   denied: "A autorização foi cancelada.",
   state: "A sessão de conexão expirou. Tente novamente.",
@@ -88,7 +88,12 @@ export default async function SocialAccountsPage({
       "Adicione a conta como tester no app Meta e aceite o convite no Instagram.",
   }
   const errorMessage =
-    (detail && detailMessages[detail]) ?? (error ? ERROR_MESSAGES[error] : null)
+    (detail && detailMessages[detail]) ??
+    (error === "plan_limit"
+      ? `Seu plano não permite mais contas sociais. ${upgradeHint("manager")}`
+      : error
+        ? ERROR_MESSAGES[error]
+        : null)
 
   return (
     <div className="space-y-6">

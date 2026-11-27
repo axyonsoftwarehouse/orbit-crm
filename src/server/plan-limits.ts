@@ -1,6 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
 import { logger } from "@/lib/logger"
+import { supportEmail } from "@/lib/env"
+import { getActiveMembership } from "@/lib/tenant"
+import { isManager } from "@/server/permissions"
 
 type ResourceTable =
   | "companies"
@@ -42,6 +45,66 @@ const RESOURCES: Record<
   milestones: { table: "milestones", scope: "active" },
 }
 
+/** Nome do recurso na mensagem: [singular, plural]. */
+const RESOURCE_LABELS: Record<string, [string, string]> = {
+  clients: ["cliente", "clientes"],
+  projects: ["projeto", "projetos"],
+  tasks: ["tarefa", "tarefas"],
+  tickets: ["ticket", "tickets"],
+  leads: ["lead", "leads"],
+  seo_sites: ["site de SEO", "sites de SEO"],
+  social_accounts: ["conta social", "contas sociais"],
+  social_posts_month: ["post social por mês", "posts sociais por mês"],
+  tags: ["tag", "tags"],
+  custom_fields: ["campo personalizado", "campos personalizados"],
+  milestones: ["marco", "marcos"],
+}
+
+/**
+ * Quem vai ler a mensagem: `manager` (owner/admin) recebe o contato para
+ * upgrade; `member` é orientado a falar com um administrador.
+ */
+export type PlanLimitAudience = "manager" | "member"
+
+export function upgradeHint(audience: PlanLimitAudience): string {
+  if (audience === "member") {
+    return "Peça a um administrador da conta para aumentar o plano."
+  }
+  const email = supportEmail()
+  return email
+    ? `Para aumentar o limite, fale com a gente em ${email}.`
+    : "Para aumentar o limite, fale com o suporte do Orbit CRM."
+}
+
+export function planLimitMessage(
+  resource: string,
+  limit: number,
+  audience: PlanLimitAudience,
+): string {
+  const [singular, plural] = RESOURCE_LABELS[resource] ?? ["item", "itens"]
+  const what = `${limit} ${limit === 1 ? singular : plural}`
+  return `Seu plano permite até ${what}. ${upgradeHint(audience)}`
+}
+
+export function storageLimitMessage(
+  limitMb: number,
+  audience: PlanLimitAudience,
+): string {
+  const size =
+    limitMb >= 1024 && limitMb % 1024 === 0
+      ? `${limitMb / 1024} GB`
+      : `${limitMb} MB`
+  return `O armazenamento do plano (${size}) está cheio. ${upgradeHint(audience)}`
+}
+
+/** Papel do usuário logado no tenant, para escolher a mensagem. */
+async function currentAudience(tenantId: string): Promise<PlanLimitAudience> {
+  const active = await getActiveMembership()
+  return active?.tenantId === tenantId && isManager(active.role)
+    ? "manager"
+    : "member"
+}
+
 export type PlanLimitResult = {
   ok: boolean
   message?: string
@@ -81,6 +144,7 @@ export async function checkPlanLimitWith(
   tenantId: string,
   resource: string,
   now: Date = new Date(),
+  audience: PlanLimitAudience = "manager",
 ): Promise<PlanLimitResult> {
   const config = RESOURCES[resource]
   if (!config) return { ok: true }
@@ -108,8 +172,7 @@ export async function checkPlanLimitWith(
     return {
       ok: false,
       remaining: 0,
-      message:
-        "Limite do plano atingido para este recurso. Faça upgrade para continuar.",
+      message: planLimitMessage(resource, limit, audience),
     }
   }
   return { ok: true, remaining }
@@ -120,7 +183,13 @@ export async function checkPlanLimit(
   resource: string,
 ): Promise<PlanLimitResult> {
   const supabase = await createClient()
-  return checkPlanLimitWith(supabase, tenantId, resource)
+  return checkPlanLimitWith(
+    supabase,
+    tenantId,
+    resource,
+    new Date(),
+    await currentAudience(tenantId),
+  )
 }
 
 const BYTES_PER_MB = 1024 * 1024
@@ -134,6 +203,7 @@ export async function checkStorageLimitWith(
   supabase: SupabaseClient,
   tenantId: string,
   incomingBytes: number,
+  audience: PlanLimitAudience = "manager",
 ): Promise<PlanLimitResult> {
   const limits = await planLimits(supabase, tenantId)
   const limitMb = limits.storage_mb
@@ -154,8 +224,7 @@ export async function checkStorageLimitWith(
     return {
       ok: false,
       remaining: 0,
-      message:
-        "Limite de armazenamento do plano atingido. Faça upgrade para continuar.",
+      message: storageLimitMessage(limitMb, audience),
     }
   }
   return { ok: true, remaining: limitBytes - used - incomingBytes }
@@ -166,5 +235,10 @@ export async function checkStorageLimit(
   incomingBytes: number,
 ): Promise<PlanLimitResult> {
   const supabase = await createClient()
-  return checkStorageLimitWith(supabase, tenantId, incomingBytes)
+  return checkStorageLimitWith(
+    supabase,
+    tenantId,
+    incomingBytes,
+    await currentAudience(tenantId),
+  )
 }

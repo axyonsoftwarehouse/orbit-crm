@@ -32,6 +32,7 @@ const serverEnvSchema = z.object({
   RESEND_API_KEY: optionalEnv,
   EMAIL_FROM: optionalEnv,
   SUPER_ADMIN_EMAILS: z.string().optional(),
+  SUPPORT_EMAIL: optionalEnv,
   OPENROUTER_API_KEY: optionalEnv,
   OPENROUTER_MODEL: versionEnv("anthropic/claude-haiku-5.5"),
   SOCIAL_NATIVE_ENABLED: booleanEnv,
@@ -73,4 +74,10 @@ export function superAdminEmails(): string[] {
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
+}
+
+/** E-mail de contato para upgrade de plano (opcional). */
+export function supportEmail(): string | null {
+  const email = (process.env.SUPPORT_EMAIL ?? "").trim()
+  return email.includes("@") ? email : null
 }
