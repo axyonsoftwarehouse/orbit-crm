@@ -50,7 +50,8 @@ Definidas em `.env.local` (não versionado) e na Vercel:
 
 - `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` (server-only; ignora RLS)
-- `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `SUPER_ADMIN_EMAILS`, `CRON_SECRET`
+- `NEXT_PUBLIC_SITE_URL`, `RESEND_API_KEY`, `EMAIL_FROM`, `SUPER_ADMIN_EMAILS`, `CRON_SECRET`,
+  `SUPPORT_EMAIL` (opcional; contato de upgrade mostrado a owner/admin quando um limite do plano é atingido)
 - `OPENROUTER_API_KEY` (server-only; sem ela a IA fica desligada), `OPENROUTER_MODEL`
   (padrão `anthropic/claude-haiku-5.5`). Toda chamada de IA passa por `getChatModel()` em
   `src/server/ai/model.ts`, que força provedores sem retenção de dados.

@@ -1,6 +1,7 @@
 "use server"
 
 import { dbError } from "@/lib/db-error"
+import { logger } from "@/lib/logger"
 
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
@@ -85,7 +86,14 @@ export async function createPortalTicketAction(
 
   const admin = createAdminClient()
   const limit = await checkPlanLimitWith(admin, contact.tenant_id, "tickets")
-  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
+  if (!limit.ok) {
+    // O cliente do portal não precisa saber do plano da agência.
+    logger.warn("portal.ticket_plan_limit", { tenantId: contact.tenant_id })
+    return {
+      error:
+        "Não foi possível abrir o chamado agora. Entre em contato com a equipe por outro canal.",
+    }
+  }
 
   const supabase = await createClient()
   const { data: number, error: numberError } = await supabase.rpc(

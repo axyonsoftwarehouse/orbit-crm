@@ -33,7 +33,10 @@ vi.mock("@/server/queries/leads", () => ({
   listLeadStatuses: async () => state.statuses,
 }))
 vi.mock("@/server/plan-limits", () => ({
-  checkPlanLimit: async () => ({ ok: state.planOk }),
+  checkPlanLimit: async () =>
+    state.planOk
+      ? { ok: true }
+      : { ok: false, message: "Seu plano permite até 10 clientes." },
 }))
 vi.mock("@/server/custom-fields", () => ({
   saveCustomFieldValues: vi.fn(),
@@ -197,7 +200,7 @@ describe("convertLeadToCustomerAction", () => {
     const mock = setup()
 
     await expect(
-      convertLeadToCustomerAction(form({ id: "lead-1" })),
+      convertLeadToCustomerAction(undefined, form({ id: "lead-1" })),
     ).rejects.toThrow("REDIRECT:/app/clientes/co-1")
 
     expect(firstInsert(mock.callsFor("companies"))).toMatchObject({
@@ -232,7 +235,7 @@ describe("convertLeadToCustomerAction", () => {
     const mock = setup()
 
     await expect(
-      convertLeadToCustomerAction(form({ id: "lead-1" })),
+      convertLeadToCustomerAction(undefined, form({ id: "lead-1" })),
     ).rejects.toThrow("REDIRECT:/app/clientes/co-old")
     expect(mock.client.from).not.toHaveBeenCalled()
   })
@@ -242,8 +245,8 @@ describe("convertLeadToCustomerAction", () => {
     const mock = setup()
 
     await expect(
-      convertLeadToCustomerAction(form({ id: "lead-1" })),
-    ).rejects.toThrow("REDIRECT:/app/leads/lead-1")
+      convertLeadToCustomerAction(undefined, form({ id: "lead-1" })),
+    ).resolves.toEqual({ error: "Seu plano permite até 10 clientes." })
     expect(mock.client.from).not.toHaveBeenCalled()
   })
 
@@ -252,7 +255,7 @@ describe("convertLeadToCustomerAction", () => {
     const mock = setup()
 
     await expect(
-      convertLeadToCustomerAction(form({ id: "lead-1" })),
+      convertLeadToCustomerAction(undefined, form({ id: "lead-1" })),
     ).rejects.toThrow("REDIRECT")
 
     expect(firstInsert(mock.callsFor("companies"))).toMatchObject({
@@ -267,7 +270,9 @@ describe("convertLeadToCustomerAction", () => {
   it("falha ao criar o cliente não altera o lead", async () => {
     const mock = setup(null)
 
-    await convertLeadToCustomerAction(form({ id: "lead-1" }))
+    await expect(
+      convertLeadToCustomerAction(undefined, form({ id: "lead-1" })),
+    ).resolves.toEqual({ error: "Não foi possível converter o lead." })
 
     expect(mock.callsFor("contacts")).toEqual([])
     expect(mock.callsFor("leads")).toEqual([])

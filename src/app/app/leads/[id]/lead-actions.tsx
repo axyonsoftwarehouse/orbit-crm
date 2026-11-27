@@ -1,9 +1,12 @@
 "use client"
 
+import { useActionState, useEffect } from "react"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import {
   convertLeadToCustomerAction,
   deleteLeadAction,
+  type ConvertLeadState,
 } from "@/server/actions/leads"
 
 export function DeleteLeadButton({ id }: { id: string }) {
@@ -23,9 +26,18 @@ export function DeleteLeadButton({ id }: { id: string }) {
 }
 
 export function ConvertLeadButton({ id }: { id: string }) {
+  const [state, formAction, isPending] = useActionState<
+    ConvertLeadState,
+    FormData
+  >(convertLeadToCustomerAction, undefined)
+
+  useEffect(() => {
+    if (state?.error) toast.error(state.error)
+  }, [state])
+
   return (
     <form
-      action={convertLeadToCustomerAction}
+      action={formAction}
       onSubmit={(event) => {
         if (
           !confirm(
@@ -37,8 +49,8 @@ export function ConvertLeadButton({ id }: { id: string }) {
       }}
     >
       <input type="hidden" name="id" value={id} />
-      <Button type="submit" size="sm">
-        Converter em cliente
+      <Button type="submit" size="sm" disabled={isPending}>
+        {isPending ? "Convertendo..." : "Converter em cliente"}
       </Button>
     </form>
   )

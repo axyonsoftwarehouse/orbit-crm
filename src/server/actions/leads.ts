@@ -254,21 +254,24 @@ export async function completeLeadNextStepAction(formData: FormData) {
   revalidatePath("/app")
 }
 
-export async function convertLeadToCustomerAction(formData: FormData) {
+export type ConvertLeadState = { error?: string } | undefined
+
+export async function convertLeadToCustomerAction(
+  _prev: ConvertLeadState,
+  formData: FormData,
+): Promise<ConvertLeadState> {
   const active = await getActiveMembership()
   if (!active) redirect("/app")
 
   const id = String(formData.get("id") ?? "")
   const lead = await getLead(active.tenantId, id)
-  if (!lead) return
+  if (!lead) return { error: "Lead não encontrado." }
   if (lead.converted_company_id) {
     redirect(`/app/clientes/${lead.converted_company_id}`)
   }
 
   const limit = await checkPlanLimit(active.tenantId, "clients")
-  if (!limit.ok) {
-    redirect(`/app/leads/${id}`)
-  }
+  if (!limit.ok) return { error: limit.message ?? "Limite do plano atingido." }
 
   const user = await getUser()
   const supabase = await createClient()
@@ -287,7 +290,13 @@ export async function convertLeadToCustomerAction(formData: FormData) {
     })
     .select("id")
     .single()
-  if (companyError || !company) return
+  if (companyError || !company) {
+    return dbError(
+      "leads.convert",
+      companyError,
+      "Não foi possível converter o lead.",
+    )
+  }
 
   const parts = lead.name.trim().split(/\s+/)
   await supabase.from("contacts").insert({

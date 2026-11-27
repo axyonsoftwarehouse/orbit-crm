@@ -1,12 +1,22 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }))
+const membership = vi.hoisted(() => ({
+  current: null as { tenantId: string; role: string } | null,
+}))
+vi.mock("@/lib/tenant", () => ({
+  getActiveMembership: async () => membership.current,
+}))
 
+import { createClient } from "@/lib/supabase/server"
 import {
+  checkPlanLimit,
   checkPlanLimitWith,
   checkStorageLimitWith,
+  planLimitMessage,
   startOfMonthUtc,
+  storageLimitMessage,
 } from "@/server/plan-limits"
 import { PLAN_LIMIT_FIELDS } from "@/lib/constants"
 import { planSchema } from "@/lib/validations/plan"
@@ -211,7 +221,7 @@ describe("checkStorageLimitWith", () => {
       ok: false,
       remaining: 0,
       message:
-        "Limite de armazenamento do plano atingido. Faça upgrade para continuar.",
+        "O armazenamento do plano (1000 MB) está cheio. Para aumentar o limite, fale com o suporte do Orbit CRM.",
     })
     expect(rpc).toHaveBeenCalledWith("tenant_storage_bytes", { p_tenant: "t1" })
   })
@@ -233,5 +243,81 @@ describe("checkStorageLimitWith", () => {
     const { client } = storageClient({ storage_mb: 0 }, 0)
     const result = await checkStorageLimitWith(client, "t1", 1)
     expect(result.ok).toBe(false)
+  })
+})
+
+describe("mensagens de limite", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("nomeia o recurso e o limite e, para owner/admin, dá o contato", () => {
+    vi.stubEnv("SUPPORT_EMAIL", "vendas@orbitcrm.app")
+    expect(planLimitMessage("clients", 50, "manager")).toBe(
+      "Seu plano permite até 50 clientes. Para aumentar o limite, fale com a gente em vendas@orbitcrm.app.",
+    )
+  })
+
+  it("usa o singular quando o limite é 1", () => {
+    expect(planLimitMessage("social_accounts", 1, "manager")).toMatch(
+      /^Seu plano permite até 1 conta social\. /,
+    )
+  })
+
+  it("membro é orientado a falar com um administrador", () => {
+    vi.stubEnv("SUPPORT_EMAIL", "vendas@orbitcrm.app")
+    expect(planLimitMessage("social_posts_month", 30, "member")).toBe(
+      "Seu plano permite até 30 posts sociais por mês. Peça a um administrador da conta para aumentar o plano.",
+    )
+  })
+
+  it("sem SUPPORT_EMAIL, aponta para o suporte", () => {
+    vi.stubEnv("SUPPORT_EMAIL", "")
+    expect(planLimitMessage("tasks", 100, "manager")).toBe(
+      "Seu plano permite até 100 tarefas. Para aumentar o limite, fale com o suporte do Orbit CRM.",
+    )
+  })
+
+  it("armazenamento em GB quando é múltiplo de 1024 MB", () => {
+    expect(storageLimitMessage(2048, "member")).toMatch(
+      /^O armazenamento do plano \(2 GB\) está cheio\. Peça/,
+    )
+  })
+
+  it("checkPlanLimitWith devolve a mensagem conforme o público", async () => {
+    vi.stubEnv("SUPPORT_EMAIL", "")
+    const { client } = fakeClient({ leads: 20 }, 20)
+    const result = await checkPlanLimitWith(
+      client,
+      "t1",
+      "leads",
+      new Date(),
+      "member",
+    )
+    expect(result).toEqual({
+      ok: false,
+      remaining: 0,
+      message:
+        "Seu plano permite até 20 leads. Peça a um administrador da conta para aumentar o plano.",
+    })
+  })
+})
+
+describe("checkPlanLimit", () => {
+  it("escolhe a mensagem pelo papel do usuário logado", async () => {
+    vi.stubEnv("SUPPORT_EMAIL", "vendas@orbitcrm.app")
+    const { client } = fakeClient({ clients: 5 }, 5)
+    vi.mocked(createClient).mockResolvedValue(client as never)
+
+    membership.current = { tenantId: "t1", role: "admin" }
+    expect((await checkPlanLimit("t1", "clients")).message).toContain(
+      "fale com a gente em vendas@orbitcrm.app",
+    )
+
+    membership.current = { tenantId: "t1", role: "member" }
+    expect((await checkPlanLimit("t1", "clients")).message).toContain(
+      "Peça a um administrador",
+    )
+    vi.unstubAllEnvs()
   })
 })
