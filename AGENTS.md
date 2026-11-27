@@ -118,6 +118,12 @@ de testes nem de staging**. Decisões:
     a partir de um Preview;
   - manter `NEXT_PUBLIC_DEMO_LOGIN` desligado.
 
+### Produção com clientes pagantes
+
+Antes do primeiro cliente pagante (e depois de mudanças de infraestrutura),
+seguir [`docs/checklist-producao.md`](docs/checklist-producao.md): planos da
+Vercel/Supabase, e-mail (Resend), variáveis, LGPD e o teste rápido pós-deploy.
+
 ### Setup inicial (uma vez)
 
 1. Gerar um Personal Access Token e configurar `SUPABASE_ACCESS_TOKEN`,
