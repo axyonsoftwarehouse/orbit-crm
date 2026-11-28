@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { LegalConsentNote } from "@/components/legal/legal-page"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -50,6 +51,7 @@ export function AcceptInvitationForm({
             Aceitar convite
           </Button>
         </form>
+        <LegalConsentNote action="aceitar o convite" />
       </div>
     )
   }
@@ -86,6 +88,7 @@ export function AcceptInvitationForm({
           {isPending ? "Entrando..." : "Aceitar e entrar"}
         </Button>
       </form>
+      <LegalConsentNote action="aceitar o convite" />
     </div>
   )
 }

@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card"
 import { DemoCredentials } from "@/components/app/demo-credentials"
 import { PortalLoginForm } from "./login-form"
+import { LegalConsentNote } from "@/components/legal/legal-page"
 
 export const metadata: Metadata = {
   title: "Portal do cliente",
@@ -36,6 +37,7 @@ export default function PortalLoginPage() {
               label="Acesso de demonstração (portal do cliente)"
             />
           ) : null}
+          <LegalConsentNote action="entrar" />
         </CardContent>
       </Card>
     </div>

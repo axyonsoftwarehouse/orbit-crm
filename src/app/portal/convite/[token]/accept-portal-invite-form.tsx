@@ -2,6 +2,7 @@
 
 import { useActionState } from "react"
 import { Button } from "@/components/ui/button"
+import { LegalConsentNote } from "@/components/legal/legal-page"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { NewPasswordFields } from "@/components/auth/new-password-fields"
@@ -46,6 +47,7 @@ export function AcceptPortalInviteForm({
       <Button type="submit" disabled={isPending} className="w-full">
         {isPending ? "Criando acesso..." : "Criar senha e entrar"}
       </Button>
+      <LegalConsentNote action="criar seu acesso" />
     </form>
   )
 }

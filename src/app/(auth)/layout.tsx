@@ -1,4 +1,6 @@
+import Link from "next/link"
 import { APP_NAME } from "@/lib/constants"
+import { LEGAL_PATHS } from "@/lib/legal"
 
 export default function AuthLayout({
   children,
@@ -33,8 +35,16 @@ export default function AuthLayout({
           </p>
         </div>
 
-        <p className="relative text-xs text-white/60">
-          © {new Date().getFullYear()} {APP_NAME}
+        <p className="relative flex flex-wrap gap-x-3 text-xs text-white/60">
+          <span>
+            © {new Date().getFullYear()} {APP_NAME}
+          </span>
+          <Link href={LEGAL_PATHS.terms} className="hover:text-white">
+            Termos de uso
+          </Link>
+          <Link href={LEGAL_PATHS.privacy} className="hover:text-white">
+            Privacidade
+          </Link>
         </p>
       </div>
 
