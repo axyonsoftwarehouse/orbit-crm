@@ -34,8 +34,9 @@ com ❓ não puderam ser conferidos daqui.
   - Pro (ou superior), com backups diários;
   - avaliar PITR (restauração a um ponto no tempo);
   - fazer **um teste de restauração** e anotar quanto tempo levou.
-- [ ] ❌ **Termos de uso e política de privacidade (LGPD).** Não há páginas no
-      app (nem link no login ou no portal). Ver a seção 6.
+- [ ] ❌ **Termos de uso e política de privacidade (LGPD).** As páginas
+      `/termos` e `/privacidade` existem como **rascunho**: falta preencher os
+      dados da empresa e passar por revisão jurídica. Ver a seção 6.
 
 ## 2. Variáveis de ambiente na Vercel (_Production_)
 
@@ -101,21 +102,24 @@ publicado. Para publicar sozinho em contas de clientes, que não são de teste:
 
 ## 6. Jurídico e LGPD
 
-- [ ] Termos de uso (contrato com a agência), com responsabilidades, limites
-      do plano, cancelamento e exportação dos dados.
-- [ ] Política de privacidade. O Orbit CRM é **operador** dos dados dos
-      clientes das agências, e a agência é a **controladora**. Listar os
-      suboperadores:
-  - Vercel (hospedagem);
-  - Supabase (banco e arquivos);
-  - Resend (e-mail);
-  - OpenRouter e o provedor do modelo (IA, sem retenção);
-  - Sentry (erros);
-  - Meta e LinkedIn, quando a publicação nativa estiver ligada.
-- [ ] Canal do encarregado (DPO) e de pedidos do titular. Hoje a exportação já
-      existe em `/app/exportar`; documentar o caminho para exclusão.
-- [ ] Links para os termos e a política no login, no portal do cliente e nos
-      e-mails.
+As páginas `/termos` e `/privacidade` já existem (versão preliminar 0.1),
+com links nas telas de login e de convite (app e portal) e no rodapé de todos
+os e-mails. Para virar a versão final:
+
+- [ ] Preencher em `src/lib/legal.ts`: razão social, CNPJ, endereço, e-mail do
+      encarregado (DPO), comarca do foro e região do banco de produção.
+      Enquanto faltar algum, a página mostra "[preencher: ...]".
+- [ ] Revisão jurídica do texto, em especial:
+  - o prazo de **30 dias** para exportar os dados depois do cancelamento (não
+    há rotina automática de exclusão; hoje ela seria manual);
+  - o limite de responsabilidade (valor pago nos últimos 12 meses);
+  - as bases legais citadas e a transferência internacional.
+- [ ] Depois da revisão, mudar `draft` para `false` e atualizar `version` e
+      `updatedAt` em `src/lib/legal.ts`.
+- [ ] Definir o processo de pedidos do titular e de exclusão de conta (hoje a
+      exportação existe em `/app/exportar`; a exclusão é manual).
+- [ ] (Depois) Registrar no banco quem aceitou e qual versão, com aceite
+      explícito no primeiro acesso.
 
 ## 7. Plataforma e onboarding
 

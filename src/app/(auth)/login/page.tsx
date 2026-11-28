@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/card"
 import { DemoCredentials } from "@/components/app/demo-credentials"
 import { APP_NAME } from "@/lib/constants"
+import { LegalConsentNote } from "@/components/legal/legal-page"
 import { LoginForm } from "./login-form"
 
 export const metadata: Metadata = {
@@ -40,6 +41,7 @@ export default function LoginPage() {
             Acesse o portal
           </a>
         </p>
+        <LegalConsentNote action="entrar" />
       </CardContent>
     </Card>
   )
